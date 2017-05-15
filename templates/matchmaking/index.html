@@ -1,0 +1,65 @@
+{% extends 'frontend/base.html' %}
+
+{% load staticfiles %}
+
+{% block title %}Matchmaking{% endblock %}
+
+{% if error_message %}<p><strong>{{ error_message }}</strong></p>{% endif %}
+
+{% block body_block %}
+
+ <link href="{% static 'css/matchmaking.css' %}" rel="stylesheet">
+
+<div class="container page-text">
+    <div class="row">
+        <div class="col-md-12">
+            <h2>Matchmaking</h2>
+            <form action="." method="post">
+                {% csrf_token %}
+                <div class="input-group col-md-12">
+                    <h3><p>Do you need access to resources? </p></h3>
+                    <input type="checkbox" name="resources" id="HPC" value="HPC"><label for="HPC">HPC resources </label><br>
+                    <input type="checkbox" name="resources" id="CSS" value="HPDA"><label for="CSS">HPDA resources</label><br>
+                    <input type="checkbox" name="resources" id="JS" value="Scalable"><label for="JS"> Scalable Cloud resources</label><br>
+                    <h3><p>Do you need direct consultancy? Do you need:</p></h3>
+                    <input type="checkbox" name="" id="" value=""><label for=""> help for GSS modeling</label><br>
+                    <input type="checkbox" name="" id="" value=""><label for=""> help in designing your HPC program (HPC modeling)</label><br>
+                    <input type="checkbox" name="" id="" value=""><label for=""> help with respect to the performance of your simulation (HPC expertise)</label><br>
+                    <input type="checkbox" name="" id="" value=""><label for=""> consultancy in order to chose appropriate hardware resources</label><br>
+                    <input type="checkbox" name="" id="" value=""><label for=""> assistance in data acquisition</label><br>
+                    <input type="checkbox" name="" id="" value=""><label for=""> assistance in handling / using our software</label><br>
+                    <h3><p>Do you need access to software?</p></h3>
+                    <input type="checkbox" name="" id="" value=""><label for=""> to the HLRS AMOS tool</label><br>
+                    <input type="checkbox" name="" id="" value=""><label for=""> to our optimized Pandora</label><br>
+                    <input type="checkbox" name="" id="" value=""><label for=""> a specific synthetic population</label><br>
+                    <input type="checkbox" name="" id="" value=""><label for=""> to visualization software</label><br>
+                    <h3><p>Do you need access to data?</p></h3>
+                    <input type="checkbox" name="" id="" value=""><label for=""> Would you like to get access to Open Source, but inaccurate data?</label><br>
+                    <input type="checkbox" name="" id="" value=""><label for=""> Are you interested in highly accurate, but costly data?</label><br>
+                    <h3><p>Do you want to explore the different communities?</p></h3>
+                    <input type="checkbox" name="" id="" value=""><label for=""> Do you want to learn more about GSS?</label><br>
+                    <input type="checkbox" name="" id="" value=""><label for=""> Do you want to learn more about HPC?</label><br>
+                    <input type="checkbox" name="" id="" value=""><label for=""> Are you interested in documentation / publications?</label><br>
+                    <h3><p>Where are you settled in the workflow</p></h3>
+                    <input type="checkbox" name="" id="" value=""><label for=""> Do you have a problem?</label><br>
+                    <input type="checkbox" name="" id="" value=""><label for=""> Do you have data?</label><br>
+                    <input type="checkbox" name="" id="" value=""><label for=""> Do you have the knowledge for modeling the problem?</label><br>
+                    <input type="checkbox" name="" id="" value=""><label for=""> Do you have the knowledge for programming the problem?</label><br>
+                    <input type="checkbox" name="" id="" value=""><label for=""> Do you have a simulation?</label><br>
+                    <input type="checkbox" name="" id="" value=""><label for=""> Do you have the output results?</label><br>
+                    <input type="checkbox" name="" id="" value=""><label for=""> Do you need to visualize the output data?</label><br>
+                    <input type="checkbox" name="" id="" value=""><label for=""> Do you need a statistical analysis of the output data?</label><br>
+                    <input type="checkbox" name="" id="" value=""><label for=""> Do you need help for an optimized representation of the results (in general)?</label><br>
+                    <h3><p>Are you interested in the MSO4SC framework? Are you interested in: </p></h3>
+                    <input type="checkbox" name="" id="" value=""><label for=""> open positions?</label><br>
+                    <input type="checkbox" name="" id="" value=""><label for=""> exchange opportunities?</label><br>
+                    <input type="checkbox" name="" id="" value=""><label for=""> thesis topics?</label><br>
+                    <input class="btn btn-info" type="submit" value="Match" />
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+

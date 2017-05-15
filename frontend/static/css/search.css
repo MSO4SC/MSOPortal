@@ -1,0 +1,28 @@
+a.pager-number {
+  border: 0.2ex solid white;
+  padding: 0.4em 0.8em;
+  color: white;
+}
+
+span.pager-disabled {
+  border: 0.2ex solid grey;
+  padding: 0.4em 0.8em;
+  color: grey;
+}
+
+span.pager-current {
+  border: 0.2ex solid #ec9d21;
+  padding: 0.4em 0.8em;
+  color: black;
+  background-color: #ec9d21;
+}
+
+span.pager-dots {
+  padding: 0.4em 0.6em;
+}
+
+div.pager-row {
+  text-align: center;
+  margin-top: 2em;
+  margin-bottom: 2em;
+}

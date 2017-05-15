@@ -1,0 +1,61 @@
+{% extends 'frontend/base.html' %}
+
+{% load staticfiles %}
+
+{% block title %}Yellow pages{% endblock %}
+
+{% block body_block %}
+    
+    <link href="{% static 'css/yellowpages.css' %}" rel="stylesheet">
+    <link href="{% static 'css/search.css' %}" rel="stylesheet">
+
+    <div class="container page-text">
+      <div class="row">
+        <div class="col-md-12">
+        <h2>Yellow Pages</h2>
+          <div id="custom-search-input">
+            <form action="." method="get">
+              <div class="input-group col-md-12">
+                <input type="text" class="form-control input-lg" placeholder="Search"
+                       id="id_search" name="search" value="{{form.search.value|default_if_none:''}}" required />
+                <span class="input-group-btn">
+                  <button class="btn btn-info btn-lg" type="submit">
+                    <i class="glyphicon glyphicon-search"></i>
+                  </button>
+                </span>
+              </div>
+            </form>
+          </div>
+          {% if orgs %}
+	    <h4>{{total}} organisations found</h4>
+            <hr/>
+          {% endif %}
+          <ul class=search-results>
+            {%for o in orgs %}
+              <li>
+                <h3><a class=plain href={% url 'organisation_profile' o.id %}>{{ o }}</a></h3>
+                <p>Location: {{ o.address }}</p>
+                <p>
+                  {%for t in o.topics.all %}
+                    <a href={% url 'yellow_pages' %}?search=topic:{{t}} class=topic>• {{t}}</a>
+                  {%endfor%}
+                </p>
+                {% if not forloop.last %}
+                  <hr/>
+                {% endif %}
+              </li>
+            {%empty%}
+              <li>
+                <p style="margin-top: 2em; font-size: 120%; text-align: center;">
+                  We couldn't find any organisations matching "{{form.search.value|default_if_none:''}}".<br/>
+                  <a href={% url 'yellow_pages' %}>Browse all organisations.</a>
+                </p>
+              </li>
+            {%endfor%}
+          </ul>
+          {% if orgs %}{% include pager_template %}{% endif %}
+        </div>
+      </div>
+    </div>
+
+{% endblock %}

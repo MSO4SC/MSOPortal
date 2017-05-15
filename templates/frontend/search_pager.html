@@ -1,0 +1,17 @@
+{% if pager %}
+  <div class=pager-row>
+    {% for x in pager %}
+      {% if x.number or x.dir %}
+        {% if x.clickable %}
+          <a class=pager-number href={{x.href}}>{{x.label}}</a>
+        {% else %}
+          <span class=pager-disabled>{{x.label}}</span>
+        {% endif %}
+      {% elif x.current %}
+        <span class=pager-current>{{x.label}}</span>
+      {% else %}
+        <span class=pager-dots>{{x.label}}</span>
+      {% endif %}
+    {% endfor %}
+  </div>
+{% endif %}

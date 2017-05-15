@@ -1,0 +1,7 @@
+Django==1.9.7
+Pillow==3.3.0
+argparse==1.2.1
+django-auth-ldap==1.2.8
+django-registration-redux==1.4
+python-ldap==2.4.25
+wsgiref==0.1.2

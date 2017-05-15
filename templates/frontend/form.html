@@ -1,0 +1,9 @@
+{% for field in form %}
+  <li class=row>
+    <label class="form-label col-xs-3">{{ field.label_tag }}</label>
+    <div class="col-xs-4">{{ field }}</div>
+      <ul style="display: inline-block; vertical-align: top">
+        {% for error in field.errors %}<li style="margin: 0.5em">{{ error }}</li>{% endfor %}
+      </ul>
+  </li>
+{% endfor %}
