@@ -1,0 +1,38 @@
+{% extends 'frontend/base.html' %}
+
+{% load staticfiles %}
+
+{% block title %}Organisation profile{% endblock %}
+
+{% block body_block %}
+
+    <link href="{% static 'css/common.css' %}" rel="stylesheet">
+
+    <div class="page-header">
+        <h1 class=page-h1>Organisation profile</h1>
+    </div>
+    <div>
+    <p class=page-text>
+        <form action="." method="post">{% csrf_token %}
+            <input class="form-control" type="text" id="id_search" name="search"  required />
+            <button type="submit" class="btn btn-warning">Search</button>
+        </form>
+    </p>
+    <h2>
+      {{ profile.name }}
+      <form style="display: inline;" action="{% url 'organisation_profile_edit' profile.id %}">
+        <button type="submit" class="btn btn-warning">Edit</button>
+      </form>
+    </h2>
+    <h4 style="font-weight: normal; margin: .0em .0em 1.5em">{{ profile.location }}</h4>
+    <p class=page-text>
+      {{ profile.description }}
+    </p>
+    <p class=page-text>
+      Topics:
+      {%for t in profile.topics.all %}
+        <a href={% url 'yellow_pages' %}?search=topic:{{t}} class=topic>• {{t}}</a>
+      {%endfor%}
+    </p>
+    </div>
+{% endblock %}

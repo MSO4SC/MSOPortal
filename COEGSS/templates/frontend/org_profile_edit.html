@@ -1,0 +1,37 @@
+{% extends 'frontend/base.html' %}
+
+{% load staticfiles %}
+
+{% block title %}Edit organisation profile{% endblock %}
+
+{% block body_block %}
+
+    <link href="{% static 'css/common.css' %}" rel="stylesheet">
+
+    <div class="page-header">
+      <h1 class=page-h1>
+        {% if profile %}
+          <form style="display: inline;" action="{% url 'organisation_profile' profile.id %}">
+            <button type="submit" class="btn btn-warning">◄</button>
+          </form>
+          Edit organisation profile
+        {% else %}
+          Create new organisation
+        {% endif %}
+      </h1>
+    </div>
+    <p class=page-text>
+      <form action="." method="post">{% csrf_token %}
+        <ul class=form>
+          {% include "frontend/form.html" %}
+        </ul>
+        <button type="submit" class="btn btn-warning">
+          {% if profile %}
+            Update profile
+          {% else %}
+            Submit
+          {% endif %}
+        </button>
+      </form>
+    </p>
+{% endblock %}

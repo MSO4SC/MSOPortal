@@ -1,0 +1,48 @@
+biz_db:
+    image: mysql:latest
+    ports:
+        - "3333:3306"
+    volumes:
+        - /var/lib/mysql
+    environment:
+        - MYSQL_ROOT_PASSWORD=cockburn
+
+biz_ecosystem:
+    image: mso4sc/fiware-biz-ecosystem:latest
+    ports:
+        - "8000:8000"
+    links:
+        - biz_db
+    volumes:
+        - /c/Users/A645642/Projects/mso4sc/MSOPortal/apis/business-ecosystem-charging-backend/src:/apis/business-ecosystem-charging-backend/src
+        - /c/Users/A645642/Projects/mso4sc/MSOPortal/apis/business-ecosystem-logic-proxy/controllers:/apis/business-ecosystem-logic-proxy/controllers
+        - /c/Users/A645642/Projects/mso4sc/MSOPortal/apis/business-ecosystem-logic-proxy/db:/apis/business-ecosystem-logic-proxy/db
+        - /c/Users/A645642/Projects/mso4sc/MSOPortal/apis/business-ecosystem-logic-proxy/indexes:/apis/business-ecosystem-logic-proxy/indexes
+        - /c/Users/A645642/Projects/mso4sc/MSOPortal/apis/business-ecosystem-logic-proxy/lib:/apis/business-ecosystem-logic-proxy/lib
+        - /c/Users/A645642/Projects/mso4sc/MSOPortal/apis/business-ecosystem-logic-proxy/public:/apis/business-ecosystem-logic-proxy/public
+        - /c/Users/A645642/Projects/mso4sc/MSOPortal/apis/business-ecosystem-logic-proxy/test:/apis/business-ecosystem-logic-proxy/test
+        - /c/Users/A645642/Projects/mso4sc/MSOPortal/apis/business-ecosystem-logic-proxy/views:/apis/business-ecosystem-logic-proxy/views
+#        - /your/bills/path:/apis/business-ecosystem-charging-backend/src/media/bills
+#        - /your/assets/path:/apis/business-ecosystem-charging-backend/src/media/assets
+#        - /your/plugins/path:/apis/business-ecosystem-charging-backend/src/plugins
+        - /your/indexes/path:/apis/business-ecosystem-logic-proxy/indexes
+        
+#        - /c/Users/A645642/Projects/mso4sc/MSOPortal/apis/DSBILLINGMANAGEMENT:/apis/DSBILLINGMANAGEMENT
+#        - /c/Users/A645642/Projects/mso4sc/MSOPortal/apis/DSCUSTOMER:/apis/DSCUSTOMER
+#        - /c/Users/A645642/Projects/mso4sc/MSOPortal/apis/DSPARTYMANAGEMENT:/apis/DSPARTYMANAGEMENT
+#        - /c/Users/A645642/Projects/mso4sc/MSOPortal/apis/DSPRODUCTCATALOG2:/apis/DSPRODUCTCATALOG2
+#        - /c/Users/A645642/Projects/mso4sc/MSOPortal/apis/DSPRODUCTINVENTORY:/apis/DSPRODUCTINVENTORY
+#        - /c/Users/A645642/Projects/mso4sc/MSOPortal/apis/DSPRODUCTORDERING:/apis/DSPRODUCTORDERING
+#        - /c/Users/A645642/Projects/mso4sc/MSOPortal/apis/DSUSAGEMANAGEMENT:/apis/DSUSAGEMANAGEMENT
+#        - /c/Users/A645642/Projects/mso4sc/MSOPortal/apis/business-ecosystem-rss:/apis/business-ecosystem-rss
+
+    environment:
+        - MYSQL_ROOT_PASSWORD=cockburn
+        - MYSQL_HOST=biz_db
+        - OAUTH2_CLIENT_ID=fee033f58fe346a280569fa69c685ef2
+        - OAUTH2_CLIENT_SECRET=ef0b989cc6aa484fa4593fbfa9a5e107
+        - PAYPAL_CLIENT_ID=your-paypal-client-id
+        - PAYPAL_CLIENT_SECRET=your-paypal-client-secret
+        - ADMIN_EMAIL=javier.carnero@atos.net
+        - BIZ_ECOSYS_PORT=8000
+        - BIZ_ECOSYS_HOST=localhost
