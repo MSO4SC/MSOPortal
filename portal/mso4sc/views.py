@@ -6,7 +6,15 @@ from django.contrib import messages
 
 from social_django.models import UserSocialAuth
 
+from django.views.decorators.clickjacking import xframe_options_exempt
+
 
 @login_required
 def index(request):
     return render(request, 'home.html')
+
+
+#@xframe_options_exempt
+@login_required
+def marketplace(request):
+    return render(request, 'marketplace.html')
