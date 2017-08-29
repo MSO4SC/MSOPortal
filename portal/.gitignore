@@ -18,3 +18,5 @@ build/
 tests/report/
 
 settings.ini
+
+db.sqlite3

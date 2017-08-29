@@ -1,4 +1,8 @@
 {% extends 'base.html' %} {% block content %}
 <h2>Homepage</h2>
 <p>Hello {{ user.username }}!</p>
+<p>E-Mail: {{ user.email }}</p>
+<p>Full name: {{ user.fullname }}</p>
+<p>Token: {{ access_token }}</p>
+<p>Extra Data: {{ extra_data }}</p>
 {% endblock %}

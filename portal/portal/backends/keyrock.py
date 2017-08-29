@@ -38,7 +38,8 @@ class KeyrockOAuth2(BaseOAuth2):
         """Return user details from FI-WARE account"""
         return {'username': response.get('id'),
                 'email': response.get('email') or '',
-                'fullname': response.get('displayName') or ''}
+                'fullname': response.get('displayName') or '',
+                'testJorl': 'testJorl'}
 
     def user_data(self, access_token, *args, **kwargs):
         """Loads user data from service"""
