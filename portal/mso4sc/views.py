@@ -45,3 +45,31 @@ def marketplace(request):
         return redirect('/marketplaceLogIn')
 
     return render(request, 'marketplace.html')
+
+
+@login_required
+def datacatalogue_logIn(request):
+    if 'datacatalogue' not in request.session:
+        request.session['datacatalogue'] = False
+
+    if request.session['datacatalogue']:
+        return redirect('/datacatalogue')
+
+    return redirect('http://192.168.56.24:5000/user/login')
+
+
+@login_required
+def datacatalogue_loggedIn(request):
+    request.session['datacatalogue'] = True
+    return redirect('/datacatalogue')
+
+
+@login_required
+def datacatalogue(request):
+    if 'datacatalogue' not in request.session:
+        request.session['datacatalogue'] = False
+
+    if not request.session['datacatalogue']:
+        return redirect('/datacatalogueLogIn')
+
+    return render(request, 'datacatalogue.html')

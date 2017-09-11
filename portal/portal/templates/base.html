@@ -13,6 +13,7 @@
         {% if user.is_authenticated %} You are signed in as <strong>{{ user.username }}</strong> /
         <a href="{% url 'home' %}">home</a> /
         <a href="{% url 'marketplace_logIn' %}">marketplace</a> /
+        <a href="{% url 'datacatalogue_logIn' %}">data catalogue</a> /
         <a href="{% url 'settings' %}">settings</a> /
         <a href="{% url 'password' %}">change password</a> /
         <a href="{% url 'logout' %}">logout</a> {% else %}

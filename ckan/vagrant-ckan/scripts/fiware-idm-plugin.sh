@@ -23,7 +23,7 @@ cd ckanext-oauth2
 git checkout fiware_migration
 python setup.py install
 
-# Add plugin
+# Add plugin to ckan config
 sed -i -e 's/ckan.plugins =/ckan.plugins = oauth2/g' /etc/ckan/default/development.ini
 sed -i -e 's/## Search Settings/## OAuth2 configuration\
 ckan.oauth2.logout_url = /user/logged_out\
@@ -44,25 +44,9 @@ ckan.oauth2.authorization_header = Bearer\
 \
 ## Search Settings/g' /etc/ckan/default/development.ini
 
-sed -i -e 's/## Search Settings/## OAuth2 configuration\
-\
-ckan.oauth2.logout_url = \/user\/logged_out\
-ckan.oauth2.register_url = https:\/\/account.lab.fiware.org\/users\/sign_up\
-ckan.oauth2.reset_url = https:\/\/account.lab.fiware.org\/users\/password\/new\
-ckan.oauth2.edit_url = https:\/\/account.lab.fiware.org\/settings\
-ckan.oauth2.authorization_endpoint = https:\/\/account.lab.fiware.org\/oauth2\/authorize\
-ckan.oauth2.token_endpoint = https:\/\/account.lab.fiware.org\/oauth2\/token\
-ckan.oauth2.profile_api_url = https:\/\/account.lab.fiware.org\/user\
-ckan.oauth2.client_id = b4f8383926a44b24823d6b2bbf055f2e\
-ckan.oauth2.client_secret = f2d5b4dd81454e2684a7cc3ff8c36b56\
-ckan.oauth2.scope = profile other.scope\
-ckan.oauth2.rememberer_name = auth_tkt\
-ckan.oauth2.profile_api_user_field = id\
-ckan.oauth2.profile_api_fullname_field = displayName\
-ckan.oauth2.profile_api_mail_field = email\
-ckan.oauth2.authorization_header = Bearer\
-\
-## Search Settings/g' /etc/ckan/default/development.ini
+# MSO4SC hack & Install extension
+sed -i -e 's/toolkit.response.location = came_from/toolkit.response.location = "http:\/\/192.168.56.23:8000\/datacatalogueLoggedIn"/g' ~/ckanext-oauth2/ckanext/oauth2/oauth2.py
+python setup.py install
 
 # Enable unsecure transport (not https)
 ##
