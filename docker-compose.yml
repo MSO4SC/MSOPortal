@@ -1,6 +1,13 @@
 version: '3.3'
 
 services:
+    ## IDM
+    idm:
+        container_name: idm
+        image: ging/fiware-idm:latest
+        ports:
+            - "0.0.0.0:${HORIZON_PORT}:8000"
+            - "0.0.0.0:${KEYSTONE_PORT}:5000"
     ## CKAN
     ckan:
         container_name: ckan
