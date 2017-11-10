@@ -1,3 +1,4 @@
+from portal import settings
 from django.contrib.auth.decorators import login_required
 from django.shortcuts import render, redirect
 from django.contrib.auth.forms import AdminPasswordChangeForm, PasswordChangeForm, UserCreationForm
@@ -26,7 +27,7 @@ def marketplace_logIn(request):
     if request.session['marketplace']:
         return redirect('/marketplace')
 
-    return redirect('http://localhost:8000/login')
+    return redirect(settings.MARKETPLACE_URL + '/login')
 
 
 @login_required
@@ -44,7 +45,8 @@ def marketplace(request):
     if not request.session['marketplace']:
         return redirect('/marketplaceLogIn')
 
-    return render(request, 'marketplace.html')
+    context = {'marketplace_url': settings.MARKETPLACE_URL}
+    return render(request, 'marketplace.html', context)
 
 
 @login_required
@@ -55,7 +57,7 @@ def datacatalogue_logIn(request):
     if request.session['datacatalogue']:
         return redirect('/datacatalogue')
 
-    return redirect('http://192.168.56.24:5000/user/login')
+    return redirect(settings.DATACATALOGUE_URL + '/user/login')
 
 
 @login_required
@@ -72,4 +74,14 @@ def datacatalogue(request):
     if not request.session['datacatalogue']:
         return redirect('/datacatalogueLogIn')
 
-    return render(request, 'datacatalogue.html')
+    context = {'datacatalogue_url': settings.DATACATALOGUE_URL}
+    return render(request, 'datacatalogue.html', context)
+
+
+@login_required
+def experimentstool(request):
+    context = {
+        'datacatalogue_url': settings.DATACATALOGUE_URL,
+        'marketplace_url': settings.MARKETPLACE_URL
+    }
+    return render(request, 'experimentstool.html', context)

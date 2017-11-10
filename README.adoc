@@ -1,0 +1,15 @@
+= MSO4SC Portal
+
+Web portal of the MSO4SC project.
+
+.Components
+* *Frontend*: Integrates the different services into a single web interface.
+* *Experiments Tool*: Executes the applications in the MSO4SC platform.
+* *Marketplace*: Manages the applications available in MSO4SC. Built using FIWARE Business Ecosystem.
+* *Data Catalogue*: Manages the datasets available in MSO4SC. Built using CKAN.
+
+WARNING: Data catalogue docker image not working yet. Frontend and Experiments Tool docker images not available yet.
+
+== Deployment
+
+Copy _docker-compose.yml_ and _example.env_ to the docker machine, renaming example.env to `.env`. Then modify the _.env_ file with your own config and start docker compose.

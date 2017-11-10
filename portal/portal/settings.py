@@ -105,16 +105,20 @@ DATABASES = {
 
 AUTH_PASSWORD_VALIDATORS = [
     {
-        'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator',
+        'NAME': 'django.contrib.auth.password_validation.' +
+                'UserAttributeSimilarityValidator',
     },
     {
-        'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator',
+        'NAME': 'django.contrib.auth.password_validation.' +
+                'MinimumLengthValidator',
     },
     {
-        'NAME': 'django.contrib.auth.password_validation.CommonPasswordValidator',
+        'NAME': 'django.contrib.auth.password_validation.' +
+                'CommonPasswordValidator',
     },
     {
-        'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator',
+        'NAME': 'django.contrib.auth.password_validation.' +
+                'NumericPasswordValidator',
     },
 ]
 
@@ -145,6 +149,9 @@ LOGIN_REDIRECT_URL = 'home'
 # X_FRAME_OPTIONS = 'ALLOW-FROM ' + config('FIWARE_IDM_ENDPOINT')
 # X_FRAME_OPTIONS = 'DENY'
 
+MARKETPLACE_URL = config('MARKETPLACE_URL')
+DATACATALOGUE_URL = config('DATACATALOGUE_URL')
+
 FIWARE_IDM_ENDPOINT = config('FIWARE_IDM_ENDPOINT')
 SOCIAL_AUTH_FIWARE_KEY = config('SOCIAL_AUTH_FIWARE_KEY')
 SOCIAL_AUTH_FIWARE_SECRET = config('SOCIAL_AUTH_FIWARE_SECRET')
@@ -158,7 +165,7 @@ SOCIAL_AUTH_TWITTER_SECRET = config('SOCIAL_AUTH_TWITTER_SECRET')
 SOCIAL_AUTH_FACEBOOK_KEY = config('SOCIAL_AUTH_FACEBOOK_KEY')
 SOCIAL_AUTH_FACEBOOK_SECRET = config('SOCIAL_AUTH_FACEBOOK_SECRET')
 
-#MESSAGE_LEVEL = message_constants.DEBUG
+# MESSAGE_LEVEL = message_constants.DEBUG
 SOCIAL_AUTH_LOGIN_ERROR_URL = '/login_error/'
 SOCIAL_AUTH_LOGIN_REDIRECT_URL = '/settings/'
 SOCIAL_AUTH_RAISE_EXCEPTIONS = False

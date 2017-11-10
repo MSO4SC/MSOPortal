@@ -13,5 +13,6 @@ urlpatterns = [
         name='datacatalogue_logIn'),
     url(r'^datacatalogueLoggedIn/$', views.datacatalogue_loggedIn,
         name='datacatalogue_loggedIn'),
-    url(r'^datacatalogue/$', views.datacatalogue, name='datacatalogue')
+    url(r'^datacatalogue/$', views.datacatalogue, name='datacatalogue'),
+    url(r'^experimentstool/$', views.experimentstool, name='experimentstool')
 ]

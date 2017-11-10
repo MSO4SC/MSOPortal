@@ -1,8 +1,10 @@
 {% extends 'base.html' %} {% block content %}
-<iframe src="http://localhost:8000/" id="marketplace" style="width:100%; height:500px;">
-  <p> <a href="http://localhost:8000/#/offering">
-    Fallback link for browsers that don't support iframes
-  </a> </p>
+<iframe src="{{ marketplace_url }}/" id="marketplace" style="width:100%; height:500px;">
+  <p>
+    <a href="{{ marketplace_url }}/#/offering">
+      Fallback link for browsers that don't support iframes
+    </a>
+  </p>
 </iframe>
 
 {% endblock %}
