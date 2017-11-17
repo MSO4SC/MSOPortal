@@ -8,8 +8,10 @@ Web portal of the MSO4SC project.
 * *Marketplace*: Manages the applications available in MSO4SC. Built using FIWARE Business Ecosystem.
 * *Data Catalogue*: Manages the datasets available in MSO4SC. Built using CKAN.
 
-WARNING: Data catalogue docker image not working yet. Frontend and Experiments Tool docker images not available yet.
+WARNING: Frontend and Experiments Tool not ready, as well as their docker image.
 
 == Deployment
 
-Copy _docker-compose.yml_ and _example.env_ to the docker machine, renaming example.env to `.env`. Then modify the _.env_ file with your own config and start docker compose.
+Copy _docker-compose.yml_ and _example.env_ to the docker machine, renaming example.env to `.env`. Then modify the _.env_ file with your own config and up docker compose.
+
+NOTE: If encounter any problems, up first all containers except ckan and biz, then up the other two.
