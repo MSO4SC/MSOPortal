@@ -1,3 +1,6 @@
+import time
+import json
+import requests
 from portal import settings
 from django.contrib.auth.decorators import login_required
 from django.shortcuts import render, redirect
@@ -6,17 +9,36 @@ from django.contrib.auth import update_session_auth_hash, login, authenticate
 from django.contrib import messages
 
 from social_django.models import UserSocialAuth
+from social_django.utils import load_strategy
 
 from django.views.decorators.clickjacking import xframe_options_exempt
+
+
+def _get_fiware_token(user):
+    social = user.social_auth.get(provider='fiware')
+    if int(time.time()) - social.extra_data['auth_time'] > 3600:
+        strategy = load_strategy()
+        social.refresh_token(strategy)
+    return social.extra_data['access_token']
 
 
 @login_required
 def index(request):
     social_user = request.user.social_auth.get(uid=request.user.username)
-    access_token = social_user.access_token
+    #access_token = social_user.access_token
+    access_token = _get_fiware_token(request.user)
+    token_expires_in = 3600 - \
+        (int(time.time()) - social_user.extra_data['auth_time'])
+    m, s = divmod(token_expires_in, 60)
+    h, m = divmod(m, 60)
+    str_expires_in = str(m) + ' minutes and ' + str(s) + ' seconds.'
+    if h > 0:
+        str_expires_in = '1 hour'
     extra_data = social_user.extra_data
 
-    return render(request, 'home.html', {'access_token': access_token, 'extra_data': extra_data})
+    return render(request, 'home.html', {'access_token': access_token +
+                                         ', expires in ' + str_expires_in,
+                                         'extra_data': extra_data})
 
 
 @login_required
@@ -36,7 +58,6 @@ def marketplace_loggedIn(request):
     return redirect('/marketplace')
 
 
-#@xframe_options_exempt
 @login_required
 def marketplace(request):
     if 'marketplace' not in request.session:
@@ -78,10 +99,23 @@ def datacatalogue(request):
     return render(request, 'datacatalogue.html', context)
 
 
+def _get_inventory(user):
+    access_token = _get_fiware_token(user)
+    headers = {"Authorization": "bearer " + access_token}
+    url = settings.MARKETPLACE_URL + \
+        "/DSProductInventory/api/productInventory/v2/product"
+
+    text_data = requests.request("GET", url, headers=headers).text
+    json_data = json.loads(text_data)
+    return json_data
+
+
 @login_required
 def experimentstool(request):
+    inventory = _get_inventory(request.user)
     context = {
         'datacatalogue_url': settings.DATACATALOGUE_URL,
-        'marketplace_url': settings.MARKETPLACE_URL
+        'marketplace_url': settings.MARKETPLACE_URL,
+        'inventory': inventory
     }
     return render(request, 'experimentstool.html', context)

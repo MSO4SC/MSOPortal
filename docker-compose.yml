@@ -4,10 +4,7 @@ services:
     ## CKAN
     ckan:
         container_name: ckan
-        image: mso4sc/ckan
-        depends_on:
-            - db
-            - solr
+        image: mso4sc/datacatalogue
         links:
             - db
             - solr
@@ -30,8 +27,7 @@ services:
             - FIWARE_SECRET=${CKAN_FIWARE_SECRET}
 
         volumes:
-          - ckan_config:/etc/ckan
-          - ckan_home:/usr/lib/ckan
+          - ckan_config:/etc/ckan/default
           - ckan_storage:/var/lib/ckan
 
     datapusher:
@@ -63,8 +59,6 @@ services:
         image: mso4sc/biz-ecosystem:latest
         ports:
             - "${BIZ_PORT}:8000"
-        depends_on:
-            - biz_db
         links:
             - biz_db
         volumes:
@@ -99,9 +93,8 @@ services:
 
 # Volumes
 volumes:
-    # ckan_config:
-    # ckan_home:
-    # ckan_storage:
+    ckan_config:
+    ckan_storage:
     pg_data:
     biz-data:
     biz-bills:
