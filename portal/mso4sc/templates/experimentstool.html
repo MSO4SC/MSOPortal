@@ -1,1 +1,18 @@
-{% extends 'base.html' %} {% block content %} HELLO! {% endblock %}
+{% extends 'base.html' %}
+
+{% block content %}
+
+<label>Inventory:</label>
+{% if not inventory %}
+    Not found any.
+{% else %}
+    <select>
+    {% for i in inventory %}
+        <option value="{{ i }}">
+            {{ i }}
+        </option>
+    {% endfor %}
+    </select>
+{% endif %}
+
+{% endblock %}
