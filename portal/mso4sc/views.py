@@ -2,16 +2,17 @@ import time
 import json
 import requests
 from portal import settings
+
 from django.contrib.auth.decorators import login_required
 from django.shortcuts import render, redirect
+from django.http import JsonResponse
 from django.contrib.auth.forms import AdminPasswordChangeForm, PasswordChangeForm, UserCreationForm
 from django.contrib.auth import update_session_auth_hash, login, authenticate
 from django.contrib import messages
+from django.views.decorators.clickjacking import xframe_options_exempt
 
 from social_django.models import UserSocialAuth
 from social_django.utils import load_strategy
-
-from django.views.decorators.clickjacking import xframe_options_exempt
 
 
 def _get_fiware_token(user):
@@ -110,12 +111,39 @@ def _get_inventory(user):
     return json_data
 
 
+def _get_datasets():
+    url = settings.DATACATALOGUE_URL + \
+        "/api/3/action/package_list"
+
+    text_data = requests.request("GET", url).text
+    json_data = json.loads(text_data)
+    if json_data["success"]:
+        return json_data["result"]
+    else:
+        return []  # TODO(emepetres) manage errors
+
+
+def _get_dataset_info(request):
+    dataset = request.GET.get('dataset', None)
+    url = settings.DATACATALOGUE_URL + \
+        "/api/rest/dataset/" + dataset
+
+    text_data = requests.request("GET", url).text
+    if text_data == "Not found":
+        return JsonResponse(None)  # TODO(emepetres) manage errors
+
+    json_data = json.loads(text_data)
+    return JsonResponse(json_data)
+
+
 @login_required
 def experimentstool(request):
     inventory = _get_inventory(request.user)
+    datasets = _get_datasets()
     context = {
         'datacatalogue_url': settings.DATACATALOGUE_URL,
         'marketplace_url': settings.MARKETPLACE_URL,
-        'inventory': inventory
+        'inventory': inventory,
+        'datasets': datasets
     }
     return render(request, 'experimentstool.html', context)

@@ -2,17 +2,34 @@
 
 {% block content %}
 
-<label>Inventory:</label>
-{% if not inventory %}
-    Not found any.
-{% else %}
+<form>
+<diV>
+    <label>Inventory:</label>
+    {% if not inventory %}
+        Not found any.
+    {% else %}
+        <select>
+        {% for i in inventory %}
+            <option value="{{ i }}">
+                {{ i }}
+            </option>
+        {% endfor %}
+        </select>
+    {% endif %}
+</diV>
+
+<div id="dataset_selector">
+    <label>Datasets:</label>
     <select>
-    {% for i in inventory %}
-        <option value="{{ i }}">
-            {{ i }}
-        </option>
-    {% endfor %}
+        <option value="none">None</option>
+        {% for dataset in datasets %}
+            <option value="{{ dataset }}">
+                {{ dataset }}
+            </option>
+        {% endfor %}
     </select>
-{% endif %}
+    <div class="dynamic_list"></div>
+</div>
+</form>
 
 {% endblock %}

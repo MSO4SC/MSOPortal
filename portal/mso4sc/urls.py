@@ -14,5 +14,7 @@ urlpatterns = [
     url(r'^datacatalogueLoggedIn/$', views.datacatalogue_loggedIn,
         name='datacatalogue_loggedIn'),
     url(r'^datacatalogue/$', views.datacatalogue, name='datacatalogue'),
-    url(r'^experimentstool/$', views.experimentstool, name='experimentstool')
+    url(r'^experimentstool/$', views.experimentstool, name='experimentstool'),
+    url(r'^experimentstool/dataset_info$',
+        views._get_dataset_info, name='dataset_info')
 ]

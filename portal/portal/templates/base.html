@@ -1,8 +1,5 @@
 {% load static %}
 
-<script src="{% static "portal/js/jquery-3.2.1.min.js" %}"></script>
-<script src="{% static "portal/js/portal.js" %}"></script>
-
 <!DOCTYPE html>
 <html>
 
@@ -32,7 +29,9 @@
         <p style="color: {% if message.tags == 'success' %}green{% elif message.tags == 'error' %}red{% endif %}">
             {{ message }}
         </p>
-        {% endfor %} {% block content %} {% endblock %}
+        {% endfor %}
+
+        {% block content %} {% endblock %}
     </main>
     <footer>
         <hr>
@@ -40,6 +39,10 @@
             <a href="http://www.mso4sc.eu">MSO4SC European Project</a>
         </small>
     </footer>
+
+    <script src="{% static "portal/js/jquery-3.2.1.min.js" %}"></script>
+    <script src="{% static "portal/js/portal.js" %}"></script>
+    {% block javascript %} {% endblock %}
 </body>
 
 </html>

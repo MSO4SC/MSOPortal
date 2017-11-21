@@ -12,4 +12,42 @@ $(document).ready(function () {
         //$(this).height($(this).contents().find("body").height());
         //console.log("height: " + $(this).contents().find("body").height());
     });
+
+    $("#dataset_selector").find("select").on('change', function () {
+        var dataset = $(this).val();
+
+        $.ajax({
+            url: '/experimentstool/dataset_info',
+            data: {
+                'dataset': dataset
+            },
+            dataType: 'json',
+            success: function (data) {
+                var resources_list = $(".dynamic_list")
+                if (data.num_resources > 0) {
+                    $(data.resources).each(function (index, resource) {
+                        resources_list.append(
+                            $(document.createElement('div')).attr({
+                                id: "resource_selector_" + resource.name
+                            }).append(
+                                $(document.createElement('input')).attr({
+                                    id: "resource_" + resource.name,
+                                    name: resource.name,
+                                    value: resource.name,
+                                    type: 'checkbox'
+                                }),
+                                $(document.createElement('label')).attr({
+                                    for: "resource_" + resource.name
+                                }).text(resource.name)
+                            )
+                        )
+                    });
+                } else {
+                    resources_list.append(
+                        $(document.createElement('label')).text("No resources found")
+                    );
+                }
+            }
+        });
+    });
 });
