@@ -100,11 +100,11 @@ def datacatalogue(request):
     return render(request, 'datacatalogue.html', context)
 
 
-def _get_inventory(user):
+def _get_products(user):
     access_token = _get_fiware_token(user)
     headers = {"Authorization": "bearer " + access_token}
     url = settings.MARKETPLACE_URL + \
-        "/DSProductInventory/api/productInventory/v2/product"
+        "/DSProductCatalog/api/catalogManagement/v2/productSpecification"
 
     text_data = requests.request("GET", url, headers=headers).text
     json_data = json.loads(text_data)
@@ -138,12 +138,12 @@ def _get_dataset_info(request):
 
 @login_required
 def experimentstool(request):
-    inventory = _get_inventory(request.user)
+    products = _get_products(request.user)
     datasets = _get_datasets()
     context = {
         'datacatalogue_url': settings.DATACATALOGUE_URL,
         'marketplace_url': settings.MARKETPLACE_URL,
-        'inventory': inventory,
+        'products': products,
         'datasets': datasets
     }
     return render(request, 'experimentstool.html', context)

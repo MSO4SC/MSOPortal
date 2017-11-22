@@ -4,14 +4,14 @@
 
 <form>
 <diV>
-    <label>Inventory:</label>
-    {% if not inventory %}
+    <label>Products:</label>
+    {% if not products %}
         Not found any.
     {% else %}
         <select>
-        {% for i in inventory %}
-            <option value="{{ i }}">
-                {{ i }}
+        {% for product in products %}
+            <option value="{{ product.id }}">
+                {{ product.name }}
             </option>
         {% endfor %}
         </select>
