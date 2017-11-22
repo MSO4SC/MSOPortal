@@ -15,39 +15,42 @@ $(document).ready(function () {
 
     $("#dataset_selector").find("select").on('change', function () {
         var dataset = $(this).val();
+        var resources_list = $(".dynamic_list");
+        resources_list.empty();
 
-        $.ajax({
-            url: '/experimentstool/dataset_info',
-            data: {
-                'dataset': dataset
-            },
-            dataType: 'json',
-            success: function (data) {
-                var resources_list = $(".dynamic_list")
-                if (data.num_resources > 0) {
-                    $(data.resources).each(function (index, resource) {
-                        resources_list.append(
-                            $(document.createElement('div')).attr({
-                                id: "resource_selector_" + resource.name
-                            }).append(
-                                $(document.createElement('input')).attr({
-                                    id: "resource_" + resource.name,
-                                    name: resource.name,
-                                    value: resource.name,
-                                    type: 'checkbox'
-                                }),
-                                $(document.createElement('label')).attr({
-                                    for: "resource_" + resource.name
-                                }).text(resource.name)
+        if (dataset != "none") {
+            $.ajax({
+                url: '/experimentstool/dataset_info',
+                data: {
+                    'dataset': dataset
+                },
+                dataType: 'json',
+                success: function (data) {
+                    if (data.num_resources > 0) {
+                        $(data.resources).each(function (index, resource) {
+                            resources_list.append(
+                                $(document.createElement('div')).attr({
+                                    id: "resource_selector_" + resource.name
+                                }).append(
+                                    $(document.createElement('input')).attr({
+                                        id: "resource_" + resource.name,
+                                        name: resource.name,
+                                        value: resource.name,
+                                        type: 'checkbox'
+                                    }),
+                                    $(document.createElement('label')).attr({
+                                        for: "resource_" + resource.name
+                                    }).text(resource.name)
+                                )
                             )
-                        )
-                    });
-                } else {
-                    resources_list.append(
-                        $(document.createElement('label')).text("No resources found")
-                    );
+                        });
+                    } else {
+                        resources_list.append(
+                            $(document.createElement('label')).text("No resources found")
+                        );
+                    }
                 }
-            }
-        });
+            });
+        }
     });
 });
