@@ -13,7 +13,8 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
-#common tools
-apt-get update
-apt-get -y install ntp dos2unix
+ 
+#python3.6
+apt-get -y install python3 python3-pip
+pip3 install --upgrade pip
+pip3 install virtualenv ipython

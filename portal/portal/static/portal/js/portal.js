@@ -15,7 +15,7 @@ $(document).ready(function () {
 
     $("#dataset_selector").find("select").on('change', function () {
         var dataset = $(this).val();
-        var resources_list = $(".dynamic_list");
+        var resources_list = $("#dataset_selector").find(".dynamic_list");
         resources_list.empty();
 
         if (dataset != "none") {

@@ -1,18 +1,28 @@
+""" MSO4SC views module """
+
 import time
 import json
+import yaml
 import requests
 from portal import settings
 
 from django.contrib.auth.decorators import login_required
 from django.shortcuts import render, redirect
 from django.http import JsonResponse
-from django.contrib.auth.forms import AdminPasswordChangeForm, PasswordChangeForm, UserCreationForm
-from django.contrib.auth import update_session_auth_hash, login, authenticate
-from django.contrib import messages
-from django.views.decorators.clickjacking import xframe_options_exempt
+# from django.contrib.auth import login, authenticate
+# from django.contrib import messages
+# from django.views.decorators.clickjacking import xframe_options_exempt
 
-from social_django.models import UserSocialAuth
+# from social_django.models import UserSocialAuth
 from social_django.utils import load_strategy
+
+from cloudify_rest_client import CloudifyClient
+from cloudify_rest_client.exceptions import CloudifyClientError
+from cloudify_rest_client.exceptions \
+    import DeploymentEnvironmentCreationPendingError
+from cloudify_rest_client.exceptions \
+    import DeploymentEnvironmentCreationInProgressError
+WAIT_FOR_EXECUTION_SLEEP_INTERVAL = 3
 
 
 def _get_fiware_token(user):
@@ -26,7 +36,7 @@ def _get_fiware_token(user):
 @login_required
 def index(request):
     social_user = request.user.social_auth.get(uid=request.user.username)
-    #access_token = social_user.access_token
+    # access_token = social_user.access_token
     access_token = _get_fiware_token(request.user)
     token_expires_in = 3600 - \
         (int(time.time()) - social_user.extra_data['auth_time'])
@@ -119,8 +129,8 @@ def _get_datasets():
     json_data = json.loads(text_data)
     if json_data["success"]:
         return json_data["result"]
-    else:
-        return []  # TODO(emepetres) manage errors
+
+    return []  # TODO(emepetres) manage errors
 
 
 def _get_dataset_info(request):
@@ -147,3 +157,89 @@ def experimentstool(request):
         'datasets': datasets
     }
     return render(request, 'experimentstool.html', context)
+
+
+def _get_client():
+    client = CloudifyClient(host=settings.ORCHESTRATOR_HOST,
+                            username=settings.ORCHESTRATOR_USER,
+                            password=settings.ORCHESTRATOR_PASS,
+                            tenant=settings.ORCHESTRATOR_TENANT)
+    return client
+
+
+def _upload_blueprint(path, blueprint_id):
+    client = _get_client()
+    try:
+        blueprint = client.blueprints.upload(path, blueprint_id)
+    except CloudifyClientError as e:
+        print(e)
+        return {'blueprint': None, 'error': str(e)}
+
+    return {'blueprint': blueprint, 'error': None}
+
+
+def _create_deployment(blueprint_id, development_id, inputs, retries=3):
+    client = _get_client()
+    try:
+        deployment = client.deployments.create(
+            blueprint_id,
+            development_id,
+            inputs=inputs,
+            skip_plugins_validation=True
+        )
+    except (DeploymentEnvironmentCreationPendingError,
+            DeploymentEnvironmentCreationInProgressError) as e:
+        if (retries > 0):
+            time.sleep(WAIT_FOR_EXECUTION_SLEEP_INTERVAL)
+            return _create_deployment(blueprint_id, development_id, inputs,
+                                      retries - 1)
+        print(e)
+        return {'deployment': None, 'error': str(e)}
+    except CloudifyClientError as e:
+        print(e)
+        return {'deployment': None, 'error': str(e)}
+    return {'deployment': deployment, 'error': None}
+
+
+def _execute_deployment(development_id, workflow):
+    client = _get_client()
+    try:
+        execution = client.executions.start(development_id, workflow)
+    except CloudifyClientError as e:
+        print(e)
+        return {'execution': None, 'error': str(e)}
+    return {'execution': execution, 'error': None}
+
+
+def _install_deployment(development_id):
+    return _execute_deployment(development_id, 'install')
+
+
+def _run_deployment(development_id):
+    return _execute_deployment(development_id, 'run_jobs')
+
+
+def _uninstall_deployment(development_id):
+    return _execute_deployment(development_id, 'uninstall')
+
+
+def _delete_deployment(development_id, force=False):
+    client = _get_client()
+    try:
+        deployment = client.deployments.delete(
+            development_id, ignore_live_nodes=force)
+    except CloudifyClientError as e:
+        print(e)
+        return {'deployment': None, 'error': str(e)}
+    return {'deployment': deployment, 'error': None}
+
+
+def _delete_blueprint(blueprint_id):
+    client = _get_client()
+    try:
+        blueprint = client.blueprints.delete(blueprint_id)
+    except CloudifyClientError as e:
+        print(e)
+        return {'blueprint': None, 'error': str(e)}
+
+    return {'blueprint': blueprint, 'error': None}
