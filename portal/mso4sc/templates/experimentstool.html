@@ -1,56 +1,236 @@
 {% extends 'base.html' %}
 
 {% block content %}
-
-<form>
-<diV>
-    <label>Products:</label>
-    {% if not products %}
-        Not found any.
-    {% else %}
-        <select>
-        {% for product in products %}
-            <option value="{{ product.id }}">
-                {{ product.name }}
-            </option>
-        {% endfor %}
-        </select>
-    {% endif %}
-</diV>
-
-<div id="dataset_selector">
-    <label>Datasets:</label>
-    <select>
-        <option value="none">None</option>
-        {% for dataset in datasets %}
-            <option value="{{ dataset }}">
-                {{ dataset }}
-            </option>
-        {% endfor %}
-    </select>
-    <div class="dynamic_list"></div>
-</div>
-</form>
-
-<div id="controls" class="dynamic_list">
-    <div>
-        <button id="upload">Upload Blueprint</button>
-    </div>
-    <div>
-        <button id="deploy">Create Deployment</button>
-    </div>
-    <div>
-        <button id="install">Install Deployment</button>
-    </div>
-    <div>
-        <button id="run">Run Deployment</button>
-    </div>
-    <div>
-        <button id="uninstall">Uninstall Deployment</button>
-    </div>
-    <div>
-        <button id="remove">Remove Blueprint</button>
-    </div>
+<div id="controls" class="tab">
+    <button id="tab-upload" class="tablinks" onclick="openExperimentsTool(event, 'upload')">Upload Blueprint</button>
+    <button id="tab-deploy" class="tablinks" onclick="openExperimentsTool(event, 'deploy')">Create Deployment</button>
+    <button id="tab-install" class="tablinks" onclick="openExperimentsTool(event, 'install')">Install Deployment</button>
+    <button id="tab-run" class="tablinks" onclick="openExperimentsTool(event, 'run')">Run Deployment</button>
+    <button id="tab-uninstall" class="tablinks" onclick="openExperimentsTool(event, 'uninstall')">Uninstall Deployment</button>
+    <button id="tab-remove" class="tablinks" onclick="openExperimentsTool(event, 'remove')">Remove Blueprint</button>
 </div>
 
+<div id="upload" class="tabcontent">
+    {% include "experiments_tools/upload.html" %}
+</div>
+
+<div id="deploy" class="tabcontent">
+    {% include "experiments_tools/deploy.html" %}
+</div>
+
+<div id="install" class="tabcontent">
+    {% include "experiments_tools/install.html" %}
+</div>
+
+<div id="run" class="tabcontent">
+    {% include "experiments_tools/run.html" %}
+</div>
+
+<div id="uninstall" class="tabcontent">
+    {% include "experiments_tools/uninstall.html" %}
+</div>
+
+<div id="remove" class="tabcontent">
+    {% include "experiments_tools/remove.html" %}
+</div>
+
+{% endblock %}
+
+{% block javascript %}
+<script>
+function openExperimentsTool(evt, toolName) {
+    // Declare all variables
+    var i, tabcontent, tablinks;
+
+    // Get all elements with class="tabcontent" and hide them
+    tabcontent = document.getElementsByClassName("tabcontent");
+    for (i = 0; i < tabcontent.length; i++) {
+        tabcontent[i].style.display = "none";
+    }
+
+    // Get all elements with class="tablinks" and remove the class "active"
+    tablinks = document.getElementsByClassName("tablinks");
+    for (i = 0; i < tablinks.length; i++) {
+        tablinks[i].className = tablinks[i].className.replace(" active", "");
+    }
+
+    switch(toolName) {
+        case "upload":
+            renderUploadData();
+            break;
+        case "deploy":
+            renderDeployData();
+            break;
+        case "install":
+            break;
+        case "run":
+            break;
+        case "uninstall":
+            break;
+        case "remove":
+            break;
+    }
+
+    // Show the current tab, and add an "active" class to the button that opened the tab
+    document.getElementById(toolName).style.display = "block";
+    evt.currentTarget.className += " active";
+}
+
+function renderUploadData() {
+    var product_selector = $("#product_selector").find("select")
+    product_selector.empty();
+    $.ajax({
+        url: '/experimentstool/_get_products',
+        success: function (products) {
+            if (products.length > 0) {
+                $.each(products, function (index, product) {
+                    product_selector.append(
+                        $(document.createElement('option')).attr("value", product.id).text(product.name)
+                    )
+                });
+            } else {
+                product_selector.append(
+                    $(document.createElement('option')).attr("value", "-1").text("No products found")
+                );
+            }
+        }
+    });
+}
+
+$("#upload").find("button").on('click', function () {
+    var product = $("#product_selector").find("select").val();
+    var mso_id = $("#mso4sc_id").find("input").val();
+
+    if (product >= 0) {
+        $.ajax({
+            url: '/experimentstool/_upload_application',
+            data: {
+                'product': product,
+                'mso_id': mso_id
+            },
+            dataType: 'json',
+            success: function (data) {
+                if (data.error!==undefined) {
+                    console.log(data.error);
+                } else {
+                    console.log(data.blueprint)
+                }
+            }
+        });
+    }
+});
+
+function renderDeployData() {
+    var blueprint_selector = $("#blueprint_selector").find("select")
+    blueprint_selector.empty();
+
+    console.log("Products!")
+
+    $.ajax({
+        url: '/experimentstool/_get_blueprints',
+        success: function (blueprints) {
+            if (blueprints.length > 0) {
+                console.log('error!')
+                $.each(blueprints, function (index, blueprint) {
+                    blueprint_selector.append(
+                        $(document.createElement('option')).attr("value", index).text(blueprint)
+                    )
+                });
+            } else {
+                blueprint_selector.append(
+                    $(document.createElement('option')).attr("value", "-1").text("No applications found")
+                );
+            }
+        },
+        failure: function (error) {
+            console.log(error)
+        }
+    });
+
+    var dataset_selector = $("#dataset_selector").find("select")
+    dataset_selector.empty();
+    $.ajax({
+        url: '/experimentstool/_get_datasets',
+        success: function (datasets) {
+            if (datasets.length > 0) {
+                $.each(datasets, function (index, dataset) {
+                    dataset_selector.append(
+                        $(document.createElement('option')).attr("value", index).text(dataset)
+                    )
+                });
+            } else {
+                dataset_selector.append(
+                    $(document.createElement('option')).attr("value", "-1").text("None")
+                );
+            }
+        }
+    });
+}
+
+$("#dataset_selector").find("select").on('change', function () {
+    var dataset = $(this).val();
+    var resources_list = $("#dataset_selector").find(".dynamic_list");
+    resources_list.empty();
+
+    if (dataset != "none") {
+        $.ajax({
+            url: '/experimentstool/dataset_info',
+            data: {
+                'dataset': dataset
+            },
+            dataType: 'json',
+            success: function (data) {
+                if (data.num_resources > 0) {
+                    $(data.resources).each(function (index, resource) {
+                        resources_list.append(
+                            $(document.createElement('div')).attr({
+                                id: "resource_selector_" + resource.name
+                            }).append(
+                                $(document.createElement('input')).attr({
+                                    id: "resource_" + resource.name,
+                                    name: resource.name,
+                                    value: resource.name,
+                                    type: 'checkbox'
+                                }),
+                                $(document.createElement('label')).attr({
+                                    for: "resource_" + resource.name
+                                }).text(resource.name)
+                            )
+                        )
+                    });
+                } else {
+                    resources_list.append(
+                        $(document.createElement('label')).text("No resources found")
+                    );
+                }
+            }
+        });
+    }
+});
+
+$("#deploy").find("button").on('click', function () {
+    var blueprint_index = $("#blueprint_selector").find("select").val();
+    var dataset_index = $("#dataset_selector").find("select").val();
+    var deployment_id = $("#deployment_id").find("input").val();
+
+    if (product >= 0) {
+        $.ajax({
+            url: '/experimentstool/_deploy_application',
+            data: {
+                'blueprint_index': blueprint_index,
+                'dataset_index': dataset_index,
+                'deployment_id': deployment_id
+            },
+            dataType: 'json',
+            success: function (data) {
+                if (data.error!==undefined) {
+                    console.log(data.error);
+                } else {
+                    console.log(data.deployment)
+                }
+            }
+        });
+    }
+});
+</script>
 {% endblock %}
