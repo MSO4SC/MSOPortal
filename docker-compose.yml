@@ -98,7 +98,7 @@ services:
         ports:
             - "3333:3306"
         volumes:
-            - /var/lib/mysql
+            - mysql_data:/var/lib/mysql
         environment:
             - MYSQL_ROOT_PASSWORD=${MYSQL_ROOT_PASSWORD}
 
@@ -111,6 +111,7 @@ volumes:
     ckan_config:
     ckan_storage:
     pg_data:
+    mysql_data:
     biz-data:
     biz-bills:
     biz-assets:

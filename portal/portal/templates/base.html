@@ -1,14 +1,12 @@
 {% load static %}
 
-<script src="{% static "portal/js/jquery-3.2.1.min.js" %}"></script>
-<script src="{% static "portal/js/portal.js" %}"></script>
-
 <!DOCTYPE html>
 <html>
 
 <head>
     <title>MSOPortal</title>
-    <link rel="icon" type="image/png" href="{% static 'img/favicon.png' %}">
+    <link rel="icon" href="{% static 'portal/img/favicon.ico' %}" type="image/vnd.microsoft.icon" sizes="16x16 24x24 32x32 48x48 64x64">
+    <link rel="stylesheet" href="{% static 'portal/css/portal.css' %}">
 </head>
 
 <body>
@@ -32,7 +30,9 @@
         <p style="color: {% if message.tags == 'success' %}green{% elif message.tags == 'error' %}red{% endif %}">
             {{ message }}
         </p>
-        {% endfor %} {% block content %} {% endblock %}
+        {% endfor %}
+
+        {% block content %} {% endblock %}
     </main>
     <footer>
         <hr>
@@ -40,6 +40,10 @@
             <a href="http://www.mso4sc.eu">MSO4SC European Project</a>
         </small>
     </footer>
+
+    <script src="{% static "portal/js/jquery-3.2.1.min.js" %}"></script>
+    <script src="{% static "portal/js/portal.js" %}"></script>
+    {% block javascript %} {% endblock %}
 </body>
 
 </html>
