@@ -23,6 +23,14 @@ urlpatterns = [
         views.get_blueprints, name='_get_blueprints'),
     url(r'^experimentstool/_get_datasets$',
         views.get_datasets, name='_get_datasets'),
-    url(r'^experimentstool/_create_deployment$',
-        views.create_deployment, name='_create_deployment')
+    url(r'^experimentstool/_get_dataset_info$',
+        views.get_dataset_info, name='_get_dataset_info'),
+    url(r'^experimentstool/_deploy_application$',
+        views.create_deployment, name='_deploy_application'),
+    url(r'^experimentstool/_get_deployments$',
+        views.get_deployments, name='_get_deployments'),
+    url(r'^experimentstool/_destroy_deployment$',
+        views.destroy_deployment, name='_destroy_deployment'),
+    url(r'^experimentstool/_remove_blueprint$',
+        views.remove_blueprint, name='_remove_blueprint'),
 ]

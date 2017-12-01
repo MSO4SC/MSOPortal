@@ -1,17 +1,24 @@
-<div id="blueprint_selector">
-    <label>Application:</label>
-    <select></select>
-</div>
+<form id="deploy_form" method=POST enctype=multipart/form-data>
+    <div id="blueprint_selector">
+        <label>Application: </label>
+        <select></select>
+    </div>
 
-<div id="dataset_selector">
-    <label>Datasets:</label>
-    <select></select>
-    <div class="dynamic_list"></div>
-</div>
+    <div id="dataset_selector">
+        <label>Datasets:</label>
+        <select></select>
+        <div class="dynamic_list"></div>
+    </div>
 
-<div id="deployment_id">
-    <label>Deployment ID:</label>
-    <input type='text'>
-</div>
+    <div id="deployment_inputs">
+        <label>Inputs: </label>
+        <input type="file" name="inputs_file">
+    </div>
 
-<button>Deploy!</button>
+    <div id="deployment_id">
+        <label>Deployment ID: </label>
+        <input type='text'>
+    </div>
+
+    <button>Deploy!</button>
+</form>

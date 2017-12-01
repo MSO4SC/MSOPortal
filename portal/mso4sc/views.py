@@ -4,7 +4,6 @@ import time
 import json
 import yaml
 import requests
-from portal import settings
 
 from django.contrib.auth.decorators import login_required
 from django.shortcuts import render, redirect
@@ -24,13 +23,15 @@ from cloudify_rest_client.exceptions \
     import DeploymentEnvironmentCreationInProgressError
 WAIT_FOR_EXECUTION_SLEEP_INTERVAL = 3
 
+from portal import settings
+
 
 def _get_fiware_token(user, from_url):
     social = user.social_auth.get(provider='fiware')
-    if int(time.time()) - social.extra_data['auth_time'] > 3600:
-        #    strategy = load_strategy()
-        #    social.refresh_token(strategy)
-        return (False, '/oauth/login/fiware?next=' + from_url)
+#    if int(time.time()) - social.extra_data['auth_time'] > 3600:
+#        #    strategy = load_strategy()
+#        #    social.refresh_token(strategy)
+#        return (False, '/oauth/login/fiware?next=' + from_url)
     return (True, social.extra_data['access_token'])
 
 
@@ -148,11 +149,11 @@ def upload_blueprint(request):
         return {'error': 'No products loaded'}
 
     products = request.session['products']
-    product_id = request.GET.get('product', None)
+    product_id = request.POST.get('product', None)
     if not product_id:
         return JsonResponse({'error': 'No product id provided'})
 
-    mso4sc_id = request.GET.get('mso4sc_id', None)
+    mso4sc_id = request.POST.get('mso4sc_id', None)
     if not mso4sc_id or mso4sc_id == '':
         # TODO validation
         return JsonResponse({'error': 'No mso4sc id provided'})
@@ -184,6 +185,7 @@ def get_blueprints(request):
         print(e)
         return JsonResponse({'error': str(e)})
 
+    request.session['blueprints'] = blueprints
     return JsonResponse({'blueprints': blueprints})
 
 
@@ -193,14 +195,19 @@ def get_datasets(request):
 
     text_data = requests.request("GET", url).text
     json_data = json.loads(text_data)
-    if json_data["success"]:
-        return JsonResponse(json_data["result"], safe=False)
+    if not json_data["success"]:
+        return JsonResponse([], safe=False)  # TODO(emepetres) manage errors
 
-    return JsonResponse([])  # TODO(emepetres) manage errors
+    request.session['datasets'] = json_data["result"]
+    return JsonResponse(json_data["result"], safe=False)
 
 
 def get_dataset_info(request):
-    dataset = request.GET.get('dataset', None)
+    if 'datasets' not in request.session:
+        return {'error': 'No datasets loaded'}
+    dataset_id = int(request.GET.get('dataset', None))
+    dataset = request.session['datasets'][dataset_id]
+
     url = settings.DATACATALOGUE_URL + \
         "/api/rest/dataset/" + dataset
 
@@ -222,15 +229,18 @@ def create_deployment(request):
     blueprints = request.session['blueprints']
     datasets = request.session['datasets']
 
-    blueprint_index = request.GET.get('blueprint_index', None)
-    dataset_index = request.GET.get('dataset_index', None)
-    deployment_id = request.GET.get('deployment_id', None)
+    blueprint_index = int(request.POST.get('blueprint_index', -1))
+    dataset_index = int(request.POST.get('dataset_index', -1))
+    inputs_file = request.FILES['deployment_inputs']
+    inputs_data = inputs_file.read().decode("utf-8").replace('\r\n', '\n')
+    inputs = yaml.load(inputs_data)
+    deployment_id = request.POST.get('deployment_id', None)
 
-    if not blueprint_index:
+    if blueprint_index is None:
         return JsonResponse({'error': 'No blueprint provided'})
-    if not dataset_index:
+    if dataset_index is None:
         return JsonResponse({'error': 'No dataset provided'})
-    if not deployment_id:
+    if not deployment_id or deployment_id is '':
         return JsonResponse({'error': 'No deployment provided'})
 
     if blueprint_index >= len(blueprints) or blueprint_index < 0:
@@ -238,11 +248,60 @@ def create_deployment(request):
     if dataset_index >= len(datasets) or dataset_index < 0:
         return JsonResponse({'error': 'Bad dataset index provided'})
 
-    blueprint = blueprints[blueprint_index]
-    dataset = datasets[dataset_index]
-    inputs = {}  # TODO
+    blueprint = blueprints[blueprint_index]['id']
+    dataset = datasets[dataset_index]  # TODO
 
     return JsonResponse(_create_deployment(blueprint, deployment_id, inputs))
+
+
+def get_deployments(request):
+    client = _get_client()
+    try:
+        deployments = client.deployments.list().items
+    except CloudifyClientError as e:
+        print(e)
+        return JsonResponse({'error': str(e)})
+
+    request.session['deployments'] = deployments
+    return JsonResponse({'deployments': deployments})
+
+
+@login_required
+def destroy_deployment(request):
+    if 'deployments' not in request.session:
+        return {'error': 'No deployments loaded'}
+
+    deployments = request.session['deployments']
+
+    deployment_index = int(request.POST.get('deployment_index', -1))
+
+    if deployment_index is None:
+        return JsonResponse({'error': 'No deployment provided'})
+
+    if deployment_index >= len(deployments) or deployment_index < 0:
+        return JsonResponse({'error': 'Bad deployment index provided'})
+
+    deployment = deployments[deployment_index]['id']
+    return JsonResponse(_destroy_deployment(deployment))
+
+
+@login_required
+def remove_blueprint(request):
+    if 'blueprints' not in request.session:
+        return {'error': 'No blueprints loaded'}
+
+    blueprints = request.session['blueprints']
+
+    blueprint_index = int(request.POST.get('blueprint_index', -1))
+
+    if blueprint_index is None:
+        return JsonResponse({'error': 'No blueprint provided'})
+
+    if blueprint_index >= len(blueprints) or blueprint_index < 0:
+        return JsonResponse({'error': 'Bad blueprint index provided'})
+
+    blueprint = blueprints[blueprint_index]['id']
+    return JsonResponse(_remove_blueprint(blueprint))
 
 
 def _get_client():
@@ -309,7 +368,7 @@ def _uninstall_deployment(development_id):
     return _execute_deployment(development_id, 'uninstall')
 
 
-def _delete_deployment(development_id, force=False):
+def _destroy_deployment(development_id, force=False):
     client = _get_client()
     try:
         deployment = client.deployments.delete(
@@ -320,7 +379,7 @@ def _delete_deployment(development_id, force=False):
     return {'deployment': deployment, 'error': None}
 
 
-def _delete_blueprint(blueprint_id):
+def _remove_blueprint(blueprint_id):
     client = _get_client()
     try:
         blueprint = client.blueprints.delete(blueprint_id)
