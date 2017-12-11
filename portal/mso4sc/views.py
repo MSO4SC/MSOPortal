@@ -5,6 +5,9 @@ import json
 import yaml
 import requests
 
+from urllib.parse import urlparse
+from portal import settings
+
 from django.contrib.auth.decorators import login_required
 from django.shortcuts import render, redirect
 from django.http import JsonResponse
@@ -22,8 +25,6 @@ from cloudify_rest_client.exceptions \
 from cloudify_rest_client.exceptions \
     import DeploymentEnvironmentCreationInProgressError
 WAIT_FOR_EXECUTION_SLEEP_INTERVAL = 3
-
-from portal import settings
 
 
 def _get_fiware_token(user, from_url):
@@ -132,7 +133,12 @@ def get_products(request):
     if valid:
         access_token = data
     else:
-        # FIXME Cross-Origin Request Blocked: The Same Origin Policy disallows reading the remote resource at https://account.lab.fiware.org/oauth2/authorize?client_id=859680e0c8cb4c65b5d2d6fb99ef1595&redirect_uri=http://localhost:8000/oauth/complete/fiware/&state=eXpNpKJ5jqsZoOBcm0X1hLcmaSCNoa3E&response_type=code. (Reason: CORS header ‘Access-Control-Allow-Origin’ missing).
+        # FIXME Cross-Origin Request Blocked: The Same Origin Policy disallows
+        # reading the remote resource at https://account.lab.fiware.org/oauth2/
+        #   authorize?client_id=859680e0c8cb4c65b5d2d6fb99ef1595&redirect_uri=
+        #   http://localhost:8000/oauth/complete/fiware/&state=eXpNpKJ5jqsZoOB
+        #   cm0X1hLcmaSCNoa3E&response_type=code.
+        #   (Reason: CORS header ‘Access-Control-Allow-Origin’ missing).
         return redirect(data)
     headers = {"Authorization": "bearer " + access_token}
     url = settings.MARKETPLACE_URL + \
@@ -140,20 +146,22 @@ def get_products(request):
 
     text_data = requests.request("GET", url, headers=headers).text
     json_data = json.loads(text_data)
+
+    request.session['products'] = json_data
     return JsonResponse(json_data, safe=False)
 
 
 @login_required
 def upload_blueprint(request):
     if 'products' not in request.session:
-        return {'error': 'No products loaded'}
+        return JsonResponse({'error': 'No products loaded'})
 
     products = request.session['products']
     product_id = request.POST.get('product', None)
     if not product_id:
         return JsonResponse({'error': 'No product id provided'})
 
-    mso4sc_id = request.POST.get('mso4sc_id', None)
+    mso4sc_id = request.POST.get('mso_id', None)
     if not mso4sc_id or mso4sc_id == '':
         # TODO validation
         return JsonResponse({'error': 'No mso4sc id provided'})
@@ -172,7 +180,7 @@ def upload_blueprint(request):
             blueprint_path = pc['productSpecCharacteristicValue'][0]['value']
             break
     if not blueprint_path:
-        return JsonResponse({'error': 'No blueprint path provided'})
+        return JsonResponse({'error': 'The product does not have a \'BLUEPRINT_PATH\' charasteristic'})
 
     return JsonResponse(_upload_blueprint(blueprint_path, mso4sc_id))
 
@@ -205,8 +213,14 @@ def get_datasets(request):
 def get_dataset_info(request):
     if 'datasets' not in request.session:
         return {'error': 'No datasets loaded'}
-    dataset_id = int(request.GET.get('dataset', None))
-    dataset = request.session['datasets'][dataset_id]
+
+    datasets = request.session['datasets']
+    dataset_index = int(request.GET.get('dataset', -1))
+
+    if dataset_index >= len(datasets) or dataset_index < 0:
+        return JsonResponse({'error': 'Bad dataset index provided'})
+
+    dataset = datasets[dataset_index]
 
     url = settings.DATACATALOGUE_URL + \
         "/api/rest/dataset/" + dataset
@@ -236,17 +250,12 @@ def create_deployment(request):
     inputs = yaml.load(inputs_data)
     deployment_id = request.POST.get('deployment_id', None)
 
-    if blueprint_index is None:
-        return JsonResponse({'error': 'No blueprint provided'})
-    if dataset_index is None:
-        return JsonResponse({'error': 'No dataset provided'})
-    if not deployment_id or deployment_id is '':
-        return JsonResponse({'error': 'No deployment provided'})
-
     if blueprint_index >= len(blueprints) or blueprint_index < 0:
         return JsonResponse({'error': 'Bad blueprint index provided'})
     if dataset_index >= len(datasets) or dataset_index < 0:
         return JsonResponse({'error': 'Bad dataset index provided'})
+    if not deployment_id or deployment_id is '':
+        return JsonResponse({'error': 'No deployment provided'})
 
     blueprint = blueprints[blueprint_index]['id']
     dataset = datasets[dataset_index]  # TODO
@@ -267,7 +276,26 @@ def get_deployments(request):
 
 
 @login_required
+def install_deployment(request):
+    return _execute_deployment(request, _install_deployment)
+
+
+@login_required
+def run_deployment(request):
+    return _execute_deployment(request, _run_deployment)
+
+
+@login_required
+def uninstall_deployment(request):
+    return _execute_deployment(request, _uninstall_deployment)
+
+
+@login_required
 def destroy_deployment(request):
+    return _execute_deployment(request, _destroy_deployment)
+
+
+def _execute_deployment(request, operation):
     if 'deployments' not in request.session:
         return {'error': 'No deployments loaded'}
 
@@ -282,7 +310,7 @@ def destroy_deployment(request):
         return JsonResponse({'error': 'Bad deployment index provided'})
 
     deployment = deployments[deployment_index]['id']
-    return JsonResponse(_destroy_deployment(deployment))
+    return JsonResponse(operation(deployment))
 
 
 @login_required
@@ -313,9 +341,14 @@ def _get_client():
 
 
 def _upload_blueprint(path, blueprint_id):
+    is_url = bool(urlparse(path).scheme)
+
     client = _get_client()
     try:
-        blueprint = client.blueprints.upload(path, blueprint_id)
+        if is_url:
+            blueprint = client.blueprints.publish_archive(path, blueprint_id)
+        else:
+            blueprint = client.blueprints.upload(path, blueprint_id)
     except CloudifyClientError as e:
         print(e)
         return {'error': str(e)}
@@ -346,7 +379,19 @@ def _create_deployment(blueprint_id, development_id, inputs, retries=3):
     return {'deployment': deployment}
 
 
-def _execute_deployment(development_id, workflow):
+def _install_deployment(development_id):
+    return _execute_workflow(development_id, 'install')
+
+
+def _run_deployment(development_id):
+    return _execute_workflow(development_id, 'run_jobs')
+
+
+def _uninstall_deployment(development_id):
+    return _execute_workflow(development_id, 'uninstall')
+
+
+def _execute_workflow(development_id, workflow):
     client = _get_client()
     try:
         execution = client.executions.start(development_id, workflow)
@@ -354,18 +399,6 @@ def _execute_deployment(development_id, workflow):
         print(e)
         return {'execution': None, 'error': str(e)}
     return {'execution': execution, 'error': None}
-
-
-def _install_deployment(development_id):
-    return _execute_deployment(development_id, 'install')
-
-
-def _run_deployment(development_id):
-    return _execute_deployment(development_id, 'run_jobs')
-
-
-def _uninstall_deployment(development_id):
-    return _execute_deployment(development_id, 'uninstall')
 
 
 def _destroy_deployment(development_id, force=False):

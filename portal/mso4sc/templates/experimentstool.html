@@ -61,22 +61,26 @@ function openExperimentsTool(evt, toolName) {
 
     switch(toolName) {
         case "upload":
-            renderUploadData();
+            renderProductData("#product_selector");
             break;
         case "deploy":
-            renderDeployData();
+            renderBlueprintData("#blueprint_selector");
+            renderDatasetsData("#dataset_selector");
             break;
         case "install":
+            renderDeploymentData("#install_deployment_selector");
             break;
         case "run":
+            renderDeploymentData("#run_deployment_selector");
             break;
         case "uninstall":
+            renderDeploymentData("#uninstall_deployment_selector");
             break;
         case "destroy":
-            renderDestroyData();
+            renderDeploymentData("#destroy_deployment_selector");
             break;
         case "remove":
-            renderRemoveData();
+            renderBlueprintData("#remove_blueprint_selector");
             break;
     }
 
@@ -85,32 +89,12 @@ function openExperimentsTool(evt, toolName) {
     evt.currentTarget.className += " active";
 }
 
-function renderUploadData() {
-    var product_selector = $("#product_selector").find("select")
-    product_selector.empty();
-    $.ajax({
-        url: '/experimentstool/_get_products',
-        success: function (products) {
-            if (products.length > 0) {
-                $.each(products, function (index, product) {
-                    product_selector.append(
-                        $(document.createElement('option')).attr("value", product.id).text(product.name)
-                    )
-                });
-            } else {
-                product_selector.append(
-                    $(document.createElement('option')).attr("value", "-1").text("No products found")
-                );
-            }
-        }
-    });
-}
-
 $("#upload").find("button").on('click', function () {
     var product = $("#product_selector").find("select").val();
     var mso_id = $("#mso4sc_id").find("input").val();
 
     if (product >= 0) {
+        console.log("uploading!");
         $.ajax({
             url: '/experimentstool/_upload_application',
             type: "POST",
@@ -130,64 +114,12 @@ $("#upload").find("button").on('click', function () {
     }
 });
 
-function renderDeployData() {
-    var blueprint_selector = $("#blueprint_selector").find("select")
-    blueprint_selector.empty();
-    blueprint_selector.append(
-        $(document.createElement('option')).attr("value", "-1").text("Loading..")
-    );
-
-    $.ajax({
-        url: '/experimentstool/_get_blueprints',
-        success: function (data) {
-            blueprint_selector.empty();
-            blueprints = data.blueprints
-            if (blueprints.length > 0) {
-                $.each(blueprints, function (index, blueprint) {
-                    blueprint_selector.append(
-                        $(document.createElement('option')).attr("value", index).text(blueprint.id)
-                    )
-                });
-            } else {
-                blueprint_selector.append(
-                    $(document.createElement('option')).attr("value", "-1").text("No applications found")
-                );
-            }
-        },
-        failure: function (error) {
-            console.log(error)
-        }
-    });
-
-    var dataset_selector = $("#dataset_selector").find("select")
-    dataset_selector.empty();
-    dataset_selector.append(
-        $(document.createElement('option')).attr("value", "-1").text("Loading..")
-    );
-    $.ajax({
-        url: '/experimentstool/_get_datasets',
-        success: function (datasets) {
-            dataset_selector.empty();
-            dataset_selector.append(
-                $(document.createElement('option')).attr("value", "-1").text("None")
-            );
-            if (datasets.length > 0) {
-                $.each(datasets, function (index, dataset) {
-                    dataset_selector.append(
-                        $(document.createElement('option')).attr("value", index).text(dataset)
-                    )
-                });
-            }
-        }
-    });
-}
-
 $("#dataset_selector").find("select").on('change', function () {
     var dataset = $(this).val();
     var resources_list = $("#dataset_selector").find(".dynamic_list");
     resources_list.empty();
 
-    if (dataset != "none") {
+    if (parseInt(dataset) >= 0) {
         $.ajax({
             url: '/experimentstool/_get_dataset_info',
             data: {
@@ -271,44 +203,30 @@ $("#deploy_form").find("button").on('click', function (event) {
     }
 });
 
-function renderDestroyData() {
-    var destroy_deployment_selector = $("#destroy_deployment_selector").find("select")
-    destroy_deployment_selector.empty();
-    destroy_deployment_selector.append(
-        $(document.createElement('option')).attr("value", "-1").text("Loading..")
-    );
+$("#install").find("button").on('click', function () {
+    executeDeployment("#install_deployment_selector", "install");
+});
 
-    $.ajax({
-        url: '/experimentstool/_get_deployments',
-        success: function (data) {
-            destroy_deployment_selector.empty();
-            deployments = data.deployments
-            if (deployments.length > 0) {
-                $.each(deployments, function (index, deployment) {
-                    destroy_deployment_selector.append(
-                        $(document.createElement('option')).attr("value", index).text(deployment.id)
-                    )
-                });
-            } else {
-                destroy_deployment_selector.append(
-                    $(document.createElement('option')).attr("value", "-1").text("No applications found")
-                );
-            }
-        },
-        failure: function (error) {
-            console.log(error)
-        }
-    });
-}
+$("#run").find("button").on('click', function () {
+    executeDeployment("#run_deployment_selector", "run");
+});
+
+$("#uninstall").find("button").on('click', function () {
+    executeDeployment("#uninstall_deployment_selector", "uninstall");
+});
 
 $("#destroy").find("button").on('click', function () {
-    var deployment_index = $("#destroy_deployment_selector").find("select").val();
+    executeDeployment("#destroy_deployment_selector", "destroy");
+});
+
+$("#remove").find("button").on('click', function () {
+    var blueprint_index = $("#remove_blueprint_selector").find("select").val();
 
     $.ajax({
         method: "POST",
-        url: '/experimentstool/_destroy_deployment',
+        url: '/experimentstool/_remove_blueprint',
         data: {
-            'deployment_index': deployment_index
+            'blueprint_index': blueprint_index
         },
         dataType: 'json',
         success: function (data) {
@@ -321,8 +239,53 @@ $("#destroy").find("button").on('click', function () {
     });
 });
 
-function renderRemoveData() {
-    var remove_blueprint_selector = $("#remove_blueprint_selector").find("select")
+function renderProductData(selector_id) {
+    var product_selector = $(selector_id).find("select")
+    product_selector.empty();
+    $.ajax({
+        url: '/experimentstool/_get_products',
+        success: function (products) {
+            if (products.length > 0) {
+                $.each(products, function (index, product) {
+                    product_selector.append(
+                        $(document.createElement('option')).attr("value", product.id).text(product.name)
+                    )
+                });
+            } else {
+                product_selector.append(
+                    $(document.createElement('option')).attr("value", "-1").text("No products found")
+                );
+            }
+        }
+    });
+}
+
+function renderDatasetsData(selector_id) {
+    var dataset_selector = $(selector_id).find("select")
+    dataset_selector.empty();
+    dataset_selector.append(
+        $(document.createElement('option')).attr("value", "-1").text("Loading..")
+    );
+    $.ajax({
+        url: '/experimentstool/_get_datasets',
+        success: function (datasets) {
+            dataset_selector.empty();
+            dataset_selector.append(
+                $(document.createElement('option')).attr("value", "-1").text("None")
+            );
+            if (datasets.length > 0) {
+                $.each(datasets, function (index, dataset) {
+                    dataset_selector.append(
+                        $(document.createElement('option')).attr("value", index).text(dataset)
+                    )
+                });
+            }
+        }
+    });
+}
+
+function renderBlueprintData(selector_id) {
+    var remove_blueprint_selector = $(selector_id).find("select")
     remove_blueprint_selector.empty();
     remove_blueprint_selector.append(
         $(document.createElement('option')).attr("value", "-1").text("Loading..")
@@ -351,14 +314,62 @@ function renderRemoveData() {
     });
 }
 
-$("#remove").find("button").on('click', function () {
-    var blueprint_index = $("#remove_blueprint_selector").find("select").val();
+function renderDeploymentData(selector_id) {
+    var deployment_selector = $(selector_id).find("select")
+    deployment_selector.empty();
+    deployment_selector.append(
+        $(document.createElement('option')).attr("value", "-1").text("Loading..")
+    );
+
+    $.ajax({
+        url: '/experimentstool/_get_deployments',
+        success: function (data) {
+            deployment_selector.empty();
+            deployments = data.deployments
+            if (deployments.length > 0) {
+                $.each(deployments, function (index, deployment) {
+                    deployment_selector.append(
+                        $(document.createElement('option')).attr("value", index).text(deployment.id)
+                    )
+                });
+            } else {
+                deployment_selector.append(
+                    $(document.createElement('option')).attr("value", "-1").text("No deployments found")
+                );
+            }
+        },
+        failure: function (error) {
+            console.log(error)
+        }
+    });
+}
+
+function executeDeployment(selector_id, workflow) {
+    var url = "";
+    switch(workflow) {
+        case "install":
+            url = '/experimentstool/_install_deployment'
+            break;
+        case "run":
+            url = '/experimentstool/_run_deployment'
+            break;
+        case "uninstall":
+            url = '/experimentstool/_uninstall_deployment'
+            break;
+        case "destroy":
+            url = '/experimentstool/_destroy_deployment'
+            break;
+        default:
+            alert("Workflow not permited");
+            return;
+    }
+    var deployment_index = $(selector_id).find("select").val();
 
     $.ajax({
         method: "POST",
-        url: '/experimentstool/_remove_blueprint',
+        url: url,
         data: {
-            'blueprint_index': blueprint_index
+            'deployment_index': deployment_index
         },
         dataType: 'json',
         success: function (data) {
@@ -369,6 +380,7 @@ $("#remove").find("button").on('click', function () {
             }
         }
     });
-});
+};
+
 </script>
 {% endblock %}
