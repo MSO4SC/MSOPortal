@@ -295,10 +295,15 @@ $("#remove").find("button").on('click', function () {
         dataType: 'json',
         success: function (data) {
             if (data.error!==undefined) {
-                console.log(data.error);
+                appendNotification("Couldn't remove the app: "+data.error, error=true);
             } else {
-                console.log(data)
+                appendNotification("App "+data.blueprint.id+" removed.");
             }
+        },
+        error: function (jqXHR, status, errorThrown) {
+            message = "Couldn't remove the app: ";
+            message += jqXHR.status+": "+errorThrown+": "+jqXHR.responseText
+            appendNotification(message, error=true);
         }
     });
 });
