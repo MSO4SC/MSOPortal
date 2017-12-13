@@ -19,6 +19,7 @@ from django.http import JsonResponse
 from social_django.utils import load_strategy
 
 from cloudify_rest_client import CloudifyClient
+from cloudify_rest_client.executions import Execution
 from cloudify_rest_client.exceptions import CloudifyClientError
 from cloudify_rest_client.exceptions \
     import DeploymentEnvironmentCreationPendingError
@@ -277,22 +278,106 @@ def get_deployments(request):
 
 @login_required
 def install_deployment(request):
-    return _execute_deployment(request, _install_deployment)
+    response = _execute_deployment(request, _install_deployment)
+    if 'error' not in response:
+        request.session['install_execution'] = {
+            'id': response['execution']['id'],
+            'offset': 0
+        }
+    return JsonResponse(response)
+
+
+@login_required
+def get_install_events(request):
+    if 'install_execution' not in request.session:
+        response = {'error': 'No install execution'}
+    else:
+        execution_id = request.session['install_execution']['id']
+        reset = request.GET.get("reset", "False") in ["True", "true", "TRUE"]
+        offset = 0
+        if not reset:
+            offset = request.session['install_execution']['offset']
+
+        response = _get_execution_events(execution_id, offset)
+        if offset != response['last']:
+            request.session['install_execution']['offset'] =\
+                response.pop('last')
+            request.session.modified = True
+            print("new offset: " +
+                  str(request.session['install_execution']['offset']))
+
+    return JsonResponse(response)
 
 
 @login_required
 def run_deployment(request):
-    return _execute_deployment(request, _run_deployment)
+    response = _execute_deployment(request, _run_deployment)
+    if 'error' not in response:
+        request.session['run_execution'] = {
+            'id': response['execution']['id'],
+            'offset': 0
+        }
+    return JsonResponse(response)
+
+
+@login_required
+def get_run_events(request):
+    if 'run_execution' not in request.session:
+        response = {'error': 'No run execution'}
+    else:
+        execution_id = request.session['run_execution']['id']
+        reset = request.GET.get("reset", "False") in ["True", "true", "TRUE"]
+        offset = 0
+        if not reset:
+            offset = request.session['run_execution']['offset']
+
+        response = _get_execution_events(execution_id, offset)
+        if offset != response['last']:
+            request.session['run_execution']['offset'] =\
+                response.pop('last')
+            request.session.modified = True
+
+    return JsonResponse(response)
 
 
 @login_required
 def uninstall_deployment(request):
-    return _execute_deployment(request, _uninstall_deployment)
+    response = _execute_deployment(request, _uninstall_deployment)
+    if 'error' not in response:
+        request.session['uninstall_execution'] = {
+            'id': response['execution']['id'],
+            'offset': 0
+        }
+    return JsonResponse(response)
+
+
+@login_required
+def get_uninstall_events(request):
+    if 'uninstall_execution' not in request.session:
+        response = {'error': 'No uninstall execution'}
+    else:
+        execution_id = request.session['uninstall_execution']['id']
+        reset = request.GET.get("reset", "False") in ["True", "true", "TRUE"]
+        offset = 0
+        if not reset:
+            offset = request.session['uninstall_execution']['offset']
+
+        response = _get_execution_events(execution_id, offset)
+        if offset != response['last']:
+            request.session['uninstall_execution']['offset'] = response['last']
+            request.session.modified = True
+
+    return JsonResponse(response)
 
 
 @login_required
 def destroy_deployment(request):
-    return _execute_deployment(request, _destroy_deployment)
+    response = _execute_deployment(request, _destroy_deployment)
+    if 'error' not in response:
+        request.session.pop('install_execution')
+        request.session.pop('run_execution')
+        request.session.pop('uninstall_execution')
+    return JsonResponse(response)
 
 
 def _execute_deployment(request, operation):
@@ -304,13 +389,13 @@ def _execute_deployment(request, operation):
     deployment_index = int(request.POST.get('deployment_index', -1))
 
     if deployment_index is None:
-        return JsonResponse({'error': 'No deployment provided'})
+        return {'error': 'No deployment provided'}
 
     if deployment_index >= len(deployments) or deployment_index < 0:
-        return JsonResponse({'error': 'Bad deployment index provided'})
+        return {'error': 'Bad deployment index provided'}
 
     deployment = deployments[deployment_index]['id']
-    return JsonResponse(operation(deployment))
+    return operation(deployment)
 
 
 @login_required
@@ -396,9 +481,65 @@ def _execute_workflow(development_id, workflow):
     try:
         execution = client.executions.start(development_id, workflow)
     except CloudifyClientError as e:
-        print(e)
-        return {'execution': None, 'error': str(e)}
-    return {'execution': execution, 'error': None}
+        return {'error': str(e)}
+    return {'execution': execution}
+
+
+def _get_execution_events(execution_id, offset):
+    client = _get_client()
+
+    execution = client.executions.get(execution_id)
+    events = client.events.list(execution_id=execution_id,
+                                _offset=offset,
+                                _size=100)
+    last_message = events.metadata.pagination.total
+
+    return {
+        'events': _events_to_string(events.items),
+        'last': last_message,
+        'status': execution.status,
+        'finished': _is_execution_finished(execution.status)
+    }
+
+
+def _events_to_string(events):
+    response = []
+    for event in events:
+        print(json.dumps(event))
+        event_type = event["type"]
+        message = ""
+        if event_type == "cloudify_event":
+            cloudify_event_type = event["event_type"]
+            message = event["reported_timestamp"] + \
+                " " + event["message"]
+            if cloudify_event_type == "workflow_node_event":
+                message += " " + event["node_instance_id"] + \
+                    " (" + event["node_name"] + ")"
+            elif cloudify_event_type == "sending_task" \
+                    or cloudify_event_type == "task_started" \
+                    or cloudify_event_type == "task_succeeded":
+                # message += " [" + event["operation"] + "]"
+                if event["node_instance_id"]:
+                    message += " " + event["node_instance_id"]
+                if event["node_name"]:
+                    message += " (" + event["node_name"] + ")"
+            elif cloudify_event_type == "workflow_started":
+                pass
+            elif cloudify_event_type == "workflow_succeeded":
+                pass
+            else:
+                message = json.dumps(event)
+            if event["error_causes"]:
+                message += "\n" + event["error_causes"]
+        else:
+            message = json.dumps(event)
+        response.append(message)
+
+    return response
+
+
+def _is_execution_finished(status):
+    return status in Execution.END_STATES
 
 
 def _destroy_deployment(development_id, force=False):
@@ -408,8 +549,8 @@ def _destroy_deployment(development_id, force=False):
             development_id, ignore_live_nodes=force)
     except CloudifyClientError as e:
         print(e)
-        return {'deployment': None, 'error': str(e)}
-    return {'deployment': deployment, 'error': None}
+        return {'error': str(e)}
+    return {'deployment': deployment}
 
 
 def _remove_blueprint(blueprint_id):
@@ -418,6 +559,6 @@ def _remove_blueprint(blueprint_id):
         blueprint = client.blueprints.delete(blueprint_id)
     except CloudifyClientError as e:
         print(e)
-        return {'blueprint': None, 'error': str(e)}
+        return {'error': str(e)}
 
-    return {'blueprint': blueprint, 'error': None}
+    return {'blueprint': blueprint}

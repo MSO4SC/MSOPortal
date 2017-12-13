@@ -1,4 +1,5 @@
 {% extends 'base.html' %}
+{% load static %}
 
 {% block content %}
 <div id="controls" class="tab">
@@ -43,6 +44,7 @@
 
 {% block javascript %}
 <script>
+$log_timeout = null;
 function openExperimentsTool(evt, toolName) {
     // Declare all variables
     var i, tabcontent, tablinks;
@@ -59,6 +61,12 @@ function openExperimentsTool(evt, toolName) {
         tablinks[i].className = tablinks[i].className.replace(" active", "");
     }
 
+    // Stop all log monitoring
+    if ($log_timeout != null) {
+        console.log("-----------timeout cleared!!")
+        clearTimeout($log_timeout);
+    }
+
     switch(toolName) {
         case "upload":
             renderProductData("#product_selector");
@@ -69,12 +77,21 @@ function openExperimentsTool(evt, toolName) {
             break;
         case "install":
             renderDeploymentData("#install_deployment_selector");
+            renderLogData("#install_deployment_log",
+                          "/experimentstool/_get_install_events",
+                          reset=true)
             break;
         case "run":
             renderDeploymentData("#run_deployment_selector");
+            renderLogData("#run_deployment_log",
+                          "/experimentstool/_get_run_events",
+                          reset=true)
             break;
         case "uninstall":
             renderDeploymentData("#uninstall_deployment_selector");
+            renderLogData("#uninstall_deployment_log",
+                          "/experimentstool/_get_uninstall_events",
+                          reset=true)
             break;
         case "destroy":
             renderDeploymentData("#destroy_deployment_selector");
@@ -204,19 +221,29 @@ $("#deploy_form").find("button").on('click', function (event) {
 });
 
 $("#install").find("button").on('click', function () {
-    executeDeployment("#install_deployment_selector", "install");
+    executeDeployment("#install_deployment_selector",
+                      "/experimentstool/_install_deployment",
+                      "#install_deployment_log",
+                      "/experimentstool/_get_install_events");
 });
 
 $("#run").find("button").on('click', function () {
-    executeDeployment("#run_deployment_selector", "run");
+    executeDeployment("#run_deployment_selector",
+                      "/experimentstool/_run_deployment",
+                      "#run_deployment_log",
+                      "/experimentstool/_get_run_events");
 });
 
 $("#uninstall").find("button").on('click', function () {
-    executeDeployment("#uninstall_deployment_selector", "uninstall");
+    executeDeployment("#uninstall_deployment_selector",
+                      "/experimentstool/_uninstall_deployment",
+                      "#uninstall_deployment_log",
+                      "/experimentstool/_get_uninstall_events");
 });
 
 $("#destroy").find("button").on('click', function () {
-    executeDeployment("#destroy_deployment_selector", "destroy");
+    executeDeployment("#destroy_deployment_selector",
+                      "/experimentstool/_destroy_deployment");
 });
 
 $("#remove").find("button").on('click', function () {
@@ -344,30 +371,11 @@ function renderDeploymentData(selector_id) {
     });
 }
 
-function executeDeployment(selector_id, workflow) {
-    var url = "";
-    switch(workflow) {
-        case "install":
-            url = '/experimentstool/_install_deployment'
-            break;
-        case "run":
-            url = '/experimentstool/_run_deployment'
-            break;
-        case "uninstall":
-            url = '/experimentstool/_uninstall_deployment'
-            break;
-        case "destroy":
-            url = '/experimentstool/_destroy_deployment'
-            break;
-        default:
-            alert("Workflow not permited");
-            return;
-    }
+function executeDeployment(selector_id, url_exec, log_id = None, url_log = None) {
     var deployment_index = $(selector_id).find("select").val();
-
     $.ajax({
         method: "POST",
-        url: url,
+        url: url_exec,
         data: {
             'deployment_index': deployment_index
         },
@@ -376,11 +384,53 @@ function executeDeployment(selector_id, workflow) {
             if (data.error!==undefined) {
                 console.log(data.error);
             } else {
-                console.log(data)
+                console.log(data);
+                if (log_id && url_log) {
+                    renderLogData(log_id, url_log, reset=true);
+                }
             }
         }
     });
 };
+
+function renderLogData(log_id, url, reset=false) {
+    var textarea = $(log_id).find("textarea");
+    if (reset) {
+        textarea.val("");
+    }
+    $.ajax({
+        url: url,
+        data: {'reset': reset},
+        success: function(data) {
+            if (data.error!==undefined) {
+                console.log(data.error);
+            } else {
+                console.log(data);
+
+                // Write events in the textarea
+                data.events.forEach(function(event) {
+                    textarea.val(textarea.val()+event+'\n');
+                });
+                textarea.scrollTop = textarea.scrollHeight;
+
+                // Schedule the next request when the current one's complete
+                if (!data.finished) {
+                    $log_timeout = setTimeout(function () {renderLogData(log_id, url, reset=false);}, 3000);
+                    if (reset) {
+                        $(log_id).find("img").attr("src", "/static/mso4sc/img/light_blue.png");
+                    }
+                } else {
+                    var light = $(log_id).find("img");
+                    if (data.status=="terminated") {
+                        light.attr("src", "/static/mso4sc/img/light_green.png");
+                    } else {
+                        light.attr("src", "/static/mso4sc/img/light_red.png");
+                    }
+                }
+            }
+        }
+    });
+}
 
 </script>
 {% endblock %}

@@ -1,6 +1,12 @@
+{% load static %}
 <div id="uninstall_deployment_selector">
     <label>Deployment: </label>
     <select></select>
 </div>
 
 <button>Uninstall!</button>
+
+<div id="uninstall_deployment_log">
+    <textarea rows="20" cols="150" ></textarea>
+    <img src="{% static 'mso4sc/img/light_grey.png' %}">
+</div>

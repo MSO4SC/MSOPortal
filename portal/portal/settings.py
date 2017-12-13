@@ -145,6 +145,7 @@ PROJECT_ROOT = os.path.abspath(os.path.dirname(__file__))
 STATIC_URL = '/static/'
 STATICFILES_DIRS = (
     os.path.join(PROJECT_ROOT, 'static'),
+    os.path.join('mso4sc', 'static')
 )
 
 LOGIN_URL = 'login'
