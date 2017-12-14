@@ -1,14 +1,18 @@
 {% extends 'base.html' %}
+{% load static %}
 
 {% block content %}
 <div id="controls" class="tab">
-    <button id="tab-upload" class="tablinks" onclick="openExperimentsTool(event, 'upload')">Upload Blueprint</button>
-    <button id="tab-deploy" class="tablinks" onclick="openExperimentsTool(event, 'deploy')">Create Deployment</button>
-    <button id="tab-install" class="tablinks" onclick="openExperimentsTool(event, 'install')">Install Deployment</button>
-    <button id="tab-run" class="tablinks" onclick="openExperimentsTool(event, 'run')">Run Deployment</button>
-    <button id="tab-uninstall" class="tablinks" onclick="openExperimentsTool(event, 'uninstall')">Uninstall Deployment</button>
-    <button id="tab-remove" class="tablinks" onclick="openExperimentsTool(event, 'remove')">Remove Blueprint</button>
+    <button id="tab-upload" class="tablinks" onclick="openExperimentsTool(event, 'upload')">Register App</button>
+    <button id="tab-remove" class="tablinks" onclick="openExperimentsTool(event, 'remove')">Remove App</button>
+    <button id="tab-deploy" class="tablinks" onclick="openExperimentsTool(event, 'deploy')">Create App Instance</button>
+    <button id="tab-install" class="tablinks" onclick="openExperimentsTool(event, 'install')">Deploy Instance</button>
+    <button id="tab-run" class="tablinks" onclick="openExperimentsTool(event, 'run')">Run Instance</button>
+    <button id="tab-uninstall" class="tablinks" onclick="openExperimentsTool(event, 'uninstall')">Undeploy/Clean Up Instance</button>
+    <button id="tab-destroy" class="tablinks" onclick="openExperimentsTool(event, 'destroy')">Destroy App Instance</button>
 </div>
+
+<div id="experiments_notification_container"></div>
 
 <div id="upload" class="tabcontent">
     {% include "experiments_tools/upload.html" %}
@@ -30,6 +34,10 @@
     {% include "experiments_tools/uninstall.html" %}
 </div>
 
+<div id="destroy" class="tabcontent">
+    {% include "experiments_tools/destroy.html" %}
+</div>
+
 <div id="remove" class="tabcontent">
     {% include "experiments_tools/remove.html" %}
 </div>
@@ -38,6 +46,7 @@
 
 {% block javascript %}
 <script>
+$log_timeout = null;
 function openExperimentsTool(evt, toolName) {
     // Declare all variables
     var i, tabcontent, tablinks;
@@ -54,20 +63,45 @@ function openExperimentsTool(evt, toolName) {
         tablinks[i].className = tablinks[i].className.replace(" active", "");
     }
 
+    // Stop all log monitoring
+    if ($log_timeout != null) {
+        clearTimeout($log_timeout);
+    }
+
+    // Clean Up the errors container
+    cleanNotifications();
+
     switch(toolName) {
         case "upload":
-            renderUploadData();
+            renderProductData("#product_selector");
             break;
         case "deploy":
-            renderDeployData();
+            renderBlueprintData("#blueprint_selector");
+            renderDatasetsData("#dataset_selector");
             break;
         case "install":
+            renderDeploymentData("#install_deployment_selector");
+            renderLogData("#install_deployment_log",
+                          "/experimentstool/_get_install_events",
+                          reset=true)
             break;
         case "run":
+            renderDeploymentData("#run_deployment_selector");
+            renderLogData("#run_deployment_log",
+                          "/experimentstool/_get_run_events",
+                          reset=true)
             break;
         case "uninstall":
+            renderDeploymentData("#uninstall_deployment_selector");
+            renderLogData("#uninstall_deployment_log",
+                          "/experimentstool/_get_uninstall_events",
+                          reset=true)
+            break;
+        case "destroy":
+            renderDeploymentData("#destroy_deployment_selector");
             break;
         case "remove":
+            renderBlueprintData("#remove_blueprint_selector");
             break;
     }
 
@@ -76,34 +110,32 @@ function openExperimentsTool(evt, toolName) {
     evt.currentTarget.className += " active";
 }
 
-function renderUploadData() {
-    var product_selector = $("#product_selector").find("select")
-    product_selector.empty();
-    $.ajax({
-        url: '/experimentstool/_get_products',
-        success: function (products) {
-            if (products.length > 0) {
-                $.each(products, function (index, product) {
-                    product_selector.append(
-                        $(document.createElement('option')).attr("value", product.id).text(product.name)
-                    )
-                });
-            } else {
-                product_selector.append(
-                    $(document.createElement('option')).attr("value", "-1").text("No products found")
-                );
-            }
-        }
-    });
+function cleanNotifications() {
+    $("#experiments_notification_container").empty();
+}
+
+function appendNotification(message, error = false) {
+    note_class = "note_success";
+    if (error) {
+        note_class = "note_failure";
+    }
+
+    $("#experiments_notification_container").append(
+        $(document.createElement('div')).attr({
+            class: note_class
+        }).text(message)
+    )
 }
 
 $("#upload").find("button").on('click', function () {
     var product = $("#product_selector").find("select").val();
     var mso_id = $("#mso4sc_id").find("input").val();
 
+    cleanNotifications();
     if (product >= 0) {
         $.ajax({
             url: '/experimentstool/_upload_application',
+            type: "POST",
             data: {
                 'product': product,
                 'mso_id': mso_id
@@ -111,70 +143,28 @@ $("#upload").find("button").on('click', function () {
             dataType: 'json',
             success: function (data) {
                 if (data.error!==undefined) {
-                    console.log(data.error);
+                    appendNotification("Couldn't register the app: "+data.error, error=true);
                 } else {
-                    console.log(data.blueprint)
+                    appendNotification("App "+data.blueprint.id+" registered.");
                 }
+            },
+            error: function (jqXHR, status, errorThrown) {
+                message = "Couldn't register the app: ";
+                message += jqXHR.status+": "+errorThrown+": "+jqXHR.responseText
+                appendNotification(message, error=true);
             }
         });
     }
 });
-
-function renderDeployData() {
-    var blueprint_selector = $("#blueprint_selector").find("select")
-    blueprint_selector.empty();
-
-    console.log("Products!")
-
-    $.ajax({
-        url: '/experimentstool/_get_blueprints',
-        success: function (blueprints) {
-            if (blueprints.length > 0) {
-                console.log('error!')
-                $.each(blueprints, function (index, blueprint) {
-                    blueprint_selector.append(
-                        $(document.createElement('option')).attr("value", index).text(blueprint)
-                    )
-                });
-            } else {
-                blueprint_selector.append(
-                    $(document.createElement('option')).attr("value", "-1").text("No applications found")
-                );
-            }
-        },
-        failure: function (error) {
-            console.log(error)
-        }
-    });
-
-    var dataset_selector = $("#dataset_selector").find("select")
-    dataset_selector.empty();
-    $.ajax({
-        url: '/experimentstool/_get_datasets',
-        success: function (datasets) {
-            if (datasets.length > 0) {
-                $.each(datasets, function (index, dataset) {
-                    dataset_selector.append(
-                        $(document.createElement('option')).attr("value", index).text(dataset)
-                    )
-                });
-            } else {
-                dataset_selector.append(
-                    $(document.createElement('option')).attr("value", "-1").text("None")
-                );
-            }
-        }
-    });
-}
 
 $("#dataset_selector").find("select").on('change', function () {
     var dataset = $(this).val();
     var resources_list = $("#dataset_selector").find(".dynamic_list");
     resources_list.empty();
 
-    if (dataset != "none") {
+    if (parseInt(dataset) >= 0) {
         $.ajax({
-            url: '/experimentstool/dataset_info',
+            url: '/experimentstool/_get_dataset_info',
             data: {
                 'dataset': dataset
             },
@@ -203,34 +193,315 @@ $("#dataset_selector").find("select").on('change', function () {
                         $(document.createElement('label')).text("No resources found")
                     );
                 }
+            },
+            error: function (jqXHR, status, errorThrown) {
+                message = "Couldn't create the instance: ";
+                message += jqXHR.status+": "+errorThrown+": "+jqXHR.responseText
+                appendNotification(message, error=true);
             }
         });
     }
 });
 
-$("#deploy").find("button").on('click', function () {
+$("#deploy_form").find("button").on('click', function (event) {
+    event.preventDefault();
+    if (window.File && window.FileReader && window.FileList && window.Blob) {
+        // Great success! All the File APIs are supported.
+    } else {
+        alert('The File APIs are not fully supported in this browser.');
+    }
+
     var blueprint_index = $("#blueprint_selector").find("select").val();
     var dataset_index = $("#dataset_selector").find("select").val();
+    var deployment_inputs = $("#deployment_inputs").find("input")[0];
     var deployment_id = $("#deployment_id").find("input").val();
 
-    if (product >= 0) {
+    if (!deployment_inputs) {
+        alert("Um, couldn't find the fileinput element.");
+    }
+    else if (!deployment_inputs.files) {
+        alert("This browser doesn't seem to support the `files` property of file inputs.");
+    }
+    else if (!deployment_inputs.files[0]) {
+        alert("Please select a file before deploy");               
+    }
+    else {
+        var data = new FormData();
+        data.append('blueprint_index', blueprint_index);
+        data.append('dataset_index', dataset_index);
+        data.append('deployment_inputs', deployment_inputs.files[0]);
+        data.append('deployment_id', deployment_id);
+
+        cleanNotifications();
         $.ajax({
+            method: "POST",
             url: '/experimentstool/_deploy_application',
-            data: {
-                'blueprint_index': blueprint_index,
-                'dataset_index': dataset_index,
-                'deployment_id': deployment_id
-            },
+            data: data,
             dataType: 'json',
+            contentType: false,
+            processData: false,
+            cache: false,
             success: function (data) {
                 if (data.error!==undefined) {
-                    console.log(data.error);
+                    appendNotification("Couldn't create the instance: "+data.error, error=true);
                 } else {
-                    console.log(data.deployment)
+                    appendNotification("App instance "+data.deployment.id+" created.");
                 }
+            },
+            error: function (jqXHR, status, errorThrown) {
+                message = "Couldn't create the instance: ";
+                message += jqXHR.status+": "+errorThrown+": "+jqXHR.responseText
+                appendNotification(message, error=true);
             }
         });
     }
 });
+
+$("#install").find("button").on('click', function () {
+    executeDeployment("#install_deployment_selector",
+                      "/experimentstool/_install_deployment",
+                      "#install_deployment_log",
+                      "/experimentstool/_get_install_events");
+});
+
+$("#run").find("button").on('click', function () {
+    executeDeployment("#run_deployment_selector",
+                      "/experimentstool/_run_deployment",
+                      "#run_deployment_log",
+                      "/experimentstool/_get_run_events");
+});
+
+$("#uninstall").find("button").on('click', function () {
+    executeDeployment("#uninstall_deployment_selector",
+                      "/experimentstool/_uninstall_deployment",
+                      "#uninstall_deployment_log",
+                      "/experimentstool/_get_uninstall_events");
+});
+
+$("#destroy").find("button").on('click', function () {
+    executeDeployment("#destroy_deployment_selector",
+                      "/experimentstool/_destroy_deployment");
+});
+
+$("#remove").find("button").on('click', function () {
+    var blueprint_index = $("#remove_blueprint_selector").find("select").val();
+
+    $.ajax({
+        method: "POST",
+        url: '/experimentstool/_remove_blueprint',
+        data: {
+            'blueprint_index': blueprint_index
+        },
+        dataType: 'json',
+        success: function (data) {
+            if (data.error!==undefined) {
+                appendNotification("Couldn't remove the app: "+data.error, error=true);
+            } else {
+                appendNotification("App "+data.blueprint.id+" removed.");
+            }
+        },
+        error: function (jqXHR, status, errorThrown) {
+            message = "Couldn't remove the app: ";
+            message += jqXHR.status+": "+errorThrown+": "+jqXHR.responseText
+            appendNotification(message, error=true);
+        }
+    });
+});
+
+function renderProductData(selector_id) {
+    var product_selector = $(selector_id).find("select")
+    product_selector.empty();
+    cleanNotifications();
+
+    $.ajax({
+        url: '/experimentstool/_get_products',
+        success: function (products) {
+            if (products.length > 0) {
+                $.each(products, function (index, product) {
+                    product_selector.append(
+                        $(document.createElement('option')).attr("value", product.id).text(product.name)
+                    )
+                });
+            } else {
+                product_selector.append(
+                    $(document.createElement('option')).attr("value", "-1").text("No products found")
+                );
+            }
+        },
+        error: function (jqXHR, status, errorThrown) {
+            message = "Couldn't get products list: ";
+            message += jqXHR.status+": "+errorThrown+": "+jqXHR.responseText
+            appendNotification(message, error=true);
+        }
+    });
+}
+
+function renderDatasetsData(selector_id) {
+    var dataset_selector = $(selector_id).find("select")
+    dataset_selector.empty();
+    dataset_selector.append(
+        $(document.createElement('option')).attr("value", "-1").text("Loading..")
+    );
+    $.ajax({
+        url: '/experimentstool/_get_datasets',
+        success: function (datasets) {
+            dataset_selector.empty();
+            dataset_selector.append(
+                $(document.createElement('option')).attr("value", "-1").text("None")
+            );
+            if (datasets.length > 0) {
+                $.each(datasets, function (index, dataset) {
+                    dataset_selector.append(
+                        $(document.createElement('option')).attr("value", index).text(dataset)
+                    )
+                });
+            }
+        },
+        error: function (jqXHR, status, errorThrown) {
+            message = "Couldn't get datasets list: ";
+            message += jqXHR.status+": "+errorThrown+": "+jqXHR.responseText
+            appendNotification(message, error=true);
+        }
+    });
+}
+
+function renderBlueprintData(selector_id) {
+    var remove_blueprint_selector = $(selector_id).find("select")
+    remove_blueprint_selector.empty();
+    remove_blueprint_selector.append(
+        $(document.createElement('option')).attr("value", "-1").text("Loading..")
+    );
+
+    $.ajax({
+        url: '/experimentstool/_get_blueprints',
+        success: function (data) {
+            remove_blueprint_selector.empty();
+            blueprints = data.blueprints
+            if (blueprints.length > 0) {
+                $.each(blueprints, function (index, blueprint) {
+                    remove_blueprint_selector.append(
+                        $(document.createElement('option')).attr("value", index).text(blueprint.id)
+                    )
+                });
+            } else {
+                remove_blueprint_selector.append(
+                    $(document.createElement('option')).attr("value", "-1").text("No applications found")
+                );
+            }
+        },
+        error: function (jqXHR, status, errorThrown) {
+            message = "Couldn't get applications list: ";
+            message += jqXHR.status+": "+errorThrown+": "+jqXHR.responseText
+            appendNotification(message, error=true);
+        }
+    });
+}
+
+function renderDeploymentData(selector_id) {
+    var deployment_selector = $(selector_id).find("select")
+    deployment_selector.empty();
+    deployment_selector.append(
+        $(document.createElement('option')).attr("value", "-1").text("Loading..")
+    );
+
+    $.ajax({
+        url: '/experimentstool/_get_deployments',
+        success: function (data) {
+            deployment_selector.empty();
+            deployments = data.deployments
+            if (deployments.length > 0) {
+                $.each(deployments, function (index, deployment) {
+                    deployment_selector.append(
+                        $(document.createElement('option')).attr("value", index).text(deployment.id)
+                    )
+                });
+            } else {
+                deployment_selector.append(
+                    $(document.createElement('option')).attr("value", "-1").text("No instances found")
+                );
+            }
+        },
+        error: function (jqXHR, status, errorThrown) {
+            message = "Couldn't get instances list: ";
+            message += jqXHR.status+": "+errorThrown+": "+jqXHR.responseText
+            appendNotification(message, error=true);
+        }
+    });
+}
+
+function renderLogData(log_id, url, reset=false) {
+    var textarea = $(log_id).find("textarea");
+    if (reset) {
+        textarea.val("");
+    }
+    cleanNotifications();
+
+    $.ajax({
+        url: url,
+        data: {'reset': reset},
+        success: function (data) {
+            if (data.error!==undefined && !reset) {
+                appendNotification("Couldn't monitor the operation: "+data.error, error=true);
+            } else {
+                // Write events in the textarea
+                data.events.forEach(function(event) {
+                    textarea.val(textarea.val()+event+'\n');
+                });
+                textarea.scrollTop = textarea.scrollHeight;
+
+                // Schedule the next request when the current one's complete
+                if (!data.finished) {
+                    $log_timeout = setTimeout(function () {renderLogData(log_id, url, reset=false);}, 3000);
+                    if (reset) {
+                        $(log_id).find("img").attr("src", "/static/mso4sc/img/light_blue.png");
+                    }
+                } else {
+                    var light = $(log_id).find("img");
+                    if (data.status=="terminated") {
+                        light.attr("src", "/static/mso4sc/img/light_green.png");
+                    } else {
+                        light.attr("src", "/static/mso4sc/img/light_red.png");
+                    }
+                }
+            }
+        },
+        error: function (jqXHR, status, errorThrown) {
+            message = "Couldn't monitor the operation: ";
+            message += jqXHR.status+": "+errorThrown+": "+jqXHR.responseText
+            appendNotification(message, error=true);
+        }
+    });
+}
+
+function executeDeployment(selector_id, url_exec, log_id = null, url_log = null) {
+    var deployment_index = $(selector_id).find("select").val();
+    cleanNotifications();
+
+    $.ajax({
+        method: "POST",
+        url: url_exec,
+        data: {
+            'deployment_index': deployment_index
+        },
+        dataType: 'json',
+        success: function (data) {
+            if (data.error!==undefined) {
+                appendNotification("Execution error: "+data.error, error=true);
+            } else {
+                if (log_id && url_log) {
+                    renderLogData(log_id, url_log, reset=true);
+                } else {
+                    appendNotification("Operation successful.");
+                }
+            }
+        },
+        error: function (jqXHR, status, errorThrown) {
+            message = "Couldn't execute the operation: ";
+            message += jqXHR.status+": "+errorThrown+": "+jqXHR.responseText
+            appendNotification(message, error=true);
+        }
+    });
+};
+
 </script>
 {% endblock %}

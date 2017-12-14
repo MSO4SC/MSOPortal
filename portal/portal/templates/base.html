@@ -26,12 +26,6 @@
         <hr>
     </header>
     <main>
-        {% for message in messages %}
-        <p style="color: {% if message.tags == 'success' %}green{% elif message.tags == 'error' %}red{% endif %}">
-            {{ message }}
-        </p>
-        {% endfor %}
-
         {% block content %} {% endblock %}
     </main>
     <footer>

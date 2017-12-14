@@ -1,1 +1,12 @@
-<p>install!</p>
+{% load static %}
+<div id="install_deployment_selector">
+    <label>App Instance: </label>
+    <select></select>
+</div>
+
+<button>Deploy!</button>
+
+<div id="install_deployment_log">
+    <textarea rows="20" cols="150" ></textarea>
+    <img src="{% static 'mso4sc/img/light_grey.png' %}">
+</div>

@@ -4,6 +4,8 @@ import time
 import json
 import yaml
 import requests
+
+from urllib.parse import urlparse
 from portal import settings
 
 from django.contrib.auth.decorators import login_required
@@ -17,6 +19,7 @@ from django.http import JsonResponse
 from social_django.utils import load_strategy
 
 from cloudify_rest_client import CloudifyClient
+from cloudify_rest_client.executions import Execution
 from cloudify_rest_client.exceptions import CloudifyClientError
 from cloudify_rest_client.exceptions \
     import DeploymentEnvironmentCreationPendingError
@@ -27,10 +30,10 @@ WAIT_FOR_EXECUTION_SLEEP_INTERVAL = 3
 
 def _get_fiware_token(user, from_url):
     social = user.social_auth.get(provider='fiware')
-    if int(time.time()) - social.extra_data['auth_time'] > 3600:
-        #    strategy = load_strategy()
-        #    social.refresh_token(strategy)
-        return (False, '/oauth/login/fiware?next=' + from_url)
+#    if int(time.time()) - social.extra_data['auth_time'] > 3600:
+#        #    strategy = load_strategy()
+#        #    social.refresh_token(strategy)
+#        return (False, '/oauth/login/fiware?next=' + from_url)
     return (True, social.extra_data['access_token'])
 
 
@@ -131,7 +134,12 @@ def get_products(request):
     if valid:
         access_token = data
     else:
-        # FIXME Cross-Origin Request Blocked: The Same Origin Policy disallows reading the remote resource at https://account.lab.fiware.org/oauth2/authorize?client_id=859680e0c8cb4c65b5d2d6fb99ef1595&redirect_uri=http://localhost:8000/oauth/complete/fiware/&state=eXpNpKJ5jqsZoOBcm0X1hLcmaSCNoa3E&response_type=code. (Reason: CORS header ‘Access-Control-Allow-Origin’ missing).
+        # FIXME Cross-Origin Request Blocked: The Same Origin Policy disallows
+        # reading the remote resource at https://account.lab.fiware.org/oauth2/
+        #   authorize?client_id=859680e0c8cb4c65b5d2d6fb99ef1595&redirect_uri=
+        #   http://localhost:8000/oauth/complete/fiware/&state=eXpNpKJ5jqsZoOB
+        #   cm0X1hLcmaSCNoa3E&response_type=code.
+        #   (Reason: CORS header ‘Access-Control-Allow-Origin’ missing).
         return redirect(data)
     headers = {"Authorization": "bearer " + access_token}
     url = settings.MARKETPLACE_URL + \
@@ -139,20 +147,22 @@ def get_products(request):
 
     text_data = requests.request("GET", url, headers=headers).text
     json_data = json.loads(text_data)
+
+    request.session['products'] = json_data
     return JsonResponse(json_data, safe=False)
 
 
 @login_required
 def upload_blueprint(request):
     if 'products' not in request.session:
-        return {'error': 'No products loaded'}
+        return JsonResponse({'error': 'No products loaded'})
 
     products = request.session['products']
-    product_id = request.GET.get('product', None)
+    product_id = request.POST.get('product', None)
     if not product_id:
         return JsonResponse({'error': 'No product id provided'})
 
-    mso4sc_id = request.GET.get('mso4sc_id', None)
+    mso4sc_id = request.POST.get('mso_id', None)
     if not mso4sc_id or mso4sc_id == '':
         # TODO validation
         return JsonResponse({'error': 'No mso4sc id provided'})
@@ -171,7 +181,7 @@ def upload_blueprint(request):
             blueprint_path = pc['productSpecCharacteristicValue'][0]['value']
             break
     if not blueprint_path:
-        return JsonResponse({'error': 'No blueprint path provided'})
+        return JsonResponse({'error': 'The product does not have a \'BLUEPRINT_PATH\' charasteristic'})
 
     return JsonResponse(_upload_blueprint(blueprint_path, mso4sc_id))
 
@@ -184,6 +194,7 @@ def get_blueprints(request):
         print(e)
         return JsonResponse({'error': str(e)})
 
+    request.session['blueprints'] = blueprints
     return JsonResponse({'blueprints': blueprints})
 
 
@@ -193,14 +204,25 @@ def get_datasets(request):
 
     text_data = requests.request("GET", url).text
     json_data = json.loads(text_data)
-    if json_data["success"]:
-        return JsonResponse(json_data["result"], safe=False)
+    if not json_data["success"]:
+        return JsonResponse([], safe=False)  # TODO(emepetres) manage errors
 
-    return JsonResponse([])  # TODO(emepetres) manage errors
+    request.session['datasets'] = json_data["result"]
+    return JsonResponse(json_data["result"], safe=False)
 
 
 def get_dataset_info(request):
-    dataset = request.GET.get('dataset', None)
+    if 'datasets' not in request.session:
+        return {'error': 'No datasets loaded'}
+
+    datasets = request.session['datasets']
+    dataset_index = int(request.GET.get('dataset', -1))
+
+    if dataset_index >= len(datasets) or dataset_index < 0:
+        return JsonResponse({'error': 'Bad dataset index provided'})
+
+    dataset = datasets[dataset_index]
+
     url = settings.DATACATALOGUE_URL + \
         "/api/rest/dataset/" + dataset
 
@@ -222,27 +244,177 @@ def create_deployment(request):
     blueprints = request.session['blueprints']
     datasets = request.session['datasets']
 
-    blueprint_index = request.GET.get('blueprint_index', None)
-    dataset_index = request.GET.get('dataset_index', None)
-    deployment_id = request.GET.get('deployment_id', None)
-
-    if not blueprint_index:
-        return JsonResponse({'error': 'No blueprint provided'})
-    if not dataset_index:
-        return JsonResponse({'error': 'No dataset provided'})
-    if not deployment_id:
-        return JsonResponse({'error': 'No deployment provided'})
+    blueprint_index = int(request.POST.get('blueprint_index', -1))
+    dataset_index = int(request.POST.get('dataset_index', -1))
+    inputs_file = request.FILES['deployment_inputs']
+    inputs_data = inputs_file.read().decode("utf-8").replace('\r\n', '\n')
+    inputs = yaml.load(inputs_data)
+    deployment_id = request.POST.get('deployment_id', None)
 
     if blueprint_index >= len(blueprints) or blueprint_index < 0:
         return JsonResponse({'error': 'Bad blueprint index provided'})
     if dataset_index >= len(datasets) or dataset_index < 0:
         return JsonResponse({'error': 'Bad dataset index provided'})
+    if not deployment_id or deployment_id is '':
+        return JsonResponse({'error': 'No deployment provided'})
 
-    blueprint = blueprints[blueprint_index]
-    dataset = datasets[dataset_index]
-    inputs = {}  # TODO
+    blueprint = blueprints[blueprint_index]['id']
+    dataset = datasets[dataset_index]  # TODO
 
     return JsonResponse(_create_deployment(blueprint, deployment_id, inputs))
+
+
+def get_deployments(request):
+    client = _get_client()
+    try:
+        deployments = client.deployments.list().items
+    except CloudifyClientError as e:
+        print(e)
+        return JsonResponse({'error': str(e)})
+
+    request.session['deployments'] = deployments
+    return JsonResponse({'deployments': deployments})
+
+
+@login_required
+def install_deployment(request):
+    response = _execute_deployment(request, _install_deployment)
+    if 'error' not in response:
+        request.session['install_execution'] = {
+            'id': response['execution']['id'],
+            'offset': 0
+        }
+    return JsonResponse(response)
+
+
+@login_required
+def get_install_events(request):
+    if 'install_execution' not in request.session:
+        response = {'error': 'No install execution'}
+    else:
+        execution_id = request.session['install_execution']['id']
+        reset = request.GET.get("reset", "False") in ["True", "true", "TRUE"]
+        offset = 0
+        if not reset:
+            offset = request.session['install_execution']['offset']
+
+        response = _get_execution_events(execution_id, offset)
+        if offset != response['last']:
+            request.session['install_execution']['offset'] =\
+                response.pop('last')
+            request.session.modified = True
+            print("new offset: " +
+                  str(request.session['install_execution']['offset']))
+
+    return JsonResponse(response)
+
+
+@login_required
+def run_deployment(request):
+    response = _execute_deployment(request, _run_deployment)
+    if 'error' not in response:
+        request.session['run_execution'] = {
+            'id': response['execution']['id'],
+            'offset': 0
+        }
+    return JsonResponse(response)
+
+
+@login_required
+def get_run_events(request):
+    if 'run_execution' not in request.session:
+        response = {'error': 'No run execution'}
+    else:
+        execution_id = request.session['run_execution']['id']
+        reset = request.GET.get("reset", "False") in ["True", "true", "TRUE"]
+        offset = 0
+        if not reset:
+            offset = request.session['run_execution']['offset']
+
+        response = _get_execution_events(execution_id, offset)
+        if offset != response['last']:
+            request.session['run_execution']['offset'] =\
+                response.pop('last')
+            request.session.modified = True
+
+    return JsonResponse(response)
+
+
+@login_required
+def uninstall_deployment(request):
+    response = _execute_deployment(request, _uninstall_deployment)
+    if 'error' not in response:
+        request.session['uninstall_execution'] = {
+            'id': response['execution']['id'],
+            'offset': 0
+        }
+    return JsonResponse(response)
+
+
+@login_required
+def get_uninstall_events(request):
+    if 'uninstall_execution' not in request.session:
+        response = {'error': 'No uninstall execution'}
+    else:
+        execution_id = request.session['uninstall_execution']['id']
+        reset = request.GET.get("reset", "False") in ["True", "true", "TRUE"]
+        offset = 0
+        if not reset:
+            offset = request.session['uninstall_execution']['offset']
+
+        response = _get_execution_events(execution_id, offset)
+        if offset != response['last']:
+            request.session['uninstall_execution']['offset'] = response['last']
+            request.session.modified = True
+
+    return JsonResponse(response)
+
+
+@login_required
+def destroy_deployment(request):
+    response = _execute_deployment(request, _destroy_deployment)
+    if 'error' not in response:
+        request.session.pop('install_execution')
+        request.session.pop('run_execution')
+        request.session.pop('uninstall_execution')
+    return JsonResponse(response)
+
+
+def _execute_deployment(request, operation):
+    if 'deployments' not in request.session:
+        return {'error': 'No deployments loaded'}
+
+    deployments = request.session['deployments']
+
+    deployment_index = int(request.POST.get('deployment_index', -1))
+
+    if deployment_index is None:
+        return {'error': 'No deployment provided'}
+
+    if deployment_index >= len(deployments) or deployment_index < 0:
+        return {'error': 'Bad deployment index provided'}
+
+    deployment = deployments[deployment_index]['id']
+    return operation(deployment)
+
+
+@login_required
+def remove_blueprint(request):
+    if 'blueprints' not in request.session:
+        return {'error': 'No blueprints loaded'}
+
+    blueprints = request.session['blueprints']
+
+    blueprint_index = int(request.POST.get('blueprint_index', -1))
+
+    if blueprint_index is None:
+        return JsonResponse({'error': 'No blueprint provided'})
+
+    if blueprint_index >= len(blueprints) or blueprint_index < 0:
+        return JsonResponse({'error': 'Bad blueprint index provided'})
+
+    blueprint = blueprints[blueprint_index]['id']
+    return JsonResponse(_remove_blueprint(blueprint))
 
 
 def _get_client():
@@ -254,9 +426,14 @@ def _get_client():
 
 
 def _upload_blueprint(path, blueprint_id):
+    is_url = bool(urlparse(path).scheme)
+
     client = _get_client()
     try:
-        blueprint = client.blueprints.upload(path, blueprint_id)
+        if is_url:
+            blueprint = client.blueprints.publish_archive(path, blueprint_id)
+        else:
+            blueprint = client.blueprints.upload(path, blueprint_id)
     except CloudifyClientError as e:
         print(e)
         return {'error': str(e)}
@@ -287,45 +464,101 @@ def _create_deployment(blueprint_id, development_id, inputs, retries=3):
     return {'deployment': deployment}
 
 
-def _execute_deployment(development_id, workflow):
+def _install_deployment(development_id):
+    return _execute_workflow(development_id, 'install')
+
+
+def _run_deployment(development_id):
+    return _execute_workflow(development_id, 'run_jobs')
+
+
+def _uninstall_deployment(development_id):
+    return _execute_workflow(development_id, 'uninstall')
+
+
+def _execute_workflow(development_id, workflow):
     client = _get_client()
     try:
         execution = client.executions.start(development_id, workflow)
     except CloudifyClientError as e:
-        print(e)
-        return {'execution': None, 'error': str(e)}
-    return {'execution': execution, 'error': None}
+        return {'error': str(e)}
+    return {'execution': execution}
 
 
-def _install_deployment(development_id):
-    return _execute_deployment(development_id, 'install')
+def _get_execution_events(execution_id, offset):
+    client = _get_client()
+
+    execution = client.executions.get(execution_id)
+    events = client.events.list(execution_id=execution_id,
+                                _offset=offset,
+                                _size=100)
+    last_message = events.metadata.pagination.total
+
+    return {
+        'events': _events_to_string(events.items),
+        'last': last_message,
+        'status': execution.status,
+        'finished': _is_execution_finished(execution.status)
+    }
 
 
-def _run_deployment(development_id):
-    return _execute_deployment(development_id, 'run_jobs')
+def _events_to_string(events):
+    response = []
+    for event in events:
+        print(json.dumps(event))
+        event_type = event["type"]
+        message = ""
+        if event_type == "cloudify_event":
+            cloudify_event_type = event["event_type"]
+            message = event["reported_timestamp"] + \
+                " " + event["message"]
+            if cloudify_event_type == "workflow_node_event":
+                message += " " + event["node_instance_id"] + \
+                    " (" + event["node_name"] + ")"
+            elif cloudify_event_type == "sending_task" \
+                    or cloudify_event_type == "task_started" \
+                    or cloudify_event_type == "task_succeeded":
+                # message += " [" + event["operation"] + "]"
+                if event["node_instance_id"]:
+                    message += " " + event["node_instance_id"]
+                if event["node_name"]:
+                    message += " (" + event["node_name"] + ")"
+            elif cloudify_event_type == "workflow_started":
+                pass
+            elif cloudify_event_type == "workflow_succeeded":
+                pass
+            else:
+                message = json.dumps(event)
+            if event["error_causes"]:
+                message += "\n" + event["error_causes"]
+        else:
+            message = json.dumps(event)
+        response.append(message)
+
+    return response
 
 
-def _uninstall_deployment(development_id):
-    return _execute_deployment(development_id, 'uninstall')
+def _is_execution_finished(status):
+    return status in Execution.END_STATES
 
 
-def _delete_deployment(development_id, force=False):
+def _destroy_deployment(development_id, force=False):
     client = _get_client()
     try:
         deployment = client.deployments.delete(
             development_id, ignore_live_nodes=force)
     except CloudifyClientError as e:
         print(e)
-        return {'deployment': None, 'error': str(e)}
-    return {'deployment': deployment, 'error': None}
+        return {'error': str(e)}
+    return {'deployment': deployment}
 
 
-def _delete_blueprint(blueprint_id):
+def _remove_blueprint(blueprint_id):
     client = _get_client()
     try:
         blueprint = client.blueprints.delete(blueprint_id)
     except CloudifyClientError as e:
         print(e)
-        return {'blueprint': None, 'error': str(e)}
+        return {'error': str(e)}
 
-    return {'blueprint': blueprint, 'error': None}
+    return {'blueprint': blueprint}
