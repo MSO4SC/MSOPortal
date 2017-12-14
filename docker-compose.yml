@@ -4,10 +4,12 @@ services:
     ## IDM
     idm:
         container_name: idm
-        image: ging/fiware-idm:latest
+        image: mso4sc/idm:latest
         ports:
             - "0.0.0.0:${HORIZON_PORT}:8000"
             - "0.0.0.0:${KEYSTONE_PORT}:5000"
+        environment:
+            - IDM_PASS=${IDM_PASS}
         volumes:
             - keystone:/keystone
             - horizon:/horizon
@@ -37,7 +39,6 @@ services:
             - IDM_HOST=${IDM_HOST}
             - FIWARE_ID=${CKAN_FIWARE_ID}
             - FIWARE_SECRET=${CKAN_FIWARE_SECRET}
-
         volumes:
           - ckan_config:/etc/ckan/default
           - ckan_storage:/var/lib/ckan
