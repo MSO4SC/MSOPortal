@@ -43,6 +43,10 @@ RUN git clone https://github.com/ging/horizon && \
 RUN cp keystone/etc/keystone.conf.sample keystone/etc/keystone.conf && \
     cp horizon/openstack_dashboard/local/local_settings.py.example horizon/openstack_dashboard/local/local_settings.py
 
+# Configure email
+RUN sed -i "s/DEFAULT_FROM_EMAIL = .*$/\DEFAULT_FROM_EMAIL = 'no-reply@mso4sc'/g" horizon/openstack_dashboard/local/local_settings.py
+RUN sed -i "s/EMAIL_SUBJECT_PREFIX = .*$/\EMAIL_SUBJECT_PREFIX = '[MSO4SC IDM]'/g" horizon/openstack_dashboard/local/local_settings.py
+
 # Install keystone python dependecies
 RUN sudo python keystone/tools/install_venv.py
 

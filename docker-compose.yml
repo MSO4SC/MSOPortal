@@ -9,6 +9,7 @@ services:
             - "0.0.0.0:${HORIZON_PORT}:8000"
             - "0.0.0.0:${KEYSTONE_PORT}:5000"
         environment:
+            - IDM_ENTRYPOINT=${IDM_ENTRYPOINT}
             - IDM_PASS=${IDM_PASS}
         volumes:
             - keystone:/keystone
@@ -36,7 +37,7 @@ services:
             - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
             - DS_RO_PASS=${DATASTORE_READONLY_PASSWORD}
             - FRONTEND_ENTRYPOINT=${FRONTEND_ENTRYPOINT}
-            - IDM_HOST=${IDM_HOST}
+            - IDM_ENTRYPOINT=${IDM_ENTRYPOINT}
             - FIWARE_ID=${CKAN_FIWARE_ID}
             - FIWARE_SECRET=${CKAN_FIWARE_SECRET}
         volumes:
@@ -67,9 +68,9 @@ services:
         image: redis:latest
 
     ## Business Ecosystem
-    biz_ecosystem:
-        container_name: biz
-        image: mso4sc/biz-ecosystem:latest
+    marketplace:
+        container_name: marketplace
+        image: mso4sc/marketplace:latest
         ports:
             - "${BIZ_PORT}:8000"
         links:
@@ -83,7 +84,7 @@ services:
         environment:
             - MYSQL_ROOT_PASSWORD=${MYSQL_ROOT_PASSWORD}
             - MYSQL_HOST=biz_db
-            - IDM_HOST=${IDM_HOST}
+            - IDM_ENTRYPOINT=${IDM_ENTRYPOINT}
             - OAUTH2_CLIENT_ID=${BIZ_FIWARE_ID}
             - OAUTH2_CLIENT_SECRET=${BIZ_FIWARE_SECRET}
             - PAYPAL_CLIENT_ID=${BIZ_PAYPAL_ID}
@@ -118,3 +119,4 @@ volumes:
     biz-assets:
     biz-plugins:
     biz-indexes:
+

@@ -22,8 +22,9 @@ ADD ckan-idm-entrypoint.sh /
 RUN chmod +x /ckan-idm-entrypoint.sh
 RUN sed -i '/set_environment/a\
 export FRONTEND_ENTRYPOINT=${FRONTEND_ENTRYPOINT}\n\
-export BIZ_FIWARE_ID=${BIZ_FIWARE_ID}\n\
-export BIZ_FIWARE_SECRET=${BIZ_FIWARE_SECRET}\n\
+export IDM_ENTRYPOINT=${IDM_ENTRYPOINT}\n\
+export FIWARE_ID=${FIWARE_ID}\n\
+export FIWARE_SECRET=${FIWARE_SECRET}\n\
 export CONFIG=${CONFIG}\n\
 /ckan-idm-entrypoint.sh' /ckan-entrypoint.sh
 
