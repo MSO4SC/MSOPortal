@@ -30,10 +30,10 @@ WAIT_FOR_EXECUTION_SLEEP_INTERVAL = 3
 
 def _get_fiware_token(user, from_url):
     social = user.social_auth.get(provider='fiware')
-#    if int(time.time()) - social.extra_data['auth_time'] > 3600:
-#        #    strategy = load_strategy()
-#        #    social.refresh_token(strategy)
-#        return (False, '/oauth/login/fiware?next=' + from_url)
+    if int(time.time()) - social.extra_data['auth_time'] > 3600:
+        # strategy = load_strategy()
+        # social.refresh_token(strategy)
+        return (False, '/oauth/login/fiware?next=' + from_url)
     return (True, social.extra_data['access_token'])
 
 
@@ -129,6 +129,7 @@ def experimentstool(request):
     return render(request, 'experimentstool.html', context)
 
 
+@login_required
 def get_products(request):
     valid, data = _get_fiware_token(request.user, request.get_full_path())
     if valid:
