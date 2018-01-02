@@ -61,7 +61,9 @@ ROOT_URLCONF = 'portal.urls'
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [os.path.join(BASE_DIR, 'portal/templates'), os.path.join(BASE_DIR, 'mso4sc/templates')],
+        'DIRS': [os.path.join(BASE_DIR, 'portal/templates'),
+                 os.path.join(BASE_DIR, 'sso/templates'),
+                 os.path.join(BASE_DIR, 'experimentstool/templates')],
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
@@ -80,7 +82,7 @@ TEMPLATES = [
 WSGI_APPLICATION = 'portal.wsgi.application'
 
 AUTHENTICATION_BACKENDS = (
-    'portal.backends.keyrock.KeyrockOAuth2',
+    'sso.backends.keyrock.KeyrockOAuth2',
     'django.contrib.auth.backends.ModelBackend',
 )
 
@@ -140,7 +142,8 @@ PROJECT_ROOT = os.path.abspath(os.path.dirname(__file__))
 STATIC_URL = '/static/'
 STATICFILES_DIRS = (
     os.path.join(PROJECT_ROOT, 'static'),
-    os.path.join('mso4sc', 'static')
+    os.path.join('sso', 'static'),
+    os.path.join('experimentstool', 'static')
 )
 
 LOGIN_URL = 'login'

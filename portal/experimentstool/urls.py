@@ -1,0 +1,37 @@
+from django.conf.urls import url
+
+from . import views
+
+urlpatterns = [
+    url(r'^$', views.experimentstool, name='experimentstool'),
+    url(r'^_get_products$',
+        views.get_products, name='_get_products'),
+    url(r'^_upload_application$',
+        views.upload_blueprint, name='_upload_application'),
+    url(r'^_get_blueprints$',
+        views.get_blueprints, name='_get_blueprints'),
+    url(r'^_get_datasets$',
+        views.get_datasets, name='_get_datasets'),
+    url(r'^_get_dataset_info$',
+        views.get_dataset_info, name='_get_dataset_info'),
+    url(r'^_deploy_application$',
+        views.create_deployment, name='_deploy_application'),
+    url(r'^_get_deployments$',
+        views.get_deployments, name='_get_deployments'),
+    url(r'^_install_deployment$',
+        views.install_deployment, name='_install_deployment'),
+    url(r'^_get_install_events$',
+        views.get_install_events, name='_get_install_events'),
+    url(r'^_run_deployment$',
+        views.run_deployment, name='_run_deployment'),
+    url(r'^_get_run_events$',
+        views.get_run_events, name='_get_run_events'),
+    url(r'^_uninstall_deployment$',
+        views.uninstall_deployment, name='_uninstall_deployment'),
+    url(r'^_get_uninstall_events$',
+        views.get_uninstall_events, name='_get_uninstall_events'),
+    url(r'^_destroy_deployment$',
+        views.destroy_deployment, name='_destroy_deployment'),
+    url(r'^_remove_blueprint$',
+        views.remove_blueprint, name='_remove_blueprint'),
+]
