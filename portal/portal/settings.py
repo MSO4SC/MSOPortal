@@ -81,11 +81,6 @@ WSGI_APPLICATION = 'portal.wsgi.application'
 
 AUTHENTICATION_BACKENDS = (
     'portal.backends.keyrock.KeyrockOAuth2',
-
-    'social_core.backends.github.GithubOAuth2',
-    'social_core.backends.twitter.TwitterOAuth',
-    'social_core.backends.facebook.FacebookOAuth2',
-
     'django.contrib.auth.backends.ModelBackend',
 )
 
@@ -166,15 +161,6 @@ ORCHESTRATOR_TENANT = config('ORCHESTRATOR_TENANT')
 FIWARE_IDM_ENDPOINT = config('FIWARE_IDM_ENDPOINT')
 SOCIAL_AUTH_FIWARE_KEY = config('SOCIAL_AUTH_FIWARE_KEY')
 SOCIAL_AUTH_FIWARE_SECRET = config('SOCIAL_AUTH_FIWARE_SECRET')
-
-SOCIAL_AUTH_GITHUB_KEY = config('SOCIAL_AUTH_GITHUB_KEY')
-SOCIAL_AUTH_GITHUB_SECRET = config('SOCIAL_AUTH_GITHUB_SECRET')
-
-SOCIAL_AUTH_TWITTER_KEY = config('SOCIAL_AUTH_TWITTER_KEY')
-SOCIAL_AUTH_TWITTER_SECRET = config('SOCIAL_AUTH_TWITTER_SECRET')
-
-SOCIAL_AUTH_FACEBOOK_KEY = config('SOCIAL_AUTH_FACEBOOK_KEY')
-SOCIAL_AUTH_FACEBOOK_SECRET = config('SOCIAL_AUTH_FACEBOOK_SECRET')
 
 # MESSAGE_LEVEL = message_constants.DEBUG
 SOCIAL_AUTH_LOGIN_ERROR_URL = '/login_error/'

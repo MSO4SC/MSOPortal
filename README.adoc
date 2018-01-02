@@ -8,7 +8,7 @@ Web portal of the MSO4SC project.
 * *Marketplace*: Manages the applications available in MSO4SC. Built using FIWARE Business Ecosystem.
 * *Data Catalogue*: Manages the datasets available in MSO4SC. Built using CKAN.
 
-WARNING: Frontend and Experiments Tool not ready, as well as their docker image.
+WARNING: Frontend and Experiments Tool under heavy development; their docker image not available yet.
 
 == Deployment
 

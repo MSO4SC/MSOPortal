@@ -21,7 +21,6 @@ Vagrant.configure("2") do |config|
   config.vm.box = "ubuntu/xenial64"
 
   # config.vm.network "private_network", ip: "192.168.56.23"
-  # config.vm.network "public_network"
   config.vm.network "forwarded_port", guest: 8000, host: 8000
 
   config.vm.synced_folder "../../portal", "/home/ubuntu/portal"
@@ -36,11 +35,7 @@ Vagrant.configure("2") do |config|
   end
   
   config.vm.provision "shell", path: "scripts/basic-deps.sh"
-  config.vm.provision "shell", path: "scripts/ssh-settings.sh"
   config.vm.provision "shell", path: "scripts/ubuntu_python3.sh"
-#  config.vm.provision "file", source: "scripts/clean.sh", destination: "/home/ubuntu"
-#  config.vm.provision "file", source: "scripts/up.sh", destination: "/home/ubuntu"
-#  config.vm.provision "file", source: "scripts/down.sh", destination: "/home/ubuntu"
   
   #HACK TO AVOID ttyname failed: Inappropiate ioctl for device
   config.ssh.shell = "bash -c 'BASH_ENV=/etc/profile exec bash'"

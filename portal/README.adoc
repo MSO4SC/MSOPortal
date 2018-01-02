@@ -1,0 +1,28 @@
+= MSO4SC Frontend & Experiments Tool
+
+Frontend of the MSO4SC project.
+
+.Integrates
+* Data Catalogue
+* Marketplace
+
+.Implements
+* Experiments Tool
+
+== Configuration
+
+Copy `portal/example_settings.ini` to `portal/settings.ini` and fill the properties.
+
+== Dev Deployment
+
+The frontend uses *Python3 >= 3.5* to execute. To install python dependencies, execute `setup.sh` with the path of your dist-packages folder (native or virtual env install).
+
+----
+./setup.sh /usr/local/lib/python3.5/dist-packages
+----
+
+WARNING: Some python2 libraries have been manually adapted to work with Python3 in this project. Therefore installing the requirements with pip is not enough and all steps in `setup.sh` script are required.
+
+The file `up.sh` just run the frontend on port _8000_. If using a virtual environment, it have to be activated before running `./up.sh`.
+
+NOTE: A vagrant machine is provided at `vagrant` folder with ubuntu xenial and python3 installed. It mounts the frontend root at `/home/ubuntu/portal`.
