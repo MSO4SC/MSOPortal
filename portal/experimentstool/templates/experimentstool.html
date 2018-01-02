@@ -453,14 +453,14 @@ function renderLogData(log_id, url, reset=false) {
                 if (!data.finished) {
                     $log_timeout = setTimeout(function () {renderLogData(log_id, url, reset=false);}, 3000);
                     if (reset) {
-                        $(log_id).find("img").attr("src", "/static/mso4sc/img/light_blue.png");
+                        $(log_id).find("img").attr("src", "/static/experimentstool/img/light_blue.png");
                     }
                 } else {
                     var light = $(log_id).find("img");
                     if (data.status=="terminated") {
-                        light.attr("src", "/static/mso4sc/img/light_green.png");
+                        light.attr("src", "/static/experimentstool/img/light_green.png");
                     } else {
-                        light.attr("src", "/static/mso4sc/img/light_red.png");
+                        light.attr("src", "/static/experimentstool/img/light_red.png");
                     }
                 }
             }
