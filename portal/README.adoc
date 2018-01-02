@@ -15,14 +15,79 @@ Copy `portal/example_settings.ini` to `portal/settings.ini` and fill the propert
 
 == Dev Deployment
 
-The frontend uses *Python3 >= 3.5* to execute. To install python dependencies, execute `setup.sh` with the path of your dist-packages folder (native or virtual env install).
+=== Linux
 
-----
-./setup.sh /usr/local/lib/python3.5/dist-packages
-----
+==== Setup
+The frontend uses *Python3 >= 3.5* to execute, and *pip* to install dependencies. Additionally *virtualenv* can be used to isolate the installation. The script `setup.sh` automates the setup, taking as argument your `dist-packages` folder (native or _virtualenv_ directory). +
+`./setup.sh /usr/local/lib/python3.5/dist-packages`
 
 WARNING: Some python2 libraries have been manually adapted to work with Python3 in this project. Therefore installing the requirements with pip is not enough and all steps in `setup.sh` script are required.
 
-The file `up.sh` just run the frontend on port _8000_. If using a virtual environment, it have to be activated before running `./up.sh`.
+
+==== Running it
+The file `up.sh` just run the frontend on top of a development server on port _8000_. Changes made in the code are automatically updated on the server. If you are using a virtual environment, you will have to activate it before running the script. +
+`./up.sh`.
 
 NOTE: A vagrant machine is provided at `vagrant` folder with ubuntu xenial and python3 installed. It mounts the frontend root at `/home/ubuntu/portal`.
+
+=== Windows
+The frontend uses *Python3 >= 3.5* to execute. *pip*, *virtualenv* and *virtualenvwrapper* are also recommended tools to complement the python development environment. Go to <<python_win_dev>> for instructions on how to setup this environment.
+
+==== Setup
+The setup consist on installing python dependencies, and then tediously change some +++*+++.py files to make a legacy library compatible with Python3.
+
+NOTE: All the setup steps are performed on a command prompt with the virtual environment activated, on the `MSOPortal/portal` folder.
+
+. Install python dependencies: +
+`pip install -r requirements.txt`
+
+. In all files with +++*+++.py extension at `C:\Users\USERNAME\Envs\msoportal\Lib\site-packages\cloudify_rest_client\` change all ocurrences from the left to the right values (you can use some editor like notepad++): +
+* `import urlparse` -> `#import urlparse`
+* `urlparse.` -> `urllib.parse.`
+* `urllib.quote` -> `urllib.parse.quote`
+
+. In the file `C:\Users\USERNAME\Envs\msoportal\Lib\site-packages\cloudify_rest_client\client.py`, change all ocurrences from the left side to the right value:
+* `urlsafe_b64encode(credentials)` -> `urlsafe_b64encode(credentials.encode("utf-8"))`
+* `+ encoded_credentials` -> `+ str(encoded_credentials, "utf-8")`
+
+. In the file `C:\Users\USERNAME\Envs\msoportal\Lib\site-packages\cloudify_rest_client\exceptions.py`, add the line of the right after the line in the left (with 8 spaces of indent):
+* `self.response = response` -> `self.message = message`
+
+IMPORTANT: Replace *USERNAME* with your windows user name, and _msoportal_ with your virtual environment in the case you are using a different name.
+
+==== Running it
+
+To run the development server with the portal, open a windows prompt, navigate to `MSOPortal/portal` folder and execute: +
+`workon msoportal` +
+`python3 manage.py runserver 0.0.0.0:8000`
+
+NOTE: Changes made in the code are automatically updated on the server.
+
+[#python_win_dev]
+==== Python development environment on Windows
+
+===== Install *Python3*
+At the time of writing, Python 3.6 is the latest version.
+
+To install Python on your machine go to https://python.org/downloads/. The website should offer you a download button for the latest Python version. Download the executable installer and run it. Check the box next to *Add Python 3.6 to PATH* and then click *Install Now*.
+
+After installation, open the command prompt and check that the Python version matches the version you installed by executing: +
+`python --version`
+
+===== Install *pip*
+
+pip is a package manage for Python. It makes installing and uninstalling Python packagesvery easy.
+
+To install pip on your machine, go to https://pip.pypa.io/en/latest/installing/, and follow the Installing with get-pip.py instructions.
+
+===== Install *virtualenv* and *virtualenvwrapper*
+
+virtualenv and virtualenvwrapper provide a dedicated environment for each python project you create. While not mandatory, this is considered a best practice and will save you time in the future when you’re ready to deploy your project. Simply type: +
+`pip install virtualenvwrapper-win`
+
+Then create a virtual environment for the portal: +
+`mkvirtualenv msoportal`
+
+The virtual environment will be activated automatically and you’ll see “(msoportal)” next to the command prompt to designate that. *If you start a new command prompt, you’ll need to activate the environment again* using: +
+`workon msoportal`
+
