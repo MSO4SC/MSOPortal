@@ -6,7 +6,7 @@ import time
 # from django.views.decorators.clickjacking import xframe_options_exempt
 
 # from social_django.models import UserSocialAuth
-from social_django.utils import load_strategy
+# from social_django.utils import load_strategy
 
 
 def get_token(user, from_url):

@@ -1,0 +1,12 @@
+{% load static %}
+<div id="infrastructure_list">
+    {% if not hpc_list %}
+        No HPC Infrastructures found.
+    {% else %}
+        <ul>
+        {% for hpc in hpc_list %}
+            <li>HPC {{ hpc.host }}</li>
+        {% endfor %}
+        </ul>
+    {% endif %}
+</div>

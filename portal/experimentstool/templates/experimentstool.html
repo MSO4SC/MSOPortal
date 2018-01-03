@@ -10,6 +10,7 @@
     <button id="tab-run" class="tablinks" onclick="openExperimentsTool(event, 'run')">Run Instance</button>
     <button id="tab-uninstall" class="tablinks" onclick="openExperimentsTool(event, 'uninstall')">Undeploy/Clean Up Instance</button>
     <button id="tab-destroy" class="tablinks" onclick="openExperimentsTool(event, 'destroy')">Destroy App Instance</button>
+    <button id="tab-settings" class="tablinks" onclick="openExperimentsTool(event, 'settings')">Settings</button>
 </div>
 
 <div id="experiments_notification_container"></div>
@@ -40,6 +41,10 @@
 
 <div id="remove" class="tabcontent">
     {% include "sections/remove.html" %}
+</div>
+
+<div id="settings" class="settings">
+    {% include "sections/settings.html" %}
 </div>
 
 {% endblock %}
@@ -102,6 +107,8 @@ function openExperimentsTool(evt, toolName) {
             break;
         case "remove":
             renderBlueprintData("#remove_blueprint_selector");
+            break;
+        case "settings":
             break;
     }
 

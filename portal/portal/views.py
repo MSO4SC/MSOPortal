@@ -1,8 +1,9 @@
 """ MSO4SC views module """
 
 import time
+import sso
 
-from portal import settings, common
+from portal import settings
 
 from django.contrib.auth.decorators import login_required
 from django.shortcuts import render, redirect
@@ -12,7 +13,7 @@ from django.shortcuts import render, redirect
 def index(request):
     social_user = request.user.social_auth.get(uid=request.user.username)
     # access_token = social_user.access_token
-    valid, data = common.get_token(
+    valid, data = sso.utils.get_token(
         request.user, request.get_full_path())
     if valid:
         access_token = data

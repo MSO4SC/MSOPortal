@@ -19,4 +19,6 @@ tests/report/
 
 settings.ini
 
+# django
+migrations/
 db.sqlite3

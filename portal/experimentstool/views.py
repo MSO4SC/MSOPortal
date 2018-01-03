@@ -5,7 +5,7 @@ import json
 import requests
 
 from urllib.parse import urlparse
-from portal import settings, common
+from portal import settings
 
 from django.contrib.auth.decorators import login_required
 from django.shortcuts import render, redirect
@@ -18,6 +18,9 @@ from cloudify_rest_client.exceptions \
     import DeploymentEnvironmentCreationPendingError
 from cloudify_rest_client.exceptions \
     import DeploymentEnvironmentCreationInProgressError
+
+from experimentstool.models import HPCInfrastructure
+
 WAIT_FOR_EXECUTION_SLEEP_INTERVAL = 3
 
 
@@ -32,8 +35,49 @@ def experimentstool(request):
 
 
 @login_required
+def get_hpc_list(request):
+    try:
+        hpc_list = HPCInfrastructure.objects.get(owner=request.user)
+    except HPCInfrastructure.DoesNotExist:
+        hpc_list = []
+    return JsonResponse(hpc_list, safe=False)
+
+
+@login_required
+def add_hpc(request):
+    host = request.POST.get('host', None)
+    if not host or host == '':
+        # TODO validation
+        return JsonResponse({'error': 'No host provided'})
+
+    user = request.POST.get('user', None)
+    if not user or user == '':
+        # TODO validation
+        return JsonResponse({'error': 'No user provided'})
+
+    password = request.POST.get('password', None)
+    if not password or password == '':
+        return JsonResponse({'error': 'No password provided'})
+
+    tz = request.POST.get('tz', None)
+    if not tz or tz == '':
+        # TODO validation
+        return JsonResponse({'error': 'No time zone provided'})
+
+    return JsonResponse(_add_hpc(request.user,
+                                 host, user,
+                                 password,
+                                 tz,
+                                 'SLURM'))
+
+
+def _add_hpc(owner, host, user, password, tz, manager):
+    return {'error': 'NOT IMPLEMENTED'}
+
+
+@login_required
 def get_products(request):
-    valid, data = common.get_token(request.user, request.get_full_path())
+    valid, data = sso.utils.get_token(request.user, request.get_full_path())
     if valid:
         access_token = data
     else:
@@ -84,7 +128,8 @@ def upload_blueprint(request):
             blueprint_path = pc['productSpecCharacteristicValue'][0]['value']
             break
     if not blueprint_path:
-        return JsonResponse({'error': 'The product does not have a \'BLUEPRINT_PATH\' charasteristic'})
+        return JsonResponse({'error': 'The product does not have a ' +
+                             '\'BLUEPRINT_PATH\' charasteristic'})
 
     return JsonResponse(_upload_blueprint(blueprint_path, mso4sc_id))
 
@@ -101,6 +146,7 @@ def get_blueprints(request):
     return JsonResponse({'blueprints': blueprints})
 
 
+@login_required
 def get_datasets(request):
     url = settings.DATACATALOGUE_URL + \
         "/api/3/action/package_list"
@@ -114,6 +160,7 @@ def get_datasets(request):
     return JsonResponse(json_data["result"], safe=False)
 
 
+@login_required
 def get_dataset_info(request):
     if 'datasets' not in request.session:
         return {'error': 'No datasets loaded'}
@@ -167,6 +214,7 @@ def create_deployment(request):
     return JsonResponse(_create_deployment(blueprint, deployment_id, inputs))
 
 
+@login_required
 def get_deployments(request):
     client = _get_client()
     try:
