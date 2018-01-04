@@ -231,6 +231,53 @@ $("#upload").find("button").on('click', function () {
     }
 });
 
+$("#blueprint_selector").find("select").on('change', function () {
+    var blueprint = $(this).val();
+    var inputs_list = $("#blueprint_selector").find(".dynamic_list");
+    inputs_list.empty();
+
+    if (parseInt(blueprint) >= 0) {
+        $.ajax({
+            url: '/experimentstool/_get_blueprint_inputs',
+            data: {
+                'blueprint_index': blueprint
+            },
+            dataType: 'json',
+            success: function (data) {
+                if (data.error!==undefined) {
+                    appendNotification("Couldn't read the inputs: "+data.error, error=true);
+                } else if (data.inputs.length > 0) {
+                    $(data.inputs).each(function (index, input) {
+                        inputs_list.append(
+                            $(document.createElement('div')).attr({
+                                id: "input_container_" + input.name
+                            }).append(
+                                $(document.createElement('label')).attr({
+                                    for: "input_" + input.name
+                                }).text(input.name),
+                                $(document.createElement('input')).attr({
+                                    id: "input_" + input.name,
+                                    value: input.default,
+                                    type: 'text'
+                                }),
+                            )
+                        )
+                    });
+                } else {
+                    inputs_list.append(
+                        $(document.createElement('label')).text("No input found")
+                    );
+                }
+            },
+            error: function (jqXHR, status, errorThrown) {
+                message = "Couldn't read the inputs: ";
+                message += jqXHR.status+": "+errorThrown+": "+jqXHR.responseText
+                appendNotification(message, error=true);
+            }
+        });
+    }
+});
+
 $("#dataset_selector").find("select").on('change', function () {
     var dataset = $(this).val();
     var resources_list = $("#dataset_selector").find(".dynamic_list");
@@ -244,7 +291,9 @@ $("#dataset_selector").find("select").on('change', function () {
             },
             dataType: 'json',
             success: function (data) {
-                if (data.num_resources > 0) {
+                if (data.error!==undefined) {
+                    appendNotification("Couldn't read the dataset info: "+data.error, error=true);
+                } else if (data.num_resources > 0) {
                     $(data.resources).each(function (index, resource) {
                         resources_list.append(
                             $(document.createElement('div')).attr({
@@ -269,7 +318,7 @@ $("#dataset_selector").find("select").on('change', function () {
                 }
             },
             error: function (jqXHR, status, errorThrown) {
-                message = "Couldn't create the instance: ";
+                message = "Couldn't read the dataset info: ";
                 message += jqXHR.status+": "+errorThrown+": "+jqXHR.responseText
                 appendNotification(message, error=true);
             }
@@ -472,6 +521,41 @@ function renderProductData(selector_id) {
     });
 }
 
+function renderBlueprintData(selector_id) {
+    var blueprint_selector = $(selector_id).find("select")
+    blueprint_selector.empty();
+    blueprint_selector.append(
+        $(document.createElement('option')).attr("value", "-1").text("Loading..")
+    );
+
+    $.ajax({
+        url: '/experimentstool/_load_blueprints',
+        success: function (data) {
+            blueprint_selector.empty();
+            blueprint_selector.append(
+                $(document.createElement('option')).attr("value", "-1").text("None")
+            );
+            blueprints = data.blueprints
+            if (blueprints.length > 0) {
+                $.each(blueprints, function (index, blueprint) {
+                    blueprint_selector.append(
+                        $(document.createElement('option')).attr("value", index).text(blueprint.id)
+                    )
+                });
+            } else {
+                blueprint_selector.append(
+                    $(document.createElement('option')).attr("value", "-1").text("No applications found")
+                );
+            }
+        },
+        error: function (jqXHR, status, errorThrown) {
+            message = "Couldn't get applications list: ";
+            message += jqXHR.status+": "+errorThrown+": "+jqXHR.responseText
+            appendNotification(message, error=true);
+        }
+    });
+}
+
 function renderDatasetsData(selector_id) {
     var dataset_selector = $(selector_id).find("select")
     dataset_selector.empty();
@@ -495,38 +579,6 @@ function renderDatasetsData(selector_id) {
         },
         error: function (jqXHR, status, errorThrown) {
             message = "Couldn't get datasets list: ";
-            message += jqXHR.status+": "+errorThrown+": "+jqXHR.responseText
-            appendNotification(message, error=true);
-        }
-    });
-}
-
-function renderBlueprintData(selector_id) {
-    var remove_blueprint_selector = $(selector_id).find("select")
-    remove_blueprint_selector.empty();
-    remove_blueprint_selector.append(
-        $(document.createElement('option')).attr("value", "-1").text("Loading..")
-    );
-
-    $.ajax({
-        url: '/experimentstool/_get_blueprints',
-        success: function (data) {
-            remove_blueprint_selector.empty();
-            blueprints = data.blueprints
-            if (blueprints.length > 0) {
-                $.each(blueprints, function (index, blueprint) {
-                    remove_blueprint_selector.append(
-                        $(document.createElement('option')).attr("value", index).text(blueprint.id)
-                    )
-                });
-            } else {
-                remove_blueprint_selector.append(
-                    $(document.createElement('option')).attr("value", "-1").text("No applications found")
-                );
-            }
-        },
-        error: function (jqXHR, status, errorThrown) {
-            message = "Couldn't get applications list: ";
             message += jqXHR.status+": "+errorThrown+": "+jqXHR.responseText
             appendNotification(message, error=true);
         }

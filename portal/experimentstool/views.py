@@ -94,29 +94,6 @@ def delete_hpc(request):
     return JsonResponse(_delete_hpc(request.user, pk))
 
 
-def _add_hpc(name, owner, host, user, password, tz, manager):
-    hpc = HPCInfrastructure.objects.create(name=name,
-                                           owner=owner,
-                                           host=host,
-                                           user=user,
-                                           password=password,
-                                           time_zone=tz,
-                                           manager=manager)
-    return {'hpc': model_to_dict(hpc)}
-
-
-def _delete_hpc(owner, pk):
-    try:
-        hpc = HPCInfrastructure.objects.get(pk=pk)
-        if (owner == hpc.owner):
-            hpc.delete()
-            return {'hpc': model_to_dict(hpc)}
-        else:
-            return {'error': 'HPC does not belong to user'}
-    except HPCInfrastructure.DoesNotExist:
-        return {'error': 'HPC does not exists'}
-
-
 @login_required
 def get_products(request):
     valid, data = sso.utils.get_token(request.user, request.get_full_path())
@@ -176,16 +153,29 @@ def upload_blueprint(request):
     return JsonResponse(_upload_blueprint(blueprint_path, mso4sc_id))
 
 
-def get_blueprints(request):
-    client = _get_client()
-    try:
-        blueprints = client.blueprints.list().items
-    except CloudifyClientError as e:
-        print(e)
-        return JsonResponse({'error': str(e)})
+@login_required
+def load_blueprints(request):
+    response = _get_blueprints()
 
-    request.session['blueprints'] = blueprints
-    return JsonResponse({'blueprints': blueprints})
+    if 'error' not in response:
+        request.session['blueprints'] = response['blueprints']
+    return JsonResponse(response)
+
+
+@login_required
+def get_blueprint_inputs(request):
+    if 'blueprints' not in request.session:
+        return {'error': 'No blueprints loaded'}
+
+    blueprints = request.session['blueprints']
+    blueprint_index = int(request.GET.get('blueprint_index', -1))
+
+    if blueprint_index >= len(blueprints) or blueprint_index < 0:
+        return JsonResponse({'error': 'Bad blueprint index provided'})
+
+    blueprint_id = blueprints[blueprint_index]['id']
+
+    return JsonResponse(_get_blueprint_inputs(blueprint_id))
 
 
 @login_required
@@ -250,10 +240,10 @@ def create_deployment(request):
     if not deployment_id or deployment_id is '':
         return JsonResponse({'error': 'No deployment provided'})
 
-    blueprint = blueprints[blueprint_index]['id']
-    dataset = datasets[dataset_index]  # TODO
+    blueprint_id = blueprints[blueprint_index]['id']
+    # dataset = datasets[dataset_index]  # TODO
 
-    return JsonResponse(_create_deployment(blueprint, deployment_id, inputs))
+    return JsonResponse(_create_deployment(blueprint_id, deployment_id, inputs))
 
 
 @login_required
@@ -409,6 +399,29 @@ def remove_blueprint(request):
     return JsonResponse(_remove_blueprint(blueprint))
 
 
+def _add_hpc(name, owner, host, user, password, tz, manager):
+    hpc = HPCInfrastructure.objects.create(name=name,
+                                           owner=owner,
+                                           host=host,
+                                           user=user,
+                                           password=password,
+                                           time_zone=tz,
+                                           manager=manager)
+    return {'hpc': model_to_dict(hpc)}
+
+
+def _delete_hpc(owner, pk):
+    try:
+        hpc = HPCInfrastructure.objects.get(pk=pk)
+        if (owner == hpc.owner):
+            hpc.delete()
+            return {'hpc': model_to_dict(hpc)}
+        else:
+            return {'error': 'HPC does not belong to user'}
+    except HPCInfrastructure.DoesNotExist:
+        return {'error': 'HPC does not exists'}
+
+
 def _get_client():
     client = CloudifyClient(host=settings.ORCHESTRATOR_HOST,
                             username=settings.ORCHESTRATOR_USER,
@@ -431,6 +444,33 @@ def _upload_blueprint(path, blueprint_id):
         return {'error': str(e)}
 
     return {'blueprint': blueprint}
+
+
+def _get_blueprints():
+    client = _get_client()
+    try:
+        blueprints = client.blueprints.list().items
+    except CloudifyClientError as e:
+        print(e)
+        return {'error': str(e)}
+
+    return {'blueprints': blueprints}
+
+
+def _get_blueprint_inputs(blueprint_id):
+    client = _get_client()
+    try:
+        blueprint_dict = client.blueprints.get(blueprint_id)
+        inputs = blueprint_dict['plan']['inputs']
+        data = [{'name': name,
+                 'type': input.get('type', '-'),
+                 'default': input.get('default', '-'),
+                 'description': input.get('description', '-')}
+                for name, input in inputs.items()]
+    except CloudifyClientError as e:
+        print(e)
+        return {'error': str(e)}
+    return {'inputs': data}
 
 
 def _create_deployment(blueprint_id, development_id, inputs, retries=3):
