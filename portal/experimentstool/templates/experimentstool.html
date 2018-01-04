@@ -43,7 +43,7 @@
     {% include "sections/remove.html" %}
 </div>
 
-<div id="settings" class="settings">
+<div id="settings" class="tabcontent">
     {% include "sections/settings.html" %}
 </div>
 
@@ -109,6 +109,7 @@ function openExperimentsTool(evt, toolName) {
             renderBlueprintData("#remove_blueprint_selector");
             break;
         case "settings":
+            renderHPCData("#infrastructure_list", selector=false);
             break;
     }
 
@@ -132,6 +133,72 @@ function appendNotification(message, error = false) {
             class: note_class
         }).text(message)
     )
+}
+
+$("#add_hpc").find("button").on('click', function () {
+    var name = $("#add_hpc_name").val();
+    var host = $("#add_hpc_host").val();
+    var user = $("#add_hpc_user").val();
+    var password = $("#add_hpc_password").val();
+    var timezone = $("#add_hpc_timezone").val();
+
+    cleanNotifications();
+    if (name != '' && host != '' && user!= '' && password != '' && timezone != '') {
+        $.ajax({
+            url: '/experimentstool/_add_hpc',
+            type: "POST",
+            data: {
+                'name': name,
+                'host': host,
+                'user': user,
+                'password': password,
+                'timezone': timezone,
+            },
+            dataType: 'json',
+            success: function (data) {
+                if (data.error!==undefined) {
+                    appendNotification("Couldn't add the HPC: "+data.error, error=true);
+                } else {
+                    appendNotification("HPC "+data.hpc.name+" added.");
+                }
+            },
+            error: function (jqXHR, status, errorThrown) {
+                message = "Couldn't add the hpc: ";
+                message += jqXHR.status+": "+errorThrown+": "+jqXHR.responseText
+                appendNotification(message, error=true);
+            },
+            complete: function() {
+                renderHPCData("#infrastructure_list", selector=false, clean=false);
+            },
+        });
+    }
+});
+
+function loadDeleteHPCHandler(button_id, pk, refresh_function) {
+    $(button_id).on('click', function () {
+        $.ajax({
+            method: "POST",
+            url: '/experimentstool/_delete_hpc',
+            data: {
+                'pk': pk
+            },
+            dataType: 'json',
+            success: function (data) {
+                if (data.error!==undefined) {
+                    appendNotification("Couldn't delete the hpc: "+data.error, error=true);
+                } else {
+                    console.log(data)
+                    appendNotification("HPC "+data.hpc.name+" removed.");
+                }
+            },
+            error: function (jqXHR, status, errorThrown) {
+                message = "Couldn't remove the app: ";
+                message += jqXHR.status+": "+errorThrown+": "+jqXHR.responseText
+                appendNotification(message, error=true);
+            },
+            complete: refresh_function
+        });
+    });
 }
 
 $("#upload").find("button").on('click', function () {
@@ -314,6 +381,68 @@ $("#remove").find("button").on('click', function () {
         }
     });
 });
+
+function renderHPCData(container_id, selector=true, clear_notifications=true) {
+    var hpc_container = $(container_id)
+    if (selector) {
+        hpc_container = hpc_container.find("select")
+    }
+    hpc_container.empty();
+    if (clear_notifications) {
+        cleanNotifications();
+    }
+
+    $.ajax({
+        url: '/experimentstool/_get_hpc_list',
+        success: function (response) {
+            var hpc_list =$.parseJSON(response);
+            if (hpc_list.length > 0) {
+                $.each(hpc_list, function (index, hpc) {
+                    if (selector) {
+                        hpc_container.append(
+                            $(document.createElement('option'))
+                                .attr("value", hpc.pk)
+                                .text(hpc.fields.name)
+                        );
+                    } else {
+                        hpc_container.append(
+                            $(document.createElement('div')).
+                                attr("id", "hpc_"+hpc.pk).
+                                text(hpc.fields.name).append(
+                                    $(document.createElement('button')).
+                                        attr("id", "del_hpc_"+hpc.pk).
+                                        text('Delete')
+                                )
+                        );
+                        loadDeleteHPCHandler(
+                            "#del_hpc_"+hpc.pk,
+                            hpc.pk,
+                            refresh_function = function() {
+                                renderHPCData(container_id, selector=selector, clean=false); 
+                            });
+                    }
+                });
+            } else {
+                if (selector) {
+                    hpc_container.append(
+                        $(document.createElement('option'))
+                            .attr("value", "-1")
+                            .text("No products found")
+                    );
+                } else {
+                    hpc_container.append(
+                        $(document.createElement('div')).attr("id", "no_hpc_list").text("No HPC infrastructures found")
+                    )
+                }
+            }
+        },
+        error: function (jqXHR, status, errorThrown) {
+            message = "Couldn't get hpc list: ";
+            message += jqXHR.status+": "+errorThrown+": "+jqXHR.responseText
+            appendNotification(message, error=true);
+        }
+    });
+}
 
 function renderProductData(selector_id) {
     var product_selector = $(selector_id).find("select")

@@ -34,4 +34,10 @@ urlpatterns = [
         views.destroy_deployment, name='_destroy_deployment'),
     url(r'^_remove_blueprint$',
         views.remove_blueprint, name='_remove_blueprint'),
+    url(r'^_get_hpc_list$',
+        views.get_hpc_list, name='_get_hpc_list'),
+    url(r'^_add_hpc$',
+        views.add_hpc, name='_add_hpc'),
+    url(r'^_delete_hpc$',
+        views.delete_hpc, name='_delete_hpc'),
 ]

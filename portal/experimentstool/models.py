@@ -3,6 +3,8 @@ from django.db import models
 
 
 class HPCInfrastructure(models.Model):
+    name = models.CharField(max_length=50)
+
     owner = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.CASCADE,
@@ -23,7 +25,8 @@ class HPCInfrastructure(models.Model):
     )
 
     def __str__(self):
-        return format("HPC at %s from %s(%s)",
+        return format("%s: HPC at %s from %s(%s)",
+                      self.name,
                       self.host,
                       self.owner.name,
                       self.user)

@@ -2,14 +2,18 @@
 
 import time
 import json
+import yaml
 import requests
+import sso.utils
 
 from urllib.parse import urlparse
 from portal import settings
 
+from django.core import serializers
 from django.contrib.auth.decorators import login_required
 from django.shortcuts import render, redirect
 from django.http import JsonResponse
+from django.forms.models import model_to_dict
 
 from cloudify_rest_client import CloudifyClient
 from cloudify_rest_client.executions import Execution
@@ -37,7 +41,10 @@ def experimentstool(request):
 @login_required
 def get_hpc_list(request):
     try:
-        hpc_list = HPCInfrastructure.objects.get(owner=request.user)
+        hpc_list = serializers.serialize(
+            'json',
+            HPCInfrastructure.objects.filter(owner=request.user)
+        )
     except HPCInfrastructure.DoesNotExist:
         hpc_list = []
     return JsonResponse(hpc_list, safe=False)
@@ -45,6 +52,11 @@ def get_hpc_list(request):
 
 @login_required
 def add_hpc(request):
+    name = request.POST.get('name', None)
+    if not name or name == '':
+        # TODO validation
+        return JsonResponse({'error': 'No name provided'})
+
     host = request.POST.get('host', None)
     if not host or host == '':
         # TODO validation
@@ -59,20 +71,50 @@ def add_hpc(request):
     if not password or password == '':
         return JsonResponse({'error': 'No password provided'})
 
-    tz = request.POST.get('tz', None)
+    tz = request.POST.get('timezone', None)
     if not tz or tz == '':
         # TODO validation
         return JsonResponse({'error': 'No time zone provided'})
 
-    return JsonResponse(_add_hpc(request.user,
+    return JsonResponse(_add_hpc(name,
+                                 request.user,
                                  host, user,
                                  password,
                                  tz,
-                                 'SLURM'))
+                                 HPCInfrastructure.SLURM))
 
 
-def _add_hpc(owner, host, user, password, tz, manager):
-    return {'error': 'NOT IMPLEMENTED'}
+@login_required
+def delete_hpc(request):
+    pk = request.POST.get('pk', None)
+    if not pk or pk == '':
+        # TODO validation
+        return JsonResponse({'error': 'No name provided'})
+
+    return JsonResponse(_delete_hpc(request.user, pk))
+
+
+def _add_hpc(name, owner, host, user, password, tz, manager):
+    hpc = HPCInfrastructure.objects.create(name=name,
+                                           owner=owner,
+                                           host=host,
+                                           user=user,
+                                           password=password,
+                                           time_zone=tz,
+                                           manager=manager)
+    return {'hpc': model_to_dict(hpc)}
+
+
+def _delete_hpc(owner, pk):
+    try:
+        hpc = HPCInfrastructure.objects.get(pk=pk)
+        if (owner == hpc.owner):
+            hpc.delete()
+            return {'hpc': model_to_dict(hpc)}
+        else:
+            return {'error': 'HPC does not belong to user'}
+    except HPCInfrastructure.DoesNotExist:
+        return {'error': 'HPC does not exists'}
 
 
 @login_required
@@ -251,8 +293,8 @@ def get_install_events(request):
 
         response = _get_execution_events(execution_id, offset)
         if offset != response['last']:
-            request.session['install_execution']['offset'] =\
-                response.pop('last')
+            request.session['install_execution']['offset'] = response.pop(
+                'last')
             request.session.modified = True
             print("new offset: " +
                   str(request.session['install_execution']['offset']))
@@ -284,8 +326,7 @@ def get_run_events(request):
 
         response = _get_execution_events(execution_id, offset)
         if offset != response['last']:
-            request.session['run_execution']['offset'] =\
-                response.pop('last')
+            request.session['run_execution']['offset'] = response.pop('last')
             request.session.modified = True
 
     return JsonResponse(response)
