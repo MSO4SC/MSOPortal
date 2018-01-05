@@ -82,6 +82,7 @@ function openExperimentsTool(evt, toolName) {
             break;
         case "deploy":
             renderBlueprintData("#blueprint_selector");
+            renderHPCChoices("#infrastructure_choices");
             renderDatasetsData("#dataset_selector");
             break;
         case "install":
@@ -109,30 +110,13 @@ function openExperimentsTool(evt, toolName) {
             renderBlueprintData("#remove_blueprint_selector");
             break;
         case "settings":
-            renderHPCData("#infrastructure_list", selector=false);
+            renderHPCChoices("#infrastructure_list", checkbox=false);
             break;
     }
 
     // Show the current tab, and add an "active" class to the button that opened the tab
     document.getElementById(toolName).style.display = "block";
     evt.currentTarget.className += " active";
-}
-
-function cleanNotifications() {
-    $("#experiments_notification_container").empty();
-}
-
-function appendNotification(message, error = false) {
-    note_class = "note_success";
-    if (error) {
-        note_class = "note_failure";
-    }
-
-    $("#experiments_notification_container").append(
-        $(document.createElement('div')).attr({
-            class: note_class
-        }).text(message)
-    )
 }
 
 $("#add_hpc").find("button").on('click', function () {
@@ -174,33 +158,6 @@ $("#add_hpc").find("button").on('click', function () {
     }
 });
 
-function loadDeleteHPCHandler(button_id, pk, refresh_function) {
-    $(button_id).on('click', function () {
-        $.ajax({
-            method: "POST",
-            url: '/experimentstool/_delete_hpc',
-            data: {
-                'pk': pk
-            },
-            dataType: 'json',
-            success: function (data) {
-                if (data.error!==undefined) {
-                    appendNotification("Couldn't delete the hpc: "+data.error, error=true);
-                } else {
-                    console.log(data)
-                    appendNotification("HPC "+data.hpc.name+" removed.");
-                }
-            },
-            error: function (jqXHR, status, errorThrown) {
-                message = "Couldn't remove the app: ";
-                message += jqXHR.status+": "+errorThrown+": "+jqXHR.responseText
-                appendNotification(message, error=true);
-            },
-            complete: refresh_function
-        });
-    });
-}
-
 $("#upload").find("button").on('click', function () {
     var product = $("#product_selector").find("select").val();
     var mso_id = $("#mso4sc_id").find("input").val();
@@ -232,98 +189,11 @@ $("#upload").find("button").on('click', function () {
 });
 
 $("#blueprint_selector").find("select").on('change', function () {
-    var blueprint = $(this).val();
-    var inputs_list = $("#blueprint_selector").find(".dynamic_list");
-    inputs_list.empty();
-
-    if (parseInt(blueprint) >= 0) {
-        $.ajax({
-            url: '/experimentstool/_get_blueprint_inputs',
-            data: {
-                'blueprint_index': blueprint
-            },
-            dataType: 'json',
-            success: function (data) {
-                if (data.error!==undefined) {
-                    appendNotification("Couldn't read the inputs: "+data.error, error=true);
-                } else if (data.inputs.length > 0) {
-                    $(data.inputs).each(function (index, input) {
-                        inputs_list.append(
-                            $(document.createElement('div')).attr({
-                                id: "input_container_" + input.name
-                            }).append(
-                                $(document.createElement('label')).attr({
-                                    for: "input_" + input.name
-                                }).text(input.name),
-                                $(document.createElement('input')).attr({
-                                    id: "input_" + input.name,
-                                    value: input.default,
-                                    type: 'text'
-                                }),
-                            )
-                        )
-                    });
-                } else {
-                    inputs_list.append(
-                        $(document.createElement('label')).text("No input found")
-                    );
-                }
-            },
-            error: function (jqXHR, status, errorThrown) {
-                message = "Couldn't read the inputs: ";
-                message += jqXHR.status+": "+errorThrown+": "+jqXHR.responseText
-                appendNotification(message, error=true);
-            }
-        });
-    }
+    renderBlueprintInputs("#blueprint_selector", "#blueprint_inputs")
 });
 
 $("#dataset_selector").find("select").on('change', function () {
-    var dataset = $(this).val();
-    var resources_list = $("#dataset_selector").find(".dynamic_list");
-    resources_list.empty();
-
-    if (parseInt(dataset) >= 0) {
-        $.ajax({
-            url: '/experimentstool/_get_dataset_info',
-            data: {
-                'dataset': dataset
-            },
-            dataType: 'json',
-            success: function (data) {
-                if (data.error!==undefined) {
-                    appendNotification("Couldn't read the dataset info: "+data.error, error=true);
-                } else if (data.num_resources > 0) {
-                    $(data.resources).each(function (index, resource) {
-                        resources_list.append(
-                            $(document.createElement('div')).attr({
-                                id: "resource_selector_" + resource.name
-                            }).append(
-                                $(document.createElement('input')).attr({
-                                    id: "resource_" + resource.name,
-                                    name: resource.name,
-                                    value: resource.name,
-                                    type: 'checkbox'
-                                }),
-                                $(document.createElement('label')).attr({
-                                    for: "resource_" + resource.name
-                                }).text(resource.name)
-                            )
-                        )
-                    });
-                } else {
-                    resources_list.append(
-                        $(document.createElement('label')).text("No resources found")
-                    );
-                }
-            },
-            error: function (jqXHR, status, errorThrown) {
-                message = "Couldn't read the dataset info: ";
-                message += jqXHR.status+": "+errorThrown+": "+jqXHR.responseText
-                appendNotification(message, error=true);
-            }
-        });
-    }
+    renderDatasetChoices("#dataset_selector", "#dataset_choices");
 });
 
 $("#deploy_form").find("button").on('click', function (event) {
@@ -431,11 +301,8 @@ $("#remove").find("button").on('click', function () {
     });
 });
 
-function renderHPCData(container_id, selector=true, clear_notifications=true) {
+function renderHPCChoices(container_id, checkbox=true, clear_notifications=true) {
     var hpc_container = $(container_id)
-    if (selector) {
-        hpc_container = hpc_container.find("select")
-    }
     hpc_container.empty();
     if (clear_notifications) {
         cleanNotifications();
@@ -447,11 +314,21 @@ function renderHPCData(container_id, selector=true, clear_notifications=true) {
             var hpc_list =$.parseJSON(response);
             if (hpc_list.length > 0) {
                 $.each(hpc_list, function (index, hpc) {
-                    if (selector) {
+                    if (checkbox) {
                         hpc_container.append(
-                            $(document.createElement('option'))
-                                .attr("value", hpc.pk)
-                                .text(hpc.fields.name)
+                            $(document.createElement('div')).attr({
+                                id: "hpc_choice_" + hpc.fields.name
+                            }).append(
+                                $(document.createElement('input')).attr({
+                                    id: "hpc_" + hpc.fields.name,
+                                    name: hpc.fields.name,
+                                    value: hpc.pk,
+                                    type: 'checkbox'
+                                }),
+                                $(document.createElement('label')).attr({
+                                    for: "hpc_" + hpc.fields.name
+                                }).text(hpc.fields.name)
+                            )
                         );
                     } else {
                         hpc_container.append(
@@ -463,16 +340,16 @@ function renderHPCData(container_id, selector=true, clear_notifications=true) {
                                         text('Delete')
                                 )
                         );
-                        loadDeleteHPCHandler(
+                        renderHPCEditButtons(
                             "#del_hpc_"+hpc.pk,
                             hpc.pk,
                             refresh_function = function() {
-                                renderHPCData(container_id, selector=selector, clean=false); 
+                                renderHPCChoices(container_id, checkbox=checkbox, clean=false); 
                             });
                     }
                 });
             } else {
-                if (selector) {
+                if (checkbox) {
                     hpc_container.append(
                         $(document.createElement('option'))
                             .attr("value", "-1")
@@ -490,6 +367,33 @@ function renderHPCData(container_id, selector=true, clear_notifications=true) {
             message += jqXHR.status+": "+errorThrown+": "+jqXHR.responseText
             appendNotification(message, error=true);
         }
+    });
+}
+
+function renderHPCEditButtons(button_id, pk, refresh_function) {
+    $(button_id).on('click', function () {
+        $.ajax({
+            method: "POST",
+            url: '/experimentstool/_delete_hpc',
+            data: {
+                'pk': pk
+            },
+            dataType: 'json',
+            success: function (data) {
+                if (data.error!==undefined) {
+                    appendNotification("Couldn't delete the hpc: "+data.error, error=true);
+                } else {
+                    console.log(data)
+                    appendNotification("HPC "+data.hpc.name+" removed.");
+                }
+            },
+            error: function (jqXHR, status, errorThrown) {
+                message = "Couldn't remove the app: ";
+                message += jqXHR.status+": "+errorThrown+": "+jqXHR.responseText
+                appendNotification(message, error=true);
+            },
+            complete: refresh_function
+        });
     });
 }
 
@@ -556,6 +460,53 @@ function renderBlueprintData(selector_id) {
     });
 }
 
+function renderBlueprintInputs(selector_id, container_id) {
+    var blueprint = $(selector_id).find("select").val();
+    var inputs_container = $(container_id);
+    inputs_container.empty();
+
+    if (parseInt(blueprint) >= 0) {
+        $.ajax({
+            url: '/experimentstool/_get_blueprint_inputs',
+            data: {
+                'blueprint_index': blueprint
+            },
+            dataType: 'json',
+            success: function (data) {
+                if (data.error!==undefined) {
+                    appendNotification("Couldn't read the inputs: "+data.error, error=true);
+                } else if (data.inputs.length > 0) {
+                    $(data.inputs).each(function (index, input) {
+                        inputs_container.append(
+                            $(document.createElement('div')).attr({
+                                id: "input_container_" + input.name
+                            }).append(
+                                $(document.createElement('label')).attr({
+                                    for: "input_" + input.name
+                                }).text(input.name),
+                                $(document.createElement('input')).attr({
+                                    id: "input_" + input.name,
+                                    value: input.default,
+                                    type: 'text'
+                                }),
+                            )
+                        )
+                    });
+                } else {
+                    inputs_container.append(
+                        $(document.createElement('label')).text("No input found")
+                    );
+                }
+            },
+            error: function (jqXHR, status, errorThrown) {
+                message = "Couldn't read the inputs: ";
+                message += jqXHR.status+": "+errorThrown+": "+jqXHR.responseText
+                appendNotification(message, error=true);
+            }
+        });
+    }
+}
+
 function renderDatasetsData(selector_id) {
     var dataset_selector = $(selector_id).find("select")
     dataset_selector.empty();
@@ -583,6 +534,54 @@ function renderDatasetsData(selector_id) {
             appendNotification(message, error=true);
         }
     });
+}
+
+function renderDatasetChoices(selector_id, container_id){
+    var dataset = $(selector_id).find("select").val();
+    var resources_container = $(container_id);
+    resources_container.empty();
+
+    if (parseInt(dataset) >= 0) {
+        $.ajax({
+            url: '/experimentstool/_get_dataset_info',
+            data: {
+                'dataset': dataset
+            },
+            dataType: 'json',
+            success: function (data) {
+                if (data.error!==undefined) {
+                    appendNotification("Couldn't read the dataset info: "+data.error, error=true);
+                } else if (data.num_resources > 0) {
+                    $(data.resources).each(function (index, resource) {
+                        resources_container.append(
+                            $(document.createElement('div')).attr({
+                                id: "resource_choice_" + resource.name
+                            }).append(
+                                $(document.createElement('input')).attr({
+                                    id: "resource_" + resource.name,
+                                    name: resource.name,
+                                    value: resource.name,
+                                    type: 'checkbox'
+                                }),
+                                $(document.createElement('label')).attr({
+                                    for: "resource_" + resource.name
+                                }).text(resource.name)
+                            )
+                        )
+                    });
+                } else {
+                    resources_container.append(
+                        $(document.createElement('label')).text("No resources found")
+                    );
+                }
+            },
+            error: function (jqXHR, status, errorThrown) {
+                message = "Couldn't read the dataset info: ";
+                message += jqXHR.status+": "+errorThrown+": "+jqXHR.responseText
+                appendNotification(message, error=true);
+            }
+        });
+    }
 }
 
 function renderDeploymentData(selector_id) {
@@ -690,6 +689,23 @@ function executeDeployment(selector_id, url_exec, log_id = null, url_log = null)
         }
     });
 };
+
+function cleanNotifications() {
+    $("#experiments_notification_container").empty();
+}
+
+function appendNotification(message, error = false) {
+    note_class = "note_success";
+    if (error) {
+        note_class = "note_failure";
+    }
+
+    $("#experiments_notification_container").append(
+        $(document.createElement('div')).attr({
+            class: note_class
+        }).text(message)
+    )
+}
 
 </script>
 {% endblock %}
