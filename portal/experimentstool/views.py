@@ -2,7 +2,6 @@
 
 import time
 import json
-import yaml
 import requests
 import sso.utils
 
@@ -224,19 +223,18 @@ def create_deployment(request):
         return {'error': 'No datasets loaded'}
 
     blueprints = request.session['blueprints']
-    datasets = request.session['datasets']
+    # datasets = request.session['datasets']
 
     blueprint_index = int(request.POST.get('blueprint_index', -1))
-    dataset_index = int(request.POST.get('dataset_index', -1))
-    inputs_file = request.FILES['deployment_inputs']
-    inputs_data = inputs_file.read().decode("utf-8").replace('\r\n', '\n')
-    inputs = yaml.load(inputs_data)
+    # dataset_index = int(request.POST.get('dataset_index', -1))
+    inputs_str = request.POST.get('deployment_inputs', "{}")
+    inputs = json.loads(inputs_str)
     deployment_id = request.POST.get('deployment_id', None)
 
     if blueprint_index >= len(blueprints) or blueprint_index < 0:
         return JsonResponse({'error': 'Bad blueprint index provided'})
-    if dataset_index >= len(datasets) or dataset_index < 0:
-        return JsonResponse({'error': 'Bad dataset index provided'})
+    # if dataset_index >= len(datasets) or dataset_index < 0:
+    #    return JsonResponse({'error': 'Bad dataset index provided'})
     if not deployment_id or deployment_id is '':
         return JsonResponse({'error': 'No deployment provided'})
 
@@ -356,9 +354,12 @@ def get_uninstall_events(request):
 def destroy_deployment(request):
     response = _execute_deployment(request, _destroy_deployment)
     if 'error' not in response:
-        request.session.pop('install_execution')
-        request.session.pop('run_execution')
-        request.session.pop('uninstall_execution')
+        if 'install_execution' in request.session:
+            request.session.pop('install_execution')
+        if 'run_execution' in request.session:
+            request.session.pop('run_execution')
+        if 'uninstall_execution' in request.session:
+            request.session.pop('uninstall_execution')
     return JsonResponse(response)
 
 
@@ -549,20 +550,24 @@ def _events_to_string(events):
                     " (" + event["node_name"] + ")"
             elif cloudify_event_type == "sending_task" \
                     or cloudify_event_type == "task_started" \
-                    or cloudify_event_type == "task_succeeded":
+                    or cloudify_event_type == "task_succeeded" \
+                    or cloudify_event_type == "task_failed":
                 # message += " [" + event["operation"] + "]"
                 if event["node_instance_id"]:
                     message += " " + event["node_instance_id"]
                 if event["node_name"]:
                     message += " (" + event["node_name"] + ")"
-            elif cloudify_event_type == "workflow_started":
-                pass
-            elif cloudify_event_type == "workflow_succeeded":
+            elif cloudify_event_type == "workflow_started" \
+                    or cloudify_event_type == "workflow_succeeded" \
+                    or cloudify_event_type == "workflow_failed" \
+                    or cloudify_event_type == "workflow_cancelled":
                 pass
             else:
                 message = json.dumps(event)
             if event["error_causes"]:
-                message += "\n" + event["error_causes"]
+                for cause in event["error_causes"]:
+                    message += "\n" + cause['type'] + ": " + cause["message"]
+                    message += "\n\t" + cause["traceback"]
         else:
             message = json.dumps(event)
         response.append(message)

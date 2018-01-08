@@ -198,56 +198,50 @@ $("#dataset_selector").find("select").on('change', function () {
 
 $("#deploy_form").find("button").on('click', function (event) {
     event.preventDefault();
-    if (window.File && window.FileReader && window.FileList && window.Blob) {
-        // Great success! All the File APIs are supported.
-    } else {
-        alert('The File APIs are not fully supported in this browser.');
-    }
 
     var blueprint_index = $("#blueprint_selector").find("select").val();
     var dataset_index = $("#dataset_selector").find("select").val();
-    var deployment_inputs = $("#deployment_inputs").find("input")[0];
     var deployment_id = $("#deployment_id").find("input").val();
 
-    if (!deployment_inputs) {
-        alert("Um, couldn't find the fileinput element.");
-    }
-    else if (!deployment_inputs.files) {
-        alert("This browser doesn't seem to support the `files` property of file inputs.");
-    }
-    else if (!deployment_inputs.files[0]) {
-        alert("Please select a file before deploy");               
-    }
-    else {
-        var data = new FormData();
-        data.append('blueprint_index', blueprint_index);
-        data.append('dataset_index', dataset_index);
-        data.append('deployment_inputs', deployment_inputs.files[0]);
-        data.append('deployment_id', deployment_id);
+    var inputs_dict = {};
+    $('input[id^="input_"').each(function(index, input){
+        try {
+            inputs_dict[$('label[for="' + $(input).attr('id') + '"]').html()] = JSON.parse($(input).val());
+        }
+        catch(err) {
+            inputs_dict[$('label[for="' + $(input).attr('id') + '"]').html()] = JSON.parse('"'+$(input).val()+'"');
+        }
+    });
+    var deployment_inputs = JSON.stringify(inputs_dict);
 
-        cleanNotifications();
-        $.ajax({
-            method: "POST",
-            url: '/experimentstool/_deploy_application',
-            data: data,
-            dataType: 'json',
-            contentType: false,
-            processData: false,
-            cache: false,
-            success: function (data) {
-                if (data.error!==undefined) {
-                    appendNotification("Couldn't create the instance: "+data.error, error=true);
-                } else {
-                    appendNotification("App instance "+data.deployment.id+" created.");
-                }
-            },
-            error: function (jqXHR, status, errorThrown) {
-                message = "Couldn't create the instance: ";
-                message += jqXHR.status+": "+errorThrown+": "+jqXHR.responseText
-                appendNotification(message, error=true);
+    var data = new FormData();
+    data.append('blueprint_index', blueprint_index);
+    data.append('dataset_index', dataset_index);
+    data.append('deployment_inputs', deployment_inputs);
+    data.append('deployment_id', deployment_id);
+
+    cleanNotifications();
+    $.ajax({
+        method: "POST",
+        url: '/experimentstool/_deploy_application',
+        data: data,
+        dataType: 'json',
+        contentType: false,
+        processData: false,
+        cache: false,
+        success: function (data) {
+            if (data.error!==undefined) {
+                appendNotification("Couldn't create the instance: "+data.error, error=true);
+            } else {
+                appendNotification("App instance "+data.deployment.id+" created.");
             }
-        });
-    }
+        },
+        error: function (jqXHR, status, errorThrown) {
+            message = "Couldn't create the instance: ";
+            message += jqXHR.status+": "+errorThrown+": "+jqXHR.responseText
+            appendNotification(message, error=true);
+        }
+    });
 });
 
 $("#install").find("button").on('click', function () {
@@ -486,7 +480,7 @@ function renderBlueprintInputs(selector_id, container_id) {
                                 }).text(input.name),
                                 $(document.createElement('input')).attr({
                                     id: "input_" + input.name,
-                                    value: input.default,
+                                    value: inputValueToString(input.default),
                                     type: 'text'
                                 }),
                             )
@@ -504,6 +498,14 @@ function renderBlueprintInputs(selector_id, container_id) {
                 appendNotification(message, error=true);
             }
         });
+    }
+}
+
+function inputValueToString(value) {
+    if (jQuery.type(value)=="object") {
+        return "{}"
+    } else {
+        return value
     }
 }
 
