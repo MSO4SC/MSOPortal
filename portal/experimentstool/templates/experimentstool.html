@@ -747,9 +747,15 @@ $("#force-undeploy-button").on('click', function () {
                       force = true);
 });
 
-$("#destroy").find("button").on('click', function () {
+$("#destroy-instance-button").on('click', function () {
     executeDeployment("#destroy_deployment_selector",
                       "/experimentstool/_destroy_deployment");
+});
+
+$("#force-destroy-instance-button").on('click', function () {
+    executeDeployment("#destroy_deployment_selector",
+                      "/experimentstool/_destroy_deployment",
+                      force=true);
 });
 
 $("#remove").find("button").on('click', function () {
