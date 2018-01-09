@@ -1,5 +1,6 @@
 """ Experiments Tool views module """
 
+import re
 import time
 import json
 import requests
@@ -228,29 +229,73 @@ def create_deployment(request):
         return {'error': 'No datasets loaded'}
 
     blueprints = request.session['blueprints']
-    # datasets = request.session['datasets']
+    datasets = request.session['datasets']
 
+    deployment_id = request.POST.get('deployment_id', None)
     blueprint_index = int(request.POST.get('blueprint_index', -1))
-    # dataset_index = int(request.POST.get('dataset_index', -1))
     inputs_str = request.POST.get('deployment_inputs', "{}")
     inputs = json.loads(inputs_str)
-    deployment_id = request.POST.get('deployment_id', None)
 
-    if blueprint_index >= len(blueprints) or blueprint_index < 0:
-        return JsonResponse({'error': 'Bad blueprint index provided'})
-    # if dataset_index >= len(datasets) or dataset_index < 0:
-    #    return JsonResponse({'error': 'Bad dataset index provided'})
     if not deployment_id or deployment_id is '':
         return JsonResponse({'error': 'No deployment provided'})
+    if blueprint_index >= len(blueprints) or blueprint_index < 0:
+        return JsonResponse({'error': 'Bad blueprint index provided'})
 
     blueprint_id = blueprints[blueprint_index]['id']
-    # dataset = datasets[dataset_index]  # TODO
 
-    print(inputs)
-    return JsonResponse({'error': 'NOT IMPLEMENTED'})
+    hpc_pattern = re.compile('^mso4sc_hpc_(.)*$')
+    dataset_pattern = re.compile('^mso4sc_dataset_(.)*$')
+    dataset_resource_pattern = re.compile('^resource_mso4sc_dataset_(.)*$')
+    tosca_inputs = {}
+    for input, value in inputs.items():
+        if hpc_pattern.match(input):
+            hpc_pk = value
+            hpc_list = HPCInfrastructure.objects.filter(owner=request.user)
+            if hpc_pk < 0:
+                # the hpc input has no configuration
+                tosca_inputs[input] = {}
+                continue
+
+            hpc = None
+            for hpc_item in hpc_list:
+                if hpc_item.pk == hpc_pk:
+                    hpc = hpc_item
+                    break
+            if not hpc:
+                return JsonResponse({'error': 'Bad HPC index provided'})
+
+            tosca_inputs[input] = hpc.to_dict()
+        elif dataset_pattern.match(input):
+            # get the dataset
+            dataset_index = value
+            if dataset_index >= len(datasets) or dataset_index < 0:
+                return JsonResponse({'error': 'Bad dataset index provided'})
+            dataset = _get_dataset(datasets[dataset_index])
+            if 'error' in dataset:
+                return JsonResponse(dataset)
+
+            # get the resource
+            if "resource_" + input in inputs:
+                dataset_resource_index = int(inputs["resource_" + input])
+            else:
+                dataset_resource_index = 0
+            if dataset_resource_index >= dataset["num_resources"] or \
+                    dataset_resource_index < 0:
+                return JsonResponse(
+                    {'error': 'Bad dataset resource index provided'})
+            dataset_resource = dataset["resources"][dataset_resource_index]
+
+            # finally put the url of the resource
+            tosca_inputs[input] = dataset_resource["url"]
+        elif dataset_resource_pattern.match(input):
+            # Resources are managed in the dataset section above
+            pass
+        else:
+            tosca_inputs[input] = value
+
     return JsonResponse(_create_deployment(blueprint_id,
                                            deployment_id,
-                                           inputs))
+                                           tosca_inputs))
 
 
 @login_required
@@ -438,6 +483,29 @@ def _delete_hpc(owner, pk):
         return {'error': 'HPC does not exists'}
 
 
+def _get_dataset(dataset_name):
+    url = settings.DATACATALOGUE_URL + \
+        "/api/3/action/package_search?q=" + \
+        dataset_name
+
+    text_data = requests.request("GET", url).text
+    json_data = json.loads(text_data)
+    if not json_data["success"]:
+        return {'error': json_data['result']}
+
+    response = json_data["result"]
+    if response["count"] <= 0:
+        return {'error': "No data found"}
+    # elif response["count"] == 1:
+    #    return response["results"][0]
+    else:
+        for dataset in response["results"]:
+            if dataset["name"] == dataset_name:
+                return dataset
+
+    return {'error': "No dataset match"}
+
+
 def _get_client():
     client = CloudifyClient(host=settings.ORCHESTRATOR_HOST,
                             username=settings.ORCHESTRATOR_USER,
@@ -553,7 +621,6 @@ def _get_execution_events(execution_id, offset):
 def _events_to_string(events):
     response = []
     for event in events:
-        print(json.dumps(event))
         event_type = event["type"]
         message = ""
         if event_type == "cloudify_event":

@@ -431,7 +431,7 @@ function renderDatasetChoices(selector_id, container_id, group_name){
                                 $(document.createElement('input')).attr({
                                     id: "resource_" + resource.name,
                                     name: group_name,
-                                    value: resource.name,
+                                    value: index,
                                     type: 'radio'
                                 }),
                                 $(document.createElement('label')).attr({
@@ -654,10 +654,9 @@ $("#blueprint_selector").find("select").on('change', function () {
 $("#deploy_form").find("button").on('click', function (event) {
     event.preventDefault();
 
-    var blueprint_index = $("#blueprint_selector").find("select").val();
-    var dataset_index = $("#dataset_selector").find("select").val();
     var deployment_id = $("#deployment_id").find("input").val();
-
+    var blueprint_index = $("#blueprint_selector").find("select").val();
+    
     var inputs_dict = {};
     $('input[id^="input_"]').each(function(index, input){
         try {
@@ -690,10 +689,9 @@ $("#deploy_form").find("button").on('click', function (event) {
     var deployment_inputs = JSON.stringify(inputs_dict);
 
     var data = new FormData();
-    data.append('blueprint_index', blueprint_index);
-    data.append('dataset_index', dataset_index);
-    data.append('deployment_inputs', deployment_inputs);
     data.append('deployment_id', deployment_id);
+    data.append('blueprint_index', blueprint_index);
+    data.append('deployment_inputs', deployment_inputs);
 
     cleanNotifications();
     $.ajax({

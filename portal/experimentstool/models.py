@@ -30,3 +30,14 @@ class HPCInfrastructure(models.Model):
                       self.host,
                       self.owner.name,
                       self.user)
+
+    def to_dict(self):
+        return {
+            'credentials': {
+                'host': self.host,
+                'user': self.user,
+                'password': self.password,
+            },
+            'country_tz': self.time_zone,
+            'workload_manager': self.manager
+        }
