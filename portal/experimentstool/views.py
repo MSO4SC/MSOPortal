@@ -438,7 +438,9 @@ def _execute_deployment(request, operation):
         return {'error': 'Bad deployment index provided'}
 
     deployment = deployments[deployment_index]['id']
-    return operation(deployment)
+    force = bool(request.POST.get('force', False))
+
+    return operation(deployment, force)
 
 
 @login_required
@@ -580,22 +582,29 @@ def _create_deployment(blueprint_id, development_id, inputs, retries=3):
     return {'deployment': deployment}
 
 
-def _install_deployment(development_id):
-    return _execute_workflow(development_id, 'install')
+def _install_deployment(development_id, force):
+    return _execute_workflow(development_id, 'install', force)
 
 
-def _run_deployment(development_id):
-    return _execute_workflow(development_id, 'run_jobs')
+def _run_deployment(development_id, force):
+    return _execute_workflow(development_id, 'run_jobs', force)
 
 
-def _uninstall_deployment(development_id):
-    return _execute_workflow(development_id, 'uninstall')
+def _uninstall_deployment(development_id, force):
+    params = None
+    if force:
+        params = {'ignore_failure': True}
+    return _execute_workflow(development_id, 'uninstall', force, params=params)
 
 
-def _execute_workflow(development_id, workflow):
+def _execute_workflow(development_id, workflow, force, params=None):
     client = _get_client()
+    print(force)
     try:
-        execution = client.executions.start(development_id, workflow)
+        execution = client.executions.start(development_id,
+                                            workflow,
+                                            parameters=params,
+                                            force=force)
     except CloudifyClientError as e:
         return {'error': str(e)}
     return {'execution': execution}

@@ -531,7 +531,7 @@ function renderLogData(log_id, url, reset=false) {
     });
 }
 
-function executeDeployment(selector_id, url_exec, log_id = null, url_log = null) {
+function executeDeployment(selector_id, url_exec, log_id = null, url_log = null, force = false) {
     var deployment_index = $(selector_id).find("select").val();
     cleanNotifications();
 
@@ -539,7 +539,8 @@ function executeDeployment(selector_id, url_exec, log_id = null, url_log = null)
         method: "POST",
         url: url_exec,
         data: {
-            'deployment_index': deployment_index
+            'deployment_index': deployment_index,
+            'force': force
         },
         dataType: 'json',
         success: function (data) {
@@ -731,11 +732,19 @@ $("#run").find("button").on('click', function () {
                       "/experimentstool/_get_run_events");
 });
 
-$("#uninstall").find("button").on('click', function () {
+$("#undeploy-button").on('click', function () {
     executeDeployment("#uninstall_deployment_selector",
                       "/experimentstool/_uninstall_deployment",
                       "#uninstall_deployment_log",
                       "/experimentstool/_get_uninstall_events");
+});
+
+$("#force-undeploy-button").on('click', function () {
+    executeDeployment("#uninstall_deployment_selector",
+                      "/experimentstool/_uninstall_deployment",
+                      "#uninstall_deployment_log",
+                      "/experimentstool/_get_uninstall_events",
+                      force = true);
 });
 
 $("#destroy").find("button").on('click', function () {
