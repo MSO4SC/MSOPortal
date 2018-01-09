@@ -114,6 +114,8 @@ def get_products(request):
     json_data = json.loads(text_data)
 
     request.session['products'] = json_data
+    request.session.modified = True
+
     return JsonResponse(json_data, safe=False)
 
 
@@ -158,6 +160,7 @@ def load_blueprints(request):
 
     if 'error' not in response:
         request.session['blueprints'] = response['blueprints']
+        request.session.modified = True
     return JsonResponse(response)
 
 
@@ -188,16 +191,18 @@ def get_datasets(request):
         return JsonResponse([], safe=False)  # TODO(emepetres) manage errors
 
     request.session['datasets'] = json_data["result"]
+    request.session.modified = True
+
     return JsonResponse(json_data["result"], safe=False)
 
 
 @login_required
 def get_dataset_info(request):
     if 'datasets' not in request.session:
-        return {'error': 'No datasets loaded'}
+        return JsonResponse({'error': 'No datasets loaded'})
 
     datasets = request.session['datasets']
-    dataset_index = int(request.GET.get('dataset', -1))
+    dataset_index = int(request.POST.get('dataset', -1))
 
     if dataset_index >= len(datasets) or dataset_index < 0:
         return JsonResponse({'error': 'Bad dataset index provided'})
@@ -241,7 +246,11 @@ def create_deployment(request):
     blueprint_id = blueprints[blueprint_index]['id']
     # dataset = datasets[dataset_index]  # TODO
 
-    return JsonResponse(_create_deployment(blueprint_id, deployment_id, inputs))
+    print(inputs)
+    return JsonResponse({'error': 'NOT IMPLEMENTED'})
+    return JsonResponse(_create_deployment(blueprint_id,
+                                           deployment_id,
+                                           inputs))
 
 
 @login_required
@@ -254,6 +263,8 @@ def get_deployments(request):
         return JsonResponse({'error': str(e)})
 
     request.session['deployments'] = deployments
+    request.session.modified = True
+
     return JsonResponse({'deployments': deployments})
 
 
@@ -265,6 +276,7 @@ def install_deployment(request):
             'id': response['execution']['id'],
             'offset': 0
         }
+        request.session.modified = True
     return JsonResponse(response)
 
 
@@ -281,8 +293,8 @@ def get_install_events(request):
 
         response = _get_execution_events(execution_id, offset)
         if offset != response['last']:
-            request.session['install_execution']['offset'] = response.pop(
-                'last')
+            request.session['install_execution']['offset'] = \
+                response.pop('last')
             request.session.modified = True
             print("new offset: " +
                   str(request.session['install_execution']['offset']))
@@ -298,6 +310,7 @@ def run_deployment(request):
             'id': response['execution']['id'],
             'offset': 0
         }
+        request.session.modified = True
     return JsonResponse(response)
 
 
@@ -328,6 +341,7 @@ def uninstall_deployment(request):
             'id': response['execution']['id'],
             'offset': 0
         }
+        request.session.modified = True
     return JsonResponse(response)
 
 
@@ -360,6 +374,7 @@ def destroy_deployment(request):
             request.session.pop('run_execution')
         if 'uninstall_execution' in request.session:
             request.session.pop('uninstall_execution')
+        request.session.modified = True
     return JsonResponse(response)
 
 
