@@ -108,7 +108,7 @@ function openExperimentsTool(evt, toolName) {
             renderBlueprintData("#remove_blueprint_selector");
             break;
         case "settings":
-            renderHPCChoices("#infrastructure_list", select=false);
+            renderHPCData("#infrastructure_list", select=false);
             break;
     }
 
@@ -219,7 +219,7 @@ function renderBlueprintInputs(selector_id, container_id) {
                                     ),
                                 )
                             );
-                            renderHPCChoices("#input_container_"+input.name);
+                            renderHPCData("#input_container_"+input.name);
                         } else if (dataset_pattern.test(input.name)) {
                             inputs_container.append(
                                 $(document.createElement('div')).attr({
@@ -284,7 +284,7 @@ function inputValueToString(value) {
     }
 }
 
-function renderHPCChoices(container_id, select=true, clear_notifications=true) {
+function renderHPCData(container_id, select=true, clear_notifications=true) {
     var hpc_container = $(container_id);
     if (select) {
         hpc_container = hpc_container.find("select");
@@ -321,7 +321,7 @@ function renderHPCChoices(container_id, select=true, clear_notifications=true) {
                             "#del_hpc_"+hpc.pk,
                             hpc.pk,
                             refresh_function = function() {
-                                renderHPCChoices(container_id,
+                                renderHPCData(container_id,
                                                  select=false,
                                                  clear_notifications=false); 
                             }
@@ -330,11 +330,7 @@ function renderHPCChoices(container_id, select=true, clear_notifications=true) {
                 });
             } else {
                 if (select) {
-                    hpc_container.append(
-                        $(document.createElement('option'))
-                            .attr("value", "-1")
-                            .text("No products found")
-                    );
+                    pass
                 } else {
                     hpc_container.append(
                         $(document.createElement('div')).attr("id", "no_hpc_list").text("No HPC infrastructures found")
