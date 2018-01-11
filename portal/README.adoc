@@ -1,3 +1,7 @@
+// URIs
+:uri-ckan-doc: http://docs.ckan.org/en/latest/user-guide.html
+:uri-biz-doc: http://business-api-ecosystem.readthedocs.io/en/v5.4.1/user-programmer-guide.html
+
 = MSO4SC Frontend & Experiments Tool
 
 Frontend of the MSO4SC project.
@@ -8,6 +12,66 @@ Frontend of the MSO4SC project.
 
 .Implements
 * Experiments Tool
+
+== Usage
+
+The portal uses keyrock IDM to authenticate and authorize users. Ask the portal manager to create one for you if you don't have one yet.
+
+=== Data Catalogue
+
+The data catalogue is used to manage the data in the portal, and it is based on CKAN. To know more about its functionalities and how to use it, check {uri-ckan-doc}[the CKAN user guide] for more information.
+
+==== Adding new content
+
+NOTE: To add content to CKAN, first you need to have admin privileges. Ask the portal manager to give your idm admin privileges on the data catalogue. If you are the manager, use the script `datacatalogue/add-admin-user.sh`
+
+Datasets are compilations of files that share common properties (same source, related content, etc), and belongs to an organization. To create a new organization, click `Organizations -> Add Organization` and follow the steps at the screen.
+
+Likewise to create a new Dataset, click `Datasets -> Add Dataset` and follow the steps at the screen. In the first step can be set properties like the title, description, tags, license, or source (a link to reference the data), among others. Then it ask for adding new data. Each data has a title, a format, and a source, which *has to be of url type*. _That means that the data is never stored in the data catalogue, but referenced by url links._
+
+=== Marketplace
+
+The marketplace is where the applications are managed. From here, the user is able to purchase applications available. Products (applications) in the user _stock_ will be available in the <<Experiments Tool>>. Detailed information about its use can be found at the {uri-biz-doc}[Business API Ecosystem user guide].
+
+==== Creating product offerings
+
+NOTE: To add a new product the user needs to have the _seller_ role. Ask the IDM manager to give your user this role.
+
+Offers are used by regular user in order to acquire new applications. An offering belongs to a catalogue, and includes one or more product. To create a new catalogue, click on `My stock -> Catalogs -> New` and follow the steps on the screen.
+
+WARNING: After creation of a catalogue, product or offering, *don't forget to click on `Launch` and then `update`*.
+
+In the same way, click on `My stock -> Product Specifications` and follow the steps on the screen to create a new product. Some clarifications about these steps:
+
+* Asset type: The product (application) is always digital. 
+* Characteristics: On MSO4SC, products *must* have a characteristic named `BLUEPRINT_PATH` where in its default value must contain the url of where the application package is stored, or the GitHub repository where the blueprint and files are available (in the format [user|organization]/[repository]. To know more about it check <<Packaging an application>>
+* Terms & Conditions: In here you can add an small text with the license of your application, but the description text *cannot be large or the product creation will fail*, so just an small notice is recommend.
+
+NOTE: As the owner of a product, it is not necessary to create an offering in order to start using it in the <<Experiments Tool>>. However it is mandatory if the owner wants to share its application with the other users of the portal, giving them the possibility to acquire it (by payment or for free).
+
+Finally to create an offering, click `My stock -> Offerings -> New` and follow the steps presented. In the step _Price Plans_ you can select one of the available, or create a new one. Put a price of 0 to create a free product. Also in _RS Model_ the way that the revenue of an offering must be splitted among different users can be defined (those need to have their paypal account defined in their user settings).
+
+WARNING: Marketplace payment functionalities are not yet fully available. Therefor only free offerings can be done at this moment.
+
+==== Acquire an application (product)
+
+To start using a new application, first go to the marketplace and navigate through the offerings available. After purchasing the desired one, the owner of the offering will receive a notification in the marketplace to accept or deny the purchase. If accepted, the new product will appear in the user _stock_, as well as in the <<Experinments Tool>>.
+
+==== Packaging an application
+
+To package an application, two options are available at this time:
+
+* *GitHub repository*: Just creating a public repository in github with the blueprint in the root folder is enough for the orchestrator to retrieve the application files. Of course all files used by the blueprint need to be present on the repository as well.
+* *tar.gz file*: Create a tar.gz file (with env variable COPYFILE_DISABLE=true) of your application folder containing all your application files and blueprint in the root folder. Then put the compressed file in a url accesible by the orchestrator.
+
+=== Experiments Tool
+
+This service is in charge of managing the execution workflow of the MSO4SC applications. It is divided in different sections:
+
+* _Settings_: In this view the user is able to see the HPCs he/she has configured, as well as add new ones or delete them. This configuration will be used later when creating a new application instance.
+* _Register/Remove App_: Those sections are meant to registrer/unregister an application in the orchestrator. They are "admin" operations an probably they will be automated and removed from the interface in future versions. On them, you can select a product from the marketplace and register the application in the platform with a concrete name, or undo the registration respectively.
+* _Create/Destroy App Instance_: In here you can create a new _instance_ of an application, that is, an application with a concrete configuration attached. Just select a name, an application, and then the specific inputs. HPC infrastructures can be selected from a combo box, as well as datasets (one file per input). An HPC input starts with the prefix `mso4sc_hpc_`, while a dataset input starts with `mso4sc_dataset_`. In the same way, the destroy operation undo the creation step. The logs of the operations can be seen at the screen, as well as a grey/blue/green/light indicating if the operation is not running, running, successful or failed respectively.
+* _Run Instance_: Similarly to Create/Destroy operations, in this step is when the application is actually executed, presenting the logs in the same way as before.
 
 == Configuration
 
