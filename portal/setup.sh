@@ -1,4 +1,5 @@
 #!/bin/bash
+set -e
 
 if [ "$#" -ne 1 ]; then
     echo "Usage: "$0" [python-packages-dir]"
