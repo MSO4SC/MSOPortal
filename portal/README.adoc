@@ -62,7 +62,7 @@ To start using a new application, first go to the marketplace and navigate throu
 To package an application, two options are available at this time:
 
 * *GitHub repository*: Just creating a public repository in github with the blueprint in the root folder is enough for the orchestrator to retrieve the application files. Of course all files used by the blueprint need to be present on the repository as well.
-* *tar.gz file*: Create a tar.gz file (with env variable COPYFILE_DISABLE=true) of your application folder containing all your application files and blueprint in the root folder. Then put the compressed file in a url accesible by the orchestrator.
+* *tar.gz file*: Create a tar.gz file (with env variable COPYFILE_DISABLE=true) of your application folder containing all your application files and blueprint in the root folder. Then put the compressed file in a url accesible by the orchestrator. An script that automates it a little bit can be found at MSO4SC/resources/blueprint-examples in GitHub.
 
 === Experiments Tool
 
