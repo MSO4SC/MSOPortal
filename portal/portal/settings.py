@@ -35,6 +35,7 @@ ALLOWED_HOSTS = config('ALLOWED_HOSTS', cast=Csv())
 INSTALLED_APPS = [
     'sso.apps.SsoConfig',
     'experimentstool.apps.ExperimentstoolConfig',
+    'remotedesktops.apps.RemotedesktopsConfig',
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
@@ -65,7 +66,8 @@ TEMPLATES = [
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
         'DIRS': [os.path.join(BASE_DIR, 'portal/templates'),
                  os.path.join(BASE_DIR, 'sso/templates'),
-                 os.path.join(BASE_DIR, 'experimentstool/templates')],
+                 os.path.join(BASE_DIR, 'experimentstool/templates'),
+                 os.path.join(BASE_DIR, 'remotedesktops/templates')],
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
@@ -145,7 +147,8 @@ STATIC_URL = '/static/'
 STATICFILES_DIRS = (
     os.path.join(PROJECT_ROOT, 'static'),
     os.path.join('sso', 'static'),
-    os.path.join('experimentstool', 'static')
+    os.path.join('experimentstool', 'static'),
+    os.path.join('remotedesktops', 'static')
 )
 
 LOGIN_URL = 'login'
