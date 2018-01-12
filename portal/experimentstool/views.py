@@ -169,7 +169,7 @@ def load_blueprints(request):
 @login_required
 def get_blueprint_inputs(request):
     if 'blueprints' not in request.session:
-        return {'error': 'No blueprints loaded'}
+        return JsonResponse({'error': 'No blueprints loaded'})
 
     blueprints = request.session['blueprints']
     blueprint_index = int(request.GET.get('blueprint_index', -1))
@@ -225,9 +225,9 @@ def get_dataset_info(request):
 @login_required
 def create_deployment(request):
     if 'blueprints' not in request.session:
-        return {'error': 'No blueprints loaded'}
+        return JsonResponse({'error': 'No blueprints loaded'})
     if 'datasets' not in request.session:
-        return {'error': 'No datasets loaded'}
+        return JsonResponse({'error': 'No datasets loaded'})
 
     blueprints = request.session['blueprints']
     datasets = request.session['datasets']
@@ -424,6 +424,25 @@ def destroy_deployment(request):
     return JsonResponse(response)
 
 
+@login_required
+def remove_blueprint(request):
+    if 'blueprints' not in request.session:
+        return JsonResponse({'error': 'No blueprints loaded'})
+
+    blueprints = request.session['blueprints']
+
+    blueprint_index = int(request.POST.get('blueprint_index', -1))
+
+    if blueprint_index is None:
+        return JsonResponse({'error': 'No blueprint provided'})
+
+    if blueprint_index >= len(blueprints) or blueprint_index < 0:
+        return JsonResponse({'error': 'Bad blueprint index provided'})
+
+    blueprint = blueprints[blueprint_index]['id']
+    return JsonResponse(_remove_blueprint(blueprint))
+
+
 def _execute_deployment(request, operation):
     if 'deployments' not in request.session:
         return {'error': 'No deployments loaded'}
@@ -442,25 +461,6 @@ def _execute_deployment(request, operation):
     force = bool(request.POST.get('force', False))
 
     return operation(deployment, force)
-
-
-@login_required
-def remove_blueprint(request):
-    if 'blueprints' not in request.session:
-        return {'error': 'No blueprints loaded'}
-
-    blueprints = request.session['blueprints']
-
-    blueprint_index = int(request.POST.get('blueprint_index', -1))
-
-    if blueprint_index is None:
-        return JsonResponse({'error': 'No blueprint provided'})
-
-    if blueprint_index >= len(blueprints) or blueprint_index < 0:
-        return JsonResponse({'error': 'Bad blueprint index provided'})
-
-    blueprint = blueprints[blueprint_index]['id']
-    return JsonResponse(_remove_blueprint(blueprint))
 
 
 def _get_hpc_list(user):
