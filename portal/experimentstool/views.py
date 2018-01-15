@@ -79,7 +79,8 @@ def add_hpc(request):
 
     return JsonResponse(_add_hpc(name,
                                  request.user,
-                                 host, user,
+                                 host,
+                                 user,
                                  password,
                                  tz,
                                  HPCInfrastructure.SLURM))
@@ -90,7 +91,7 @@ def delete_hpc(request):
     pk = request.POST.get('pk', None)
     if not pk or pk == '':
         # TODO validation
-        return JsonResponse({'error': 'No name provided'})
+        return JsonResponse({'error': 'No hpc provided'})
 
     return JsonResponse(_delete_hpc(request.user, pk))
 

@@ -298,8 +298,9 @@ function renderHPCData(container_id, select=true, clear_notifications=true) {
     $.ajax({
         url: '/experimentstool/_get_hpc_list',
         success: function (response) {
-            var hpc_list =$.parseJSON(response);
+            var hpc_list = response;
             if (hpc_list.length > 0) {
+                var hpc_list =$.parseJSON(response);
                 $.each(hpc_list, function (index, hpc) {
                     if (select) {
                         hpc_container.append(
@@ -364,7 +365,7 @@ function renderHPCEditButtons(button_id, pk, refresh_function) {
                 }
             },
             error: function (jqXHR, status, errorThrown) {
-                message = "Couldn't remove the app: ";
+                message = "Couldn't remove the hpc: ";
                 message += jqXHR.status+": "+errorThrown+": "+jqXHR.responseText
                 appendNotification(message, error=true);
             },

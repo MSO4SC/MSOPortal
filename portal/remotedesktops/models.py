@@ -13,6 +13,9 @@ class RemoteDesktopInfrastructure(models.Model):
     user = models.CharField(max_length=50)
     password = models.CharField(max_length=50)
 
+    list_cmd = models.CharField(max_length=50)
+    create_cmd = models.CharField(max_length=50)
+
     NOVNC = 'noVNC'
     RD_CHOICES = (
         (NOVNC, 'noVNC'),

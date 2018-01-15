@@ -14,7 +14,7 @@
 </div>
 
 <div id="settings" class="tabcontent">
-    {% include "sections/settings.html" %}
+    {% include "sections/rdi_settings.html" %}
 </div>
 
 {% endblock %}
@@ -48,10 +48,10 @@ function openRemoteDesktopsTool(evt, toolName) {
 
     switch(toolName) {
         case "desktops":
-            //renderBlueprintData("#blueprint_selector");
+            renderRDIData("#rdi_selector");
             break;
         case "settings":
-            //renderHPCData("#infrastructure_list", select=false);
+            renderRDIData("#infrastructure_list", select=false);
             break;
     }
 
@@ -60,211 +60,54 @@ function openRemoteDesktopsTool(evt, toolName) {
     evt.currentTarget.className += " active";
 }
 
-function renderProductData(selector_id) {
-    var product_selector = $(selector_id).find("select")
-    product_selector.empty();
-    cleanNotifications();
-
-    $.ajax({
-        url: '/experimentstool/_get_products',
-        success: function (products) {
-            if (products.length > 0) {
-                $.each(products, function (index, product) {
-                    product_selector.append(
-                        $(document.createElement('option'))
-                            .attr("value", product.id)
-                            .text(product.name)
-                    )
-                });
-            } else {
-                product_selector.append(
-                    $(document.createElement('option'))
-                        .attr("value", "-1")
-                        .text("No products found")
-                );
-            }
-        },
-        error: function (jqXHR, status, errorThrown) {
-            message = "Couldn't get products list: ";
-            message += jqXHR.status+": "+errorThrown+": "+jqXHR.responseText
-            appendNotification(message, error=true);
-        }
-    });
-}
-
-function renderBlueprintData(selector_id) {
-    var blueprint_selector = $(selector_id).find("select")
-    blueprint_selector.empty();
-    blueprint_selector.append(
-        $(document.createElement('option')).attr("value", "-1").text("Loading..")
-    );
-
-    $.ajax({
-        url: '/experimentstool/_load_blueprints',
-        success: function (data) {
-            blueprint_selector.empty();
-            blueprint_selector.append(
-                $(document.createElement('option')).attr("value", "-1").text("None")
-            );
-            blueprints = data.blueprints
-            if (blueprints.length > 0) {
-                $.each(blueprints, function (index, blueprint) {
-                    blueprint_selector.append(
-                        $(document.createElement('option')).attr("value", index).text(blueprint.id)
-                    )
-                });
-            } else {
-                blueprint_selector.append(
-                    $(document.createElement('option')).attr("value", "-1").text("No applications found")
-                );
-            }
-        },
-        error: function (jqXHR, status, errorThrown) {
-            message = "Couldn't get applications list: ";
-            message += jqXHR.status+": "+errorThrown+": "+jqXHR.responseText
-            appendNotification(message, error=true);
-        }
-    });
-}
-
-function renderBlueprintInputs(selector_id, container_id) {
-    var blueprint = $(selector_id).find("select").val();
-    var inputs_container = $(container_id);
-    inputs_container.empty();
-
-    var hpc_pattern = new RegExp("^mso4sc_hpc_(.)*$");
-    var dataset_pattern = new RegExp("^mso4sc_dataset_(.)*$");
-
-    if (parseInt(blueprint) >= 0) {
-        $.ajax({
-            url: '/experimentstool/_get_blueprint_inputs',
-            data: {
-                'blueprint_index': blueprint
-            },
-            dataType: 'json',
-            success: function (data) {
-                if (data.error!==undefined) {
-                    appendNotification("Couldn't read the inputs: "+data.error, error=true);
-                } else if (data.inputs.length > 0) {
-                    $(data.inputs).each(function (index, input) {
-                        if (hpc_pattern.test(input.name)) {
-                            inputs_container.append(
-                                $(document.createElement('div')).attr({
-                                    id: "input_container_" + input.name
-                                }).append(
-                                    $(document.createElement('label')).attr({
-                                        for: "input_" + input.name
-                                    }).text(input.name),
-                                    $(document.createElement('select')).attr({
-                                        id: "input_" + input.name
-                                    }).append(
-                                        $(document.createElement('option')).attr("value", -1).text("None")
-                                    ),
-                                )
-                            );
-                            renderHPCData("#input_container_"+input.name);
-                        } else if (dataset_pattern.test(input.name)) {
-                            inputs_container.append(
-                                $(document.createElement('div')).attr({
-                                    id: "input_container_" + input.name
-                                }).append(
-                                    $(document.createElement('label')).attr({
-                                        for: "input_" + input.name
-                                    }).text(input.name),
-                                    $(document.createElement('select')).attr({
-                                        id: "input_" + input.name
-                                    }).append(
-                                        $(document.createElement('option')).attr("value", -1).text("None")
-                                    ),
-                                    $(document.createElement('div')).attr({
-                                        id: "choices_" + input.name
-                                    }),
-                                )
-                            );
-                            renderDatasetsData("#input_container_"+input.name);
-                            $("#input_container_"+input.name).find("select").on('change', function () {
-                                renderDatasetChoices("#input_container_"+input.name,
-                                                     "#choices_" + input.name,
-                                                     "resource_" + input.name);
-                            });
-                        } else {
-                            inputs_container.append(
-                                $(document.createElement('div')).attr({
-                                    id: "input_container_" + input.name
-                                }).append(
-                                    $(document.createElement('label')).attr({
-                                        for: "input_" + input.name
-                                    }).text(input.name),
-                                    $(document.createElement('input')).attr({
-                                        id: "input_" + input.name,
-                                        value: inputValueToString(input.default),
-                                        type: 'text'
-                                    }),
-                                )
-                            );
-                        }
-                    });
-                } else {
-                    inputs_container.append(
-                        $(document.createElement('label')).text("No input found")
-                    );
-                }
-            },
-            error: function (jqXHR, status, errorThrown) {
-                message = "Couldn't read the inputs: ";
-                message += jqXHR.status+": "+errorThrown+": "+jqXHR.responseText
-                appendNotification(message, error=true);
-            }
-        });
-    }
-}
-
-function inputValueToString(value) {
-    if (jQuery.type(value)=="object") {
-        return "{}"
-    } else {
-        return value
-    }
-}
-
-function renderHPCData(container_id, select=true, clear_notifications=true) {
-    var hpc_container = $(container_id);
+function renderRDIData(container_id, select=true, clear_notifications=true) {
+    var rdi_container = $(container_id);
     if (select) {
-        hpc_container = hpc_container.find("select");
+        rdi_container = rdi_container.find("select");
+        rdi_container.append(
+            $(document.createElement('option')).attr("value", "-1").text("Loading..")
+        );
     } else {
-        hpc_container.empty();
+        rdi_container.empty();
     }
     if (clear_notifications) {
         cleanNotifications();
     }
 
     $.ajax({
-        url: '/experimentstool/_get_hpc_list',
+        url: '/visualization/_get_rdi_list',
         success: function (response) {
-            var hpc_list =$.parseJSON(response);
-            if (hpc_list.length > 0) {
-                $.each(hpc_list, function (index, hpc) {
+            var rdi_list = response;
+            if (rdi_list.length > 0) {
+                if (select) {
+                    rdi_container.empty();
+                    rdi_container.append(
+                        $(document.createElement('option')).attr("value", "-1").text("None")
+                    );
+                }
+                var rdi_list =$.parseJSON(response);
+                $.each(rdi_list, function (index, rdi) {
                     if (select) {
-                        hpc_container.append(
+                        rdi_container.append(
                             $(document.createElement('option'))
-                                .attr("value", hpc.pk)
-                                .text(hpc.fields.name)
+                                .attr("value", rdi.pk)
+                                .text(rdi.fields.name)
                         )
                     } else {
-                        hpc_container.append(
+                        rdi_container.append(
                             $(document.createElement('div')).
-                                attr("id", "hpc_"+hpc.pk).
-                                text(hpc.fields.name).append(
+                                attr("id", "rdi_"+rdi.pk).
+                                text(rdi.fields.name).append(
                                     $(document.createElement('button')).
-                                        attr("id", "del_hpc_"+hpc.pk).
+                                        attr("id", "del_rdi_"+rdi.pk).
                                         text('Delete')
                                 )
                         );
-                        renderHPCEditButtons(
-                            "#del_hpc_"+hpc.pk,
-                            hpc.pk,
+                        renderRDIEditButtons(
+                            "#del_rdi_"+rdi.pk,
+                            rdi.pk,
                             refresh_function = function() {
-                                renderHPCData(container_id,
+                                renderRDIData(container_id,
                                                  select=false,
                                                  clear_notifications=false); 
                             }
@@ -275,39 +118,39 @@ function renderHPCData(container_id, select=true, clear_notifications=true) {
                 if (select) {
                     pass
                 } else {
-                    hpc_container.append(
-                        $(document.createElement('div')).attr("id", "no_hpc_list").text("No HPC infrastructures found")
+                    rdi_container.append(
+                        $(document.createElement('div')).attr("id", "no_rdi_list").text("No remote desktop infrastructures found")
                     )
                 }
             }
         },
         error: function (jqXHR, status, errorThrown) {
-            message = "Couldn't get hpc list: ";
+            message = "Couldn't get remote desktop infrastructure list: ";
             message += jqXHR.status+": "+errorThrown+": "+jqXHR.responseText
             appendNotification(message, error=true);
         }
     });
 }
 
-function renderHPCEditButtons(button_id, pk, refresh_function) {
+function renderRDIEditButtons(button_id, pk, refresh_function) {
     $(button_id).on('click', function () {
         $.ajax({
             method: "POST",
-            url: '/experimentstool/_delete_hpc',
+            url: '/visualization/_delete_rdi',
             data: {
                 'pk': pk
             },
             dataType: 'json',
             success: function (data) {
                 if (data.error!==undefined) {
-                    appendNotification("Couldn't delete the hpc: "+data.error, error=true);
+                    appendNotification("Couldn't delete the remote desktop infrastructure: "+data.error, error=true);
                 } else {
                     console.log(data)
-                    appendNotification("HPC "+data.hpc.name+" removed.");
+                    appendNotification("Remote desktop infrastructure "+data.rdi.name+" removed.");
                 }
             },
             error: function (jqXHR, status, errorThrown) {
-                message = "Couldn't remove the app: ";
+                message = "Couldn't remove the remote desktop infrastructure: ";
                 message += jqXHR.status+": "+errorThrown+": "+jqXHR.responseText
                 appendNotification(message, error=true);
             },
@@ -316,193 +159,8 @@ function renderHPCEditButtons(button_id, pk, refresh_function) {
     });
 }
 
-function renderDatasetsData(selector_id) {
-    var dataset_selector = $(selector_id).find("select")
-    dataset_selector.empty();
-    dataset_selector.append(
-        $(document.createElement('option')).attr("value", "-1").text("Loading..")
-    );
-    $.ajax({
-        url: '/experimentstool/_get_datasets',
-        success: function (datasets) {
-            dataset_selector.empty();
-            dataset_selector.append(
-                $(document.createElement('option')).attr("value", "-1").text("None")
-            );
-            if (datasets.length > 0) {
-                $.each(datasets, function (index, dataset) {
-                    dataset_selector.append(
-                        $(document.createElement('option')).attr("value", index).text(dataset)
-                    )
-                });
-            }
-        },
-        error: function (jqXHR, status, errorThrown) {
-            message = "Couldn't get datasets list: ";
-            message += jqXHR.status+": "+errorThrown+": "+jqXHR.responseText
-            appendNotification(message, error=true);
-        }
-    });
-}
-
-function renderDatasetChoices(selector_id, container_id, group_name){
-    var dataset = $(selector_id).find("select").val();
-    var resources_container = $(container_id);
-    resources_container.empty();
-
-    if (parseInt(dataset) >= 0) {
-        $.ajax({
-            url: '/experimentstool/_get_dataset_info',
-            type: "POST",
-            data: {
-                'dataset': dataset
-            },
-            dataType: 'json',
-            success: function (data) {
-                if (data.error!==undefined) {
-                    appendNotification("Couldn't read the dataset info: "+data.error, error=true);
-                } else if (data.num_resources > 0) {
-                    $(data.resources).each(function (index, resource) {
-                        resources_container.append(
-                            $(document.createElement('div')).attr({
-                                id: "resource_choice_" + resource.name
-                            }).append(
-                                $(document.createElement('input')).attr({
-                                    id: "resource_" + resource.name,
-                                    name: group_name,
-                                    value: index,
-                                    type: 'radio'
-                                }),
-                                $(document.createElement('label')).attr({
-                                    for: "resource_" + resource.name
-                                }).text(resource.name)
-                            )
-                        )
-                    });
-                } else {
-                    resources_container.append(
-                        $(document.createElement('label')).text("No resources found")
-                    );
-                }
-            },
-            error: function (jqXHR, status, errorThrown) {
-                message = "Couldn't read the dataset info: ";
-                message += jqXHR.status+": "+errorThrown+": "+jqXHR.responseText
-                appendNotification(message, error=true);
-            }
-        });
-    }
-}
-
-function renderDeploymentData(selector_id) {
-    var deployment_selector = $(selector_id).find("select")
-    deployment_selector.empty();
-    deployment_selector.append(
-        $(document.createElement('option')).attr("value", "-1").text("Loading..")
-    );
-
-    $.ajax({
-        url: '/experimentstool/_get_deployments',
-        success: function (data) {
-            deployment_selector.empty();
-            deployments = data.deployments
-            if (deployments.length > 0) {
-                $.each(deployments, function (index, deployment) {
-                    deployment_selector.append(
-                        $(document.createElement('option')).attr("value", index).text(deployment.id)
-                    )
-                });
-            } else {
-                deployment_selector.append(
-                    $(document.createElement('option')).attr("value", "-1").text("No instances found")
-                );
-            }
-        },
-        error: function (jqXHR, status, errorThrown) {
-            message = "Couldn't get instances list: ";
-            message += jqXHR.status+": "+errorThrown+": "+jqXHR.responseText
-            appendNotification(message, error=true);
-        }
-    });
-}
-
-function renderLogData(log_id, url, reset=false) {
-    var textarea = $(log_id).find("textarea");
-    if (reset) {
-        textarea.val("");
-    }
-    cleanNotifications();
-
-    $.ajax({
-        url: url,
-        data: {'reset': reset},
-        success: function (data) {
-            if (data.error!==undefined && !reset) {
-                appendNotification("Couldn't monitor the operation: "+data.error, error=true);
-            } else {
-                // Write events in the textarea
-                data.events.forEach(function(event) {
-                    textarea.val(textarea.val()+event+'\n');
-                });
-                textarea.scrollTop = textarea.scrollHeight;
-
-                // Schedule the next request when the current one's complete
-                if (!data.finished) {
-                    $log_timeout = setTimeout(function () {renderLogData(log_id, url, reset=false);}, 3000);
-                    if (reset) {
-                        $(log_id).find("img").attr("src", "/static/experimentstool/img/light_blue.png");
-                    }
-                } else {
-                    var light = $(log_id).find("img");
-                    if (data.status=="terminated") {
-                        light.attr("src", "/static/experimentstool/img/light_green.png");
-                    } else {
-                        light.attr("src", "/static/experimentstool/img/light_red.png");
-                    }
-                }
-            }
-        },
-        error: function (jqXHR, status, errorThrown) {
-            message = "Couldn't monitor the operation: ";
-            message += jqXHR.status+": "+errorThrown+": "+jqXHR.responseText
-            appendNotification(message, error=true);
-        }
-    });
-}
-
-function executeDeployment(selector_id, url_exec, log_id = null, url_log = null, force = false) {
-    var deployment_index = $(selector_id).find("select").val();
-    cleanNotifications();
-
-    $.ajax({
-        method: "POST",
-        url: url_exec,
-        data: {
-            'deployment_index': deployment_index,
-            'force': force
-        },
-        dataType: 'json',
-        success: function (data) {
-            if (data.error!==undefined) {
-                appendNotification("Execution error: "+data.error, error=true);
-            } else {
-                if (log_id && url_log) {
-                    renderLogData(log_id, url_log, reset=true);
-                } else {
-                    appendNotification("Operation successful.");
-                }
-            }
-        },
-        error: function (jqXHR, status, errorThrown) {
-            message = "Couldn't execute the operation: ";
-            message += jqXHR.status+": "+errorThrown+": "+jqXHR.responseText
-            appendNotification(message, error=true);
-        }
-    });
-};
-
 function cleanNotifications() {
-    $("#experiments_notification_container").empty();
+    $("#remotedesktops_notification_container").empty();
 }
 
 function appendNotification(message, error = false) {
@@ -511,216 +169,139 @@ function appendNotification(message, error = false) {
         note_class = "note_failure";
     }
 
-    $("#experiments_notification_container").append(
+    $("#remotedesktops_notification_container").append(
         $(document.createElement('div')).attr({
             class: note_class
         }).text(message)
     )
 }
 
-$("#add_hpc").find("button").on('click', function () {
-    var name = $("#add_hpc_name").val();
-    var host = $("#add_hpc_host").val();
-    var user = $("#add_hpc_user").val();
-    var password = $("#add_hpc_password").val();
-    var timezone = $("#add_hpc_timezone").val();
+$("#add_rdi").find("button").on('click', function () {
+    var name = $("#add_rdi_name").val();
+    var host = $("#add_rdi_host").val();
+    var user = $("#add_rdi_user").val();
+    var password = $("#add_rdi_password").val();
+    var list_cmd = $("#add_rdi_list_cmd").val();
+    var create_cmd = $("#add_rdi_create_cmd").val();
 
     cleanNotifications();
-    if (name != '' && host != '' && user!= '' && password != '' && timezone != '') {
+    if (name != '' && host != '' && user!= '' && password != '' && list_cmd != '' && create_cmd != '') {
         $.ajax({
-            url: '/experimentstool/_add_hpc',
+            url: '/visualization/_add_rdi',
             type: "POST",
             data: {
                 'name': name,
                 'host': host,
                 'user': user,
                 'password': password,
-                'timezone': timezone,
+                'list_cmd': list_cmd,
+                'create_cmd': create_cmd
             },
             dataType: 'json',
             success: function (data) {
                 if (data.error!==undefined) {
-                    appendNotification("Couldn't add the HPC: "+data.error, error=true);
+                    appendNotification("Couldn't add the remote desktop infrastructure: "+data.error, error=true);
                 } else {
-                    appendNotification("HPC "+data.hpc.name+" added.");
+                    appendNotification("Remote desktop infrastructure "+data.rdi.name+" added.");
                 }
             },
             error: function (jqXHR, status, errorThrown) {
-                message = "Couldn't add the hpc: ";
+                message = "Couldn't add the remote desktop infrastructure: ";
                 message += jqXHR.status+": "+errorThrown+": "+jqXHR.responseText
                 appendNotification(message, error=true);
             },
             complete: function() {
-                renderHPCData("#infrastructure_list", selector=false, clean=false);
+                renderRDIData("#infrastructure_list", selector=false, clean=false);
             },
         });
     }
 });
 
-$("#upload").find("button").on('click', function () {
-    var product = $("#product_selector").find("select").val();
-    var mso_id = $("#mso4sc_id").find("input").val();
+$("#desktops").find("button").on('click', function () {
+    var rdi_pk = $("#rdi_selector").find("select").val();
 
-    cleanNotifications();
-    if (product >= 0) {
+    if (parseInt(rdi_pk) >= 0) {
         $.ajax({
-            url: '/experimentstool/_upload_application',
-            type: "POST",
+            url: '/visualization/_add_rd',
             data: {
-                'product': product,
-                'mso_id': mso_id
+                'rdi_pk': rdi_pk
             },
+            method: 'POST',
             dataType: 'json',
             success: function (data) {
                 if (data.error!==undefined) {
-                    appendNotification("Couldn't register the app: "+data.error, error=true);
-                } else {
-                    appendNotification("App "+data.blueprint.id+" registered.");
+                    appendNotification("Couldn't read the desktops: "+data.error, error=true);
                 }
             },
             error: function (jqXHR, status, errorThrown) {
-                message = "Couldn't register the app: ";
+                message = "Couldn't read the desktops: ";
+                message += jqXHR.status+": "+errorThrown+": "+jqXHR.responseText
+                appendNotification(message, error=true);
+            },
+            complete: function () {
+                renderRDIDesktops("#rdi_selector", "#rd_list");
+            }
+        });
+    }
+});
+
+$("#rdi_selector").find("select").on('change', function () {
+    renderRDIDesktops("#rdi_selector", "#rd_list")
+});
+
+function renderRDIDesktops(selector_id, container_id) {
+    var rdi_pk = $(selector_id).find("select").val();
+    var rd_container = $(container_id);
+    rd_container.empty();
+
+    if (parseInt(rdi_pk) >= 0) {
+        $.ajax({
+            url: '/visualization/_get_rd_list',
+            data: {
+                'rdi_pk': rdi_pk
+            },
+            method: 'POST',
+            dataType: 'json',
+            success: function (data) {
+                if (data.error!==undefined) {
+                    appendNotification("Couldn't read the desktops: "+data.error, error=true);
+                } else if (data.rd_list.length > 0) {
+                    $(data.rd_list).each(function (index, rd) {
+                        rd_container.append(
+                            $(document.createElement('div')).attr({
+                                id: "rd_container_" + rd.name
+                            }).append(
+                                $(document.createElement('ul')).append(
+                                    $(document.createElement('li')).append(
+                                        $(document.createElement('a')).attr({
+                                            target: "_blank",
+                                            href: rd.url
+                                        }).text("Desktop")
+                                    ),
+                                    $(document.createElement('li')).append(
+                                        $(document.createElement('a')).attr({
+                                            target: "_blank",
+                                            href: rd.ro_url
+                                        }).text("View Only")
+                                    )
+                                )
+                            )
+                        );
+                    });
+                } else {
+                    rd_container.append(
+                        $(document.createElement('label')).text("No desktops found")
+                    );
+                }
+            },
+            error: function (jqXHR, status, errorThrown) {
+                message = "Couldn't read the desktops: ";
                 message += jqXHR.status+": "+errorThrown+": "+jqXHR.responseText
                 appendNotification(message, error=true);
             }
         });
     }
-});
-
-$("#blueprint_selector").find("select").on('change', function () {
-    renderBlueprintInputs("#blueprint_selector", "#blueprint_inputs")
-});
-
-$("#deploy_form").find("button").on('click', function (event) {
-    event.preventDefault();
-
-    var deployment_id = $("#deployment_id").find("input").val();
-    var blueprint_index = $("#blueprint_selector").find("select").val();
-    
-    var inputs_dict = {};
-    $('input[id^="input_"]').each(function(index, input){
-        try {
-            inputs_dict[$('label[for="' + $(input).attr('id') + '"]').html()] = 
-                JSON.parse($(input).val());
-        }
-        catch(err) {
-            inputs_dict[$('label[for="' + $(input).attr('id') + '"]').html()] = 
-                JSON.parse('"'+$(input).val()+'"');
-        }
-    });
-    $('select[id^="input_"]').each(function(index, input){
-        try {
-            inputs_dict[$('label[for="' + $(input).attr('id') + '"]').html()] = 
-                JSON.parse($(input).val());
-        }
-        catch(err) {
-            inputs_dict[$('label[for="' + $(input).attr('id') + '"]').html()] = 
-                JSON.parse('"'+$(input).val()+'"');
-        }
-    });
-    $('input[name^="resource_"]:checked').each(function(index, input){
-        try {
-            inputs_dict[$(input).attr('name')] = JSON.parse($(input).val());
-        }
-        catch(err) {
-            inputs_dict[$(input).attr('name')] = JSON.parse('"'+$(input).val()+'"');
-        }
-    });
-    var deployment_inputs = JSON.stringify(inputs_dict);
-
-    var data = new FormData();
-    data.append('deployment_id', deployment_id);
-    data.append('blueprint_index', blueprint_index);
-    data.append('deployment_inputs', deployment_inputs);
-
-    cleanNotifications();
-    $.ajax({
-        method: "POST",
-        url: '/experimentstool/_deploy_application',
-        data: data,
-        dataType: 'json',
-        contentType: false,
-        processData: false,
-        cache: false,
-        success: function (data) {
-            if (data.error!==undefined) {
-                appendNotification("Couldn't create the instance: "+data.error, error=true);
-            } else {
-                appendNotification("App instance "+data.deployment.id+" created.");
-            }
-        },
-        error: function (jqXHR, status, errorThrown) {
-            message = "Couldn't create the instance: ";
-            message += jqXHR.status+": "+errorThrown+": "+jqXHR.responseText
-            appendNotification(message, error=true);
-        }
-    });
-});
-
-$("#install").find("button").on('click', function () {
-    executeDeployment("#install_deployment_selector",
-                      "/experimentstool/_install_deployment",
-                      "#install_deployment_log",
-                      "/experimentstool/_get_install_events");
-});
-
-$("#run").find("button").on('click', function () {
-    executeDeployment("#run_deployment_selector",
-                      "/experimentstool/_run_deployment",
-                      "#run_deployment_log",
-                      "/experimentstool/_get_run_events");
-});
-
-$("#undeploy-button").on('click', function () {
-    executeDeployment("#uninstall_deployment_selector",
-                      "/experimentstool/_uninstall_deployment",
-                      "#uninstall_deployment_log",
-                      "/experimentstool/_get_uninstall_events");
-});
-
-$("#force-undeploy-button").on('click', function () {
-    executeDeployment("#uninstall_deployment_selector",
-                      "/experimentstool/_uninstall_deployment",
-                      "#uninstall_deployment_log",
-                      "/experimentstool/_get_uninstall_events",
-                      force = true);
-});
-
-$("#destroy-instance-button").on('click', function () {
-    executeDeployment("#destroy_deployment_selector",
-                      "/experimentstool/_destroy_deployment");
-});
-
-$("#force-destroy-instance-button").on('click', function () {
-    executeDeployment("#destroy_deployment_selector",
-                      "/experimentstool/_destroy_deployment",
-                      force=true);
-});
-
-$("#remove").find("button").on('click', function () {
-    var blueprint_index = $("#remove_blueprint_selector").find("select").val();
-
-    $.ajax({
-        method: "POST",
-        url: '/experimentstool/_remove_blueprint',
-        data: {
-            'blueprint_index': blueprint_index
-        },
-        dataType: 'json',
-        success: function (data) {
-            if (data.error!==undefined) {
-                appendNotification("Couldn't remove the app: "+data.error, error=true);
-            } else {
-                appendNotification("App "+data.blueprint.id+" removed.");
-            }
-        },
-        error: function (jqXHR, status, errorThrown) {
-            message = "Couldn't remove the app: ";
-            message += jqXHR.status+": "+errorThrown+": "+jqXHR.responseText
-            appendNotification(message, error=true);
-        }
-    });
-});
+}
 
 </script>
 {% endblock %}
