@@ -12,6 +12,7 @@ Frontend of the MSO4SC project.
 
 .Implements
 * Experiments Tool
+* Visualization / Pre / Post Tool
 
 == Usage
 
@@ -72,6 +73,21 @@ This service is in charge of managing the execution workflow of the MSO4SC appli
 * _Register/Remove App_: Those sections are meant to registrer/unregister an application in the orchestrator. They are "admin" operations an probably they will be automated and removed from the interface in future versions. On them, you can select a product from the marketplace and register the application in the platform with a concrete name, or undo the registration respectively.
 * _Create/Destroy App Instance_: In here you can create a new _instance_ of an application, that is, an application with a concrete configuration attached. Just select a name, an application, and then the specific inputs. HPC infrastructures can be selected from a combo box, as well as datasets (one file per input). An HPC input starts with the prefix `mso4sc_hpc_`, while a dataset input starts with `mso4sc_dataset_`. In the same way, the destroy operation undo the creation step. The logs of the operations can be seen at the screen, as well as a grey/blue/green/light indicating if the operation is not running, running, successful or failed respectively.
 * _Run Instance_: Similarly to Create/Destroy operations, in this step is when the application is actually executed, presenting the logs in the same way as before.
+
+=== Visualization / Pre / Post Tool
+
+The tool manages visual remote desktops to be used to execute pre/post tools over the dataset, or just visualize them. To sections are available:
+
+* _settings_ To add your remote desktop infrastructures (only noVNC supported right now). For example, for CESGA it would be:
+----
+Name: cesga
+Host: vis.lan.cesga.es
+User: [Your cesga user]
+Password: [Your cesga password]
+List command: /opt/cesga/vis/bin/desktops
+Create command: /opt/cesga/vis/bin/getdesktop
+----
+* _desktops_ In here a list of available desktops for each infrastructure is presented. To create a new one, just click `create` button.
 
 == Configuration
 
