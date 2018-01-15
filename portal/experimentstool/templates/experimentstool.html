@@ -216,7 +216,7 @@ function renderBlueprintInputs(selector_id, container_id) {
                                         id: "input_" + input.name
                                     }).append(
                                         $(document.createElement('option')).attr("value", -1).text("None")
-                                    ),
+                                    )
                                 )
                             );
                             renderHPCData("#input_container_"+input.name);
@@ -235,7 +235,7 @@ function renderBlueprintInputs(selector_id, container_id) {
                                     ),
                                     $(document.createElement('div')).attr({
                                         id: "choices_" + input.name
-                                    }),
+                                    })
                                 )
                             );
                             renderDatasetsData("#input_container_"+input.name);
@@ -256,7 +256,7 @@ function renderBlueprintInputs(selector_id, container_id) {
                                         id: "input_" + input.name,
                                         value: inputValueToString(input.default),
                                         type: 'text'
-                                    }),
+                                    })
                                 )
                             );
                         }
@@ -609,7 +609,7 @@ $("#add_hpc").find("button").on('click', function () {
             },
             complete: function() {
                 renderHPCData("#infrastructure_list", selector=false, clean=false);
-            },
+            }
         });
     }
 });
