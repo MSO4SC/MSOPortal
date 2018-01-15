@@ -16,6 +16,7 @@ urlpatterns = [
         name='datacatalogue_loggedIn'),
     url(r'^datacatalogue/$', views.datacatalogue, name='datacatalogue'),
     url(r'^experimentstool/', include('experimentstool.urls')),
+    url(r'^visualization/', include('remotedesktops.urls')),
     url(r'^admin/', admin.site.urls),
     url(r'^', include('sso.urls')),
 ]

@@ -40,12 +40,13 @@ def experimentstool(request):
 
 @login_required
 def get_hpc_list(request):
-    try:
+    response = _get_hpc_list(request.user)
+    if response:
         hpc_list = serializers.serialize(
             'json',
-            HPCInfrastructure.objects.filter(owner=request.user)
+            response
         )
-    except HPCInfrastructure.DoesNotExist:
+    else:
         hpc_list = []
     return JsonResponse(hpc_list, safe=False)
 
@@ -78,7 +79,8 @@ def add_hpc(request):
 
     return JsonResponse(_add_hpc(name,
                                  request.user,
-                                 host, user,
+                                 host,
+                                 user,
                                  password,
                                  tz,
                                  HPCInfrastructure.SLURM))
@@ -89,7 +91,7 @@ def delete_hpc(request):
     pk = request.POST.get('pk', None)
     if not pk or pk == '':
         # TODO validation
-        return JsonResponse({'error': 'No name provided'})
+        return JsonResponse({'error': 'No hpc provided'})
 
     return JsonResponse(_delete_hpc(request.user, pk))
 
@@ -462,6 +464,14 @@ def _execute_deployment(request, operation):
     return operation(deployment, force)
 
 
+def _get_hpc_list(user):
+    try:
+        hpc_list = HPCInfrastructure.objects.filter(owner=user)
+    except HPCInfrastructure.DoesNotExist:
+        hpc_list = []
+    return hpc_list
+
+
 def _add_hpc(name, owner, host, user, password, tz, manager):
     hpc = HPCInfrastructure.objects.create(name=name,
                                            owner=owner,
@@ -474,15 +484,23 @@ def _add_hpc(name, owner, host, user, password, tz, manager):
 
 
 def _delete_hpc(owner, pk):
+    hpc = _get_hpc_infrastructure(pk)
+    if not hpc:
+        return {'error': 'HPC does not exists'}
+
+    if (owner == hpc.owner):
+        hpc.delete()
+        return {'hpc': model_to_dict(hpc)}
+    else:
+        return {'error': 'HPC does not belong to user'}
+
+
+def _get_hpc_infrastructure(pk):
     try:
         hpc = HPCInfrastructure.objects.get(pk=pk)
-        if (owner == hpc.owner):
-            hpc.delete()
-            return {'hpc': model_to_dict(hpc)}
-        else:
-            return {'error': 'HPC does not belong to user'}
     except HPCInfrastructure.DoesNotExist:
-        return {'error': 'HPC does not exists'}
+        hpc = None
+    return hpc
 
 
 def _get_dataset(dataset_name):

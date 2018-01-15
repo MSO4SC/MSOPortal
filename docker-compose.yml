@@ -5,6 +5,7 @@ services:
     idm:
         container_name: idm
         image: mso4sc/idm:latest
+        restart: on-failure
         ports:
             - "0.0.0.0:${HORIZON_PORT}:8000"
             - "0.0.0.0:${KEYSTONE_PORT}:5000"
