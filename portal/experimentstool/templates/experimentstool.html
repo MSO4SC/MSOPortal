@@ -2,16 +2,37 @@
 {% load static %}
 
 {% block content %}
-<div id="controls" class="tab">
-    <button id="tab-upload" class="tablinks" onclick="openExperimentsTool(event, 'upload')">Register App</button>
-    <button id="tab-remove" class="tablinks" onclick="openExperimentsTool(event, 'remove')">Remove App</button>
-    <button id="tab-deploy" class="tablinks" onclick="openExperimentsTool(event, 'deploy')">Create App Instance</button>
-    <button id="tab-install" class="tablinks" onclick="openExperimentsTool(event, 'install')">Deploy Instance</button>
-    <button id="tab-run" class="tablinks" onclick="openExperimentsTool(event, 'run')">Run Instance</button>
-    <button id="tab-uninstall" class="tablinks" onclick="openExperimentsTool(event, 'uninstall')">Undeploy/Clean Up Instance</button>
-    <button id="tab-destroy" class="tablinks" onclick="openExperimentsTool(event, 'destroy')">Destroy App Instance</button>
-    <button id="tab-settings" class="tablinks" onclick="openExperimentsTool(event, 'settings')">Settings</button>
-</div>
+
+<div class="s-12">
+<nav class="experimentstool">
+    <p class="nav-text"></p> 
+    <div class="top-nav">
+        
+            <ul>
+                <li><a onclick="openExperimentsTool(event, 'upload')">Register App</a></li>
+                <li><a onclick="openExperimentsTool(event, 'remove')">Remove App</a></li>
+                <li><a onclick="openExperimentsTool(event, 'deploy')">Create App Instance</a></li>
+                <li><a onclick="openExperimentsTool(event, 'install')">Deploy Instance</a></li>
+                <li><a onclick="openExperimentsTool(event, 'run')">Run Instance</a></li>
+                <li><a onclick="openExperimentsTool(event, 'uninstall')">Undeploy/Clean Up Instance</a></li>
+                <li><a onclick="openExperimentsTool(event, 'destroy')">Destroy App Instance</a></li>
+                <li><a onclick="openExperimentsTool(event, 'settings')">Settings</a></li>
+                
+            <!--    
+            <button id="tab-upload" class="tablinks" onclick="openExperimentsTool(event, 'upload')">Register App</button>
+            <button id="tab-remove" class="tablinks" onclick="openExperimentsTool(event, 'remove')">Remove App</button>
+            <button id="tab-deploy" class="tablinks" onclick="openExperimentsTool(event, 'deploy')">Create App Instance</button>
+            <button id="tab-install" class="tablinks" onclick="openExperimentsTool(event, 'install')">Deploy Instance</button>
+            <button id="tab-run" class="tablinks" onclick="openExperimentsTool(event, 'run')">Run Instance</button>
+            <button id="tab-uninstall" class="tablinks" onclick="openExperimentsTool(event, 'uninstall')">Undeploy/Clean Up Instance</button>
+            <button id="tab-destroy" class="tablinks" onclick="openExperimentsTool(event, 'destroy')">Destroy App Instance</button>
+            <button id="tab-settings" class="tablinks" onclick="openExperimentsTool(event, 'settings')">Settings</button>
+            -->
+            </ul>    
+        
+    </div>
+</nav>
+</div>    
 
 <div id="experiments_notification_container"></div>
 
