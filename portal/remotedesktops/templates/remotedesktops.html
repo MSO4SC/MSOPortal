@@ -142,7 +142,8 @@ function renderRDIData(container_id, select=true, clear_notifications=true) {
 }
 
 function renderRDIEditButtons(button_id, pk, refresh_function) {
-    $(button_id).on('click', function () {
+    $(button_id).on('click', function (event) {
+        event.preventDefault();
         $.ajax({
             method: "POST",
             url: '/visualization/_delete_rdi',
@@ -185,7 +186,8 @@ function appendNotification(message, error = false) {
     )
 }
 
-$("#add_rdi").find("button").on('click', function () {
+$("#add_rdi").find("button").on('click', function (event) {
+    event.preventDefault();
     var name = $("#add_rdi_name").val();
     var host = $("#add_rdi_host").val();
     var user = $("#add_rdi_user").val();
@@ -226,7 +228,8 @@ $("#add_rdi").find("button").on('click', function () {
     }
 });
 
-$("#desktops").find("button").on('click', function () {
+$("#desktops").find("button").on('click', function (event) {
+    event.preventDefault();
     var rdi_pk = $("#rdi_selector").find("select").val();
 
     if (parseInt(rdi_pk) >= 0) {

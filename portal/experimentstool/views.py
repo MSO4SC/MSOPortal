@@ -226,7 +226,7 @@ def get_dataset_info(request):
 @login_required
 def create_deployment(request):
     if 'blueprints' not in request.session:
-        return JsonResponse({'error': 'No blueprints loaded'})
+        return JsonResponse({'error': 'No applications loaded'})
     if 'datasets' not in request.session:
         return JsonResponse({'error': 'No datasets loaded'})
 
@@ -239,9 +239,9 @@ def create_deployment(request):
     inputs = json.loads(inputs_str)
 
     if not deployment_id or deployment_id is '':
-        return JsonResponse({'error': 'No deployment provided'})
+        return JsonResponse({'error': 'No instance name provided'})
     if blueprint_index >= len(blueprints) or blueprint_index < 0:
-        return JsonResponse({'error': 'Bad blueprint index provided'})
+        return JsonResponse({'error': 'No application selected'})
 
     blueprint_id = blueprints[blueprint_index]['id']
 
@@ -264,14 +264,16 @@ def create_deployment(request):
                     hpc = hpc_item
                     break
             if not hpc:
-                return JsonResponse({'error': 'Bad HPC index provided'})
+                return JsonResponse({'error': 'Bad HPC provided. Please refresh and try again'})
 
             tosca_inputs[input] = hpc.to_dict()
         elif dataset_pattern.match(input):
             # get the dataset
             dataset_index = value
             if dataset_index >= len(datasets) or dataset_index < 0:
-                return JsonResponse({'error': 'Bad dataset index provided'})
+                # the dataset input has no configuration
+                tosca_inputs[input] = ""
+                continue
             dataset = _get_dataset(datasets[dataset_index])
             if 'error' in dataset:
                 return JsonResponse(dataset)
@@ -280,11 +282,14 @@ def create_deployment(request):
             if "resource_" + input in inputs:
                 dataset_resource_index = int(inputs["resource_" + input])
             else:
-                dataset_resource_index = 0
+                # the dataset input has no configuration
+                tosca_inputs[input] = ""
+                continue
+
             if dataset_resource_index >= dataset["num_resources"] or \
                     dataset_resource_index < 0:
                 return JsonResponse(
-                    {'error': 'Bad dataset resource index provided'})
+                    {'error': 'Bad dataset resource provided. Please refresh and try again'})
             dataset_resource = dataset["resources"][dataset_resource_index]
 
             # finally put the url of the resource
@@ -389,6 +394,7 @@ def uninstall_deployment(request):
             'offset': 0
         }
         request.session.modified = True
+    print(response)
     return JsonResponse(response)
 
 

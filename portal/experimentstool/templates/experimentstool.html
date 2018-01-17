@@ -357,6 +357,7 @@ function renderHPCData(container_id, select=true, clear_notifications=true) {
 
 function renderHPCEditButtons(button_id, pk, refresh_function) {
     $(button_id).on('click', function () {
+        event.preventDefault();
         $.ajax({
             method: "POST",
             url: '/experimentstool/_delete_hpc',
@@ -503,27 +504,29 @@ function renderLogData(log_id, url, reset=false) {
         url: url,
         data: {'reset': reset},
         success: function (data) {
-            if (data.error!==undefined && !reset) {
+            if (data.error !== undefined && !reset) {
                 appendNotification("Couldn't monitor the operation: "+data.error, error=true);
             } else {
-                // Write events in the textarea
-                data.events.forEach(function(event) {
-                    textarea.val(textarea.val()+event+'\n');
-                });
-                textarea.scrollTop = textarea.scrollHeight;
+                if (data.events !== undefined) {
+                    // Write events in the textarea
+                    data.events.forEach(function(event) {
+                        textarea.val(textarea.val()+event+'\n');
+                    });
+                    textarea.scrollTop = textarea.scrollHeight;
 
-                // Schedule the next request when the current one's complete
-                if (!data.finished) {
-                    $log_timeout = setTimeout(function () {renderLogData(log_id, url, reset=false);}, 3000);
-                    if (reset) {
-                        $(log_id).find("img").attr("src", "/static/experimentstool/img/light_blue.png");
-                    }
-                } else {
-                    var light = $(log_id).find("img");
-                    if (data.status=="terminated") {
-                        light.attr("src", "/static/experimentstool/img/light_green.png");
+                    // Schedule the next request when the current one's complete
+                    if (!data.finished) {
+                        $log_timeout = setTimeout(function () {renderLogData(log_id, url, reset=false);}, 3000);
+                        if (reset) {
+                            $(log_id).find("img").attr("src", "/static/experimentstool/img/light_blue.png");
+                        }
                     } else {
-                        light.attr("src", "/static/experimentstool/img/light_red.png");
+                        var light = $(log_id).find("img");
+                        if (data.status=="terminated") {
+                            light.attr("src", "/static/experimentstool/img/light_green.png");
+                        } else {
+                            light.attr("src", "/static/experimentstool/img/light_red.png");
+                        }
                     }
                 }
             }
@@ -584,7 +587,8 @@ function appendNotification(message, error = false) {
     )
 }
 
-$("#add_hpc").find("button").on('click', function () {
+$("#add_hpc").find("button").on('click', function (event) {
+    event.preventDefault();
     var name = $("#add_hpc_name").val();
     var host = $("#add_hpc_host").val();
     var user = $("#add_hpc_user").val();
@@ -623,7 +627,8 @@ $("#add_hpc").find("button").on('click', function () {
     }
 });
 
-$("#upload").find("button").on('click', function () {
+$("#upload").find("button").on('click', function (event) {
+    event.preventDefault();
     var product = $("#product_selector").find("select").val();
     var mso_id = $("#mso4sc_id").find("input").val();
 
@@ -723,28 +728,32 @@ $("#deploy_form").find("button").on('click', function (event) {
     });
 });
 
-$("#install").find("button").on('click', function () {
+$("#install").find("button").on('click', function (event) {
+    event.preventDefault();
     executeDeployment("#install_deployment_selector",
                       "/experimentstool/_install_deployment",
                       "#install_deployment_log",
                       "/experimentstool/_get_install_events");
 });
 
-$("#run").find("button").on('click', function () {
+$("#run").find("button").on('click', function (event) {
+    event.preventDefault();
     executeDeployment("#run_deployment_selector",
                       "/experimentstool/_run_deployment",
                       "#run_deployment_log",
                       "/experimentstool/_get_run_events");
 });
 
-$("#undeploy-button").on('click', function () {
+$("#undeploy-button").on('click', function (event) {
+    event.preventDefault();
     executeDeployment("#uninstall_deployment_selector",
                       "/experimentstool/_uninstall_deployment",
                       "#uninstall_deployment_log",
                       "/experimentstool/_get_uninstall_events");
 });
 
-$("#force-undeploy-button").on('click', function () {
+$("#force-undeploy-button").on('click', function (event) {
+    event.preventDefault();
     executeDeployment("#uninstall_deployment_selector",
                       "/experimentstool/_uninstall_deployment",
                       "#uninstall_deployment_log",
@@ -752,18 +761,21 @@ $("#force-undeploy-button").on('click', function () {
                       force = true);
 });
 
-$("#destroy-instance-button").on('click', function () {
+$("#destroy-instance-button").on('click', function (event) {
+    event.preventDefault();
     executeDeployment("#destroy_deployment_selector",
                       "/experimentstool/_destroy_deployment");
 });
 
-$("#force-destroy-instance-button").on('click', function () {
+$("#force-destroy-instance-button").on('click', function (event) {
+    event.preventDefault();
     executeDeployment("#destroy_deployment_selector",
                       "/experimentstool/_destroy_deployment",
                       force=true);
 });
 
-$("#remove").find("button").on('click', function () {
+$("#remove").find("button").on('click', function (event) {
+    event.preventDefault();
     var blueprint_index = $("#remove_blueprint_selector").find("select").val();
 
     $.ajax({
