@@ -51,6 +51,10 @@ i {
 .top-nav li a {
     padding: 0.65em;
 }
+nav.submenu{
+    background: transparent;
+}
+
 .submenu .top-nav li{
     background: none repeat scroll 0 0 rgba(8, 59, 102, 0.8);
     padding:0.5rem;
@@ -63,10 +67,17 @@ i {
     margin:0;
     font-size:0.9em;
 }
+.top-nav li:hover{
+    background: none repeat scroll 0 0 #9BB800;    
+}
 
-nav.submenu{
+
+.top-nav li a:hover{
+    color:black;
     background: transparent;
 }
+
+
 
 .date {
     text-align: center;

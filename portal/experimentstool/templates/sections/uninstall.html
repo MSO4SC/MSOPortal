@@ -1,19 +1,28 @@
 {% load static %}
 <form class="customform">    
     <div class="s-12 m-12 l-12">
-        <div class="l-8" id="uninstall_deployment_selector">
+        <div class="l-9" id="uninstall_deployment_selector">
             <label>App Instance: </label>
             <select></select>
         </div>
     </div>
-    <div class="s-12 l-3 center">
-        <button id="undeploy-button">Undeploy!</button>
+    <div class="margin">
+        <div class="s-12 m-6 l-6">
+            <div class="l-5 right">
+                <button  id="undeploy-button">Undeploy!</button>
+            </div>    
+       </div>          
+        <div class="s-12 m-6 l-6">
+            <div class="l-5 left">
+                <button id="force-undeploy-button">Force Undeploy!</button>
+            </div>    
+        </div>    
     </div>
-    <div class="s-12 l-3 center">
-        <button id="force-undeploy-button">Force Undeploy!</button>
-    </div>    
+
+
+
     <div class="s-12 m-12 l-12">    
-        <div class="l-8" id="uninstall_deployment_log">
+        <div class="l-9" id="uninstall_deployment_log">
             <textarea rows="20" cols="150" ></textarea>
             <img src="{% static 'experimentstool/img/light_grey.png' %}">
         </div>
