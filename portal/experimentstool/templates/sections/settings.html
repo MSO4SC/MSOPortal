@@ -1,32 +1,39 @@
-<div id="infrastructure_list">
-</div>
-
-<div id="add_hpc">
-    <div>
-        <label for="add_hpc_name">Name:</label>
-        <input type='text' maxlength="50" id="add_hpc_name" />
-    </div>
-    <div>
-        <label for="add_hpc_host">Host:</label>
-        <input type='text' maxlength="50" id="add_hpc_host" />
-    </div>
-    <div>
-        <label for="add_hpc_user">User:</label>
-        <input type='text' maxlength="50" id="add_hpc_user" />
-    </div>
-    <div>
-        <label for="add_hpc_manager">Workload Manager:</label>
-        <select id="add_hpc_manager">
-            <option>Slurm</option>
-        </select>
-    </div>
-    <div>
-        <label for="add_hpc_password">Password:</label>
-        <input type='text' maxlength="50" id="add_hpc_password" />
-    </div>
-    <div>
-        <label for="add_hpc_timezone">Time Zone:</label>
-        <input type='text' maxlength="50" id="add_hpc_timezone" value="Europe/Madrid" />
-    </div>
-    <button>Add</button>
-</div>
+<form class="customform">  
+    <div class="s-12 m-12 l-12">    
+        <div class="l-8" id="infrastructure_list">
+        </div>
+    </div>    
+    <div class="s-12 m-12 l-12"> 
+        <div class="l-8" id="add_hpc">
+            <div>
+                <label for="add_hpc_name">Name:</label>
+                <input type='text' maxlength="50" id="add_hpc_name" />
+            </div>
+            <div>
+                <label for="add_hpc_host">Host:</label>
+                <input type='text' maxlength="50" id="add_hpc_host" />
+            </div>
+            <div>
+                <label for="add_hpc_user">User:</label>
+                <input type='text' maxlength="50" id="add_hpc_user" />
+            </div>
+            <div>
+                <label for="add_hpc_manager">Workload Manager:</label>
+                <select id="add_hpc_manager">
+                    <option>Slurm</option>
+                </select>
+            </div>
+            <div>
+                <label for="add_hpc_password">Password:</label>
+                <input type='text' maxlength="50" id="add_hpc_password" />
+            </div>
+            <div>
+                <label for="add_hpc_timezone">Time Zone:</label>
+                <input type='text' maxlength="50" id="add_hpc_timezone" value="Europe/Madrid" />
+            </div>
+            <div class="s-12 l-3 center">
+                <button>Add</button>
+            </div>    
+        </div>
+    </div>    
+</form>

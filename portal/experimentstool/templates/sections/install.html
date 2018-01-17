@@ -1,12 +1,19 @@
 {% load static %}
-<div id="install_deployment_selector">
-    <label>App Instance: </label>
-    <select></select>
-</div>
 
-<button>Deploy!</button>
-
-<div id="install_deployment_log">
-    <textarea rows="20" cols="150" ></textarea>
-    <img src="{% static 'experimentstool/img/light_grey.png' %}">
-</div>
+<form class="customform">  
+    <div class="s-12 m-12 l-12">
+        <div class="l-8" id="install_deployment_selector">
+            <label>App Instance: </label>
+            <select></select>
+        </div>
+    </div>
+    <div class="s-12 l-3 center">
+        <button>Deploy!</button>
+    </div>
+    <div class="s-12 m-12 l-12">
+        <div class="l-8" id="install_deployment_log">
+            <textarea rows="20" cols="70" ></textarea>
+            <img src="{% static 'experimentstool/img/light_grey.png' %}">
+        </div>
+    </div>    
+</form>    

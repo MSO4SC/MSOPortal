@@ -2,10 +2,19 @@
 {% load static %}
 
 {% block content %}
-<div id="controls" class="tab">
-    <button id="tab-desktops" class="tablinks" onclick="openRemoteDesktopsTool(event, 'desktops')">Desktops Available</button>
-    <button id="tab-settings" class="tablinks" onclick="openRemoteDesktopsTool(event, 'settings')">Settings</button>
-</div>
+
+<div class="s-12">
+<nav class="submenu">
+    <p class="nav-text"></p> 
+    <div class="top-nav">        
+            <ul>
+                <li><a onclick="openRemoteDesktopsTool(event, 'desktops')">Desktops Available</a></li>
+                <li><a onclick="openRemoteDesktopsTool(event, 'settings')">Settings</a></li>
+            </ul>            
+    </div>
+</nav>
+</div>    
+
 
 <div id="remotedesktops_notification_container"></div>
 
