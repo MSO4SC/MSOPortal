@@ -35,19 +35,21 @@
                     {% if user.is_authenticated %}
                         <p class="usuario"><i class="icon-user"></i>You are signed in as <strong>{{ user.username }}</strong></p>
                         <ul class="chevron">
-                            <li><a href="{% url 'home' %}">home</a></li>
-                            <li><a href="{% url 'remotedesktops' %}">pre / post</a></li>
-                            <li><a href="{% url 'experimentstool' %}">experiments tool</a> </li>
-                            <li><a href="{% url 'marketplace_logIn' %}">marketplace</a></li>
-                            <li><a href="{% url 'datacatalogue_logIn' %}">data catalogue</a></li>
-                            <li><a href="{% url 'settings' %}">settings</a></li>
-                            <li><a href="{% url 'password' %}">change password</a></li>
-                            <li><a href="{% url 'logout' %}">logout</a></li>                
+                            <li><a href="{% url 'home' %}">Home</a></li>
+                            <li><a href="{% url 'remotedesktops' %}">Visualization</a></li>
+                            <li><a href="{% url 'experimentstool' %}">Experiments</a> </li>
+                            <li><a href="{% url 'datacatalogue_logIn' %}">Data Catalogue</a></li>
+                            <li><a href="{% url 'marketplace_logIn' %}">Marketplace</a></li>
+                            <!--<li><a href="{% url 'settings' %}">settings</a></li>-->
+                            <!--<li><a href="{% url 'password' %}">change password</a></li>-->
+                            <li><a href="{% url 'logout' %}">Logout</a></li>                
                         </ul>    
                     {% else %}
                         <ul class="chevron">
-                            <li><a href="{% url 'login' %}"><i class="icon-user"></i>login</a></li>
-                            <li><a href="{% url 'signup' %}"><i class="icon-new_user"></i>signup</a></li>
+                            <li><a href="{% url 'home' %}">Home</a></li>
+                            <li><a href="{% url 'social:begin' 'fiware' %}"><i class="icon-user"></i>Login</a></li>
+                            <!--<li><a href="{% url 'login' %}"><i class="icon-user"></i>login</a></li>-->
+                            <!--<li><a href="{% url 'signup' %}"><i class="icon-new_user"></i>signup</a></li>-->
                         </ul>    
                     {% endif %}                    
               </div>   

@@ -5,7 +5,7 @@ import time
 # from django.contrib import messages
 # from django.views.decorators.clickjacking import xframe_options_exempt
 
-# from social_django.models import UserSocialAuth
+from social_django.models import UserSocialAuth
 # from social_django.utils import load_strategy
 
 
@@ -16,3 +16,11 @@ def get_token(user, from_url):
         # social.refresh_token(strategy)
         return (False, '/oauth/login/fiware?next=' + from_url)
     return (True, social.extra_data['access_token'])
+
+
+def get_social_user(user):
+    try:
+        fiware_login = user.social_auth.get(provider='fiware')
+    except UserSocialAuth.DoesNotExist:
+        fiware_login = None
+    return fiware_login
