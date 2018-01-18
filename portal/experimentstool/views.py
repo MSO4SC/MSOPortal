@@ -112,7 +112,8 @@ def get_products(request):
     headers = {"Authorization": "bearer " + access_token}
     url = settings.MARKETPLACE_URL + \
         "/DSProductCatalog/api/catalogManagement/v2/productSpecification" + \
-        "?lifecycleStatus=Launched"
+        "?lifecycleStatus=Launched" + \
+        "&relatedParty.id=" + request.user.get_username()
 
     text_data = requests.request("GET", url, headers=headers).text
     json_data = json.loads(text_data)
