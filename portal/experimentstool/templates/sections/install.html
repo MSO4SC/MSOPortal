@@ -1,6 +1,7 @@
 {% load static %}
 
-<form class="customform">  
+<form class="customform">
+    {% csrf_token %}
     <div class="s-12 m-12 l-12">
         <div class="l-8" id="install_deployment_selector">
             <label>App Instance: </label>
