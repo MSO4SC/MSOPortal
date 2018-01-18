@@ -1,8 +1,11 @@
 {% extends 'base.html' %} {% block content %}
-<h2>Homepage</h2>
-<p>Hello {{ user.username }}!</p>
-<p>E-Mail: {{ user.email }}</p>
-<p>Full name: {{ user.fullname }}</p>
-<p>Token: {{ access_token }}</p>
-<p>Extra Data: {{ extra_data }}</p>
+<h2 style="text-align: center;">Welcome to the frontend of the MSO4SC platform!</h2>
+<p style="font-size: 1.2em; text-align:center;">From this site you can access all the services provided by us.</p>
+<br>
+<div class="logged-home-grid">
+    <div class="homebox"><a href="https://github.com/MSO4SC/MSOPortal/blob/master/portal/README.adoc" target="_blank">How to use it</a></div>
+    <div class="homebox"><a href="http://book.mso4sc.cemosis.fr/" target="_blank">Technical documentation</a></div>
+    <div class="homebox"><a href="https://github.com/MSO4SC" target="_blank">Source code</a></div>
+    <!--<div class="homebox"><a href="http://www.mso4sc.eu/" target="_blank">About this project</a></div>-->
+</div>
 {% endblock %}

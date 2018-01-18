@@ -85,3 +85,21 @@ div.tab button.active {
     width: 70%;
     left: 30%;
 }
+
+.logged-home-grid {
+    display: grid;
+    grid-template-columns: 30% 30% 30%;
+    grid-gap: 4.7%;
+    background-color: #fff;
+    color: #444;
+}
+
+.logged-home-grid .homebox {
+    background-color: #444;
+    color: #fff;
+    border-radius: 5px;
+    padding: 20px;
+    font-size: 150%;
+    text-align: center;
+    vertical-align: middle;
+}

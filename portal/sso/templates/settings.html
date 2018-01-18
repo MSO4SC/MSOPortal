@@ -1,6 +1,11 @@
 {% extends 'base.html' %} {% block content %}
 <h2>Settings</h2>
 
+<p>User name: {{ user.username }}!</p>
+<p>E-Mail: {{ user.email }}</p>
+<p>Token: {{ access_token }}</p>
+<p>Extra Data: {{ extra_data }}</p>
+
 <h3>Fiware</h3>
 {% if fiware_login %}
 <p>Connected as <a href="{{ fiware_idm_endpoint }}/idm/users/{{ fiware_login.extra_data.username }}/" target="_blank">{{ fiware_login.extra_data.username }}</a></p>
