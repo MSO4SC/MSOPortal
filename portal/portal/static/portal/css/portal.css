@@ -91,11 +91,11 @@ div.tab button.active {
     grid-template-columns: 30% 30% 30%;
     grid-gap: 4.7%;
     background-color: #fff;
-    color: #444;
+    color: #252D30;
 }
 
 .logged-home-grid .homebox {
-    background-color: #444;
+    background-color: #252D30;
     color: #fff;
     border-radius: 5px;
     padding: 20px;
