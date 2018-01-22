@@ -208,9 +208,18 @@ function renderBlueprintInputs(selector_id, container_id) {
             },
             dataType: 'json',
             success: function (data) {
+                data.inputs.sort(function(a, b){
+                    var nameA=a.name.toLowerCase(), nameB=b.name.toLowerCase();
+                    if (nameA < nameB) //sort string ascending
+                     return -1;
+                    if (nameA > nameB)
+                     return 1;
+                    return 0; //default return value (no sorting)
+                });
                 if (data.error!==undefined) {
                     appendNotification("Couldn't read the inputs: "+data.error, error=true);
                 } else if (data.inputs.length > 0) {
+                    //First render HPCs inputs
                     $(data.inputs).each(function (index, input) {
                         if (hpc_pattern.test(input.name)) {
                             inputs_container.append( //hpcs
@@ -218,26 +227,34 @@ function renderBlueprintInputs(selector_id, container_id) {
                                     id: "input_container_" + input.name
                                 }).append(
                                     $(document.createElement('label')).attr({
-                                        for: "input_" + input.name
-                                    }).text(input.name),
+                                        for: "input_" + input.name,
+                                        title: input.description
+                                    }).text('HPC: '+input.name.slice(11)),
                                     $(document.createElement('select')).attr({
-                                        id: "input_" + input.name
+                                        id: "input_" + input.name,
+                                        name: input.name
                                     }).append(
                                         $(document.createElement('option')).attr("value", -1).text("None")
                                     )
                                 )
                             );
                             renderHPCData("#input_container_"+input.name);
-                        } else if (dataset_pattern.test(input.name)) {
+                        }
+                    });
+                    //Then render datasets inputs
+                    $(data.inputs).each(function (index, input) {
+                        if (dataset_pattern.test(input.name)) {
                             inputs_container.append( //datasets
                                 $(document.createElement('div')).attr({
                                     id: "input_container_" + input.name
                                 }).append(
                                     $(document.createElement('label')).attr({
-                                        for: "input_" + input.name
-                                    }).text(input.name),
+                                        for: "input_" + input.name,
+                                        title: input.description
+                                    }).text('Dataset resource: '+input.name.slice(15)),
                                     $(document.createElement('select')).attr({
-                                        id: "input_" + input.name
+                                        id: "input_" + input.name,
+                                        name: input.name
                                     }).append(
                                         $(document.createElement('option')).attr("value", -1).text("None")
                                     ),
@@ -252,7 +269,11 @@ function renderBlueprintInputs(selector_id, container_id) {
                                                      "#choices_" + input.name,
                                                      "resource_" + input.name);
                             });
-                        } else {
+                        }
+                    });
+                    //Finally the rest of the inputs
+                    $(data.inputs).each(function (index, input) {
+                        if (!(hpc_pattern.test(input.name)) && !(dataset_pattern.test(input.name))) {
                             inputs_container.append( //other
                                 $(document.createElement('div')).attr({
                                     id: "input_container_" + input.name
@@ -281,51 +302,54 @@ function inputToForm(input) {
     if (input.type === "string") {
         return [
             $(document.createElement('label')).attr({
-                for: "input_" + input.name
+                for: "input_" + input.name,
+                title: input.description
             }).text(input.name),
             $(document.createElement('input')).attr({
                 id: "input_" + input.name,
                 value: input.default,
-                type: 'text'
+                type: 'text',
+                name: input.name
             })
         ]
     } else if (input.type === "integer") {
         return [
             $(document.createElement('label')).attr({
-                for: "integer_input_" + input.name
+                for: "integer_input_" + input.name,
+                title: input.description
             }).text(input.name),
             $(document.createElement('input')).attr({
                 id: "integer_input_" + input.name,
                 value: input.default,
-                type: 'text'
+                type: 'text',
+                name: input.name
             })
         ]
     } else if (input.type === "boolean") {
-        console.log(jQuery.type(input.default));
         if (input.default){
             true_doc = $(document.createElement('input')).attr({
                 id: "boolean_input_" + input.name + '_true',
-                name: "boolean_input_" + input.name,
+                name: input.name,
                 value: 1,
                 type: 'radio',
                 checked: "checked"
             });
             false_doc = $(document.createElement('input')).attr({
                 id: "boolean_input_" + input.name + '_false',
-                name: "boolean_input_" + input.name,
+                name: input.name,
                 value: 0,
                 type: 'radio'
             });
         } else {
             true_doc = $(document.createElement('input')).attr({
                 id: "boolean_input_" + input.name + '_true',
-                name: "boolean_input_" + input.name,
+                name: input.name,
                 value: 1,
                 type: 'radio'
             });
             false_doc = $(document.createElement('input')).attr({
                 id: "boolean_input_" + input.name + '_false',
-                name: "boolean_input_" + input.name,
+                name: input.name,
                 value: 0,
                 type: 'radio',
                 checked: "checked"
@@ -333,7 +357,8 @@ function inputToForm(input) {
         }
         return [
             $(document.createElement('label')).attr({
-                for: "boolean_input_" + input.name
+                for: "boolean_input_" + input.name,
+                title: input.description
             }).text(input.name),
             $(document.createElement('div')).attr({
                     id: "boolean_input_" + input.name
@@ -351,34 +376,40 @@ function inputToForm(input) {
     } else if (jQuery.type(input.default)=="array") {
         return [
             $(document.createElement('label')).attr({
-                for: "array_input_" + input.name
+                for: "array_input_" + input.name,
+                title: input.description
             }).text(input.name),
             $(document.createElement('input')).attr({
                 id: "array_input_" + input.name,
                 value: input.default,
-                type: 'text'
+                type: 'text',
+                name: input.name
             })
         ]
     } else if (jQuery.type(input.default)=="object") {
         return [
             $(document.createElement('label')).attr({
-                for: "dict_input_" + input.name
+                for: "dict_input_" + input.name,
+                title: input.description
             }).text(input.name),
             $(document.createElement('input')).attr({
                 id: "dict_input_" + input.name,
                 value: JSON.stringify(input.default),
-                type: 'text'
+                type: 'text',
+                name: input.name
             })
         ]
     } else {
         return [
             $(document.createElement('label')).attr({
-                for: "input_" + input.name
+                for: "input_" + input.name,
+                title: input.description
             }).text(input.name),
             $(document.createElement('input')).attr({
                 id: "input_" + input.name,
                 value: input.default,
-                type: 'text'
+                type: 'text',
+                name: input.name
             })
         ]
     }
@@ -795,45 +826,27 @@ $("#deploy_form").find("button").on('click', function (event) {
     
     var inputs_dict = {};
     $('input[id^="input_"]').each(function(index, input){ // text inputs
-        inputs_dict[$('label[for="' + $(input).attr('id') + '"]').html()] = 
-            String($(input).val());
+        inputs_dict[$(input).attr('name')] = String($(input).val());
     });
     $('input[id^="integer_input_"]').each(function(index, input){ // integer inputs
-        inputs_dict[$('label[for="' + $(input).attr('id') + '"]').html()] = 
-            parseInt($(input).val());
+        inputs_dict[$(input).attr('name')] = parseInt($(input).val());
     });
-    $('input[name^="boolean_input_"]:checked').each(function(index, input){ // boolean inputs
-        inputs_dict[$('label[for="' + $(input).attr('name') + '"]').html()] = 
-            1 === parseInt($(input).val());
+    $('input[id^="boolean_input_"]:checked').each(function(index, input){ // boolean inputs
+        inputs_dict[$(input).attr('name')] = 1 === parseInt($(input).val());
     });
     $('input[id^="array_input_"]').each(function(index, input){ // array inputs
-        inputs_dict[$('label[for="' + $(input).attr('id') + '"]').html()] = 
-            $(input).val().split(",");
+        inputs_dict[$(input).attr('name')] = String($(input).val()).split(",");
     });
     $('input[id^="dict_input_"]').each(function(index, input){ // dict inputs
-        inputs_dict[$('label[for="' + $(input).attr('id') + '"]').html()] = 
-            JSON.parse($(input).val());
+        inputs_dict[$(input).attr('name')] = JSON.parse($(input).val());
     });
     $('select[id^="input_"]').each(function(index, input){ // hpc inputs
-        try {
-            inputs_dict[$('label[for="' + $(input).attr('id') + '"]').html()] = 
-                JSON.parse($(input).val());
-        }
-        catch(err) {
-            inputs_dict[$('label[for="' + $(input).attr('id') + '"]').html()] = 
-                JSON.parse('"'+$(input).val()+'"');
-        }
+        inputs_dict[$(input).attr('name')] = parseInt($(input).val());
     });
     $('input[name^="resource_"]:checked').each(function(index, input){ // resource inputs
-        try {
-            inputs_dict[$(input).attr('name')] = JSON.parse($(input).val());
-        }
-        catch(err) {
-            inputs_dict[$(input).attr('name')] = JSON.parse('"'+$(input).val()+'"');
-        }
+        inputs_dict[$(input).attr('name')] = String($(input).val());
     });
     var deployment_inputs = JSON.stringify(inputs_dict);
-    console.log(deployment_inputs);
 
     var data = new FormData();
     data.append('deployment_id', deployment_id);
