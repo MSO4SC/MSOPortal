@@ -213,7 +213,7 @@ function renderBlueprintInputs(selector_id, container_id) {
                 } else if (data.inputs.length > 0) {
                     $(data.inputs).each(function (index, input) {
                         if (hpc_pattern.test(input.name)) {
-                            inputs_container.append(
+                            inputs_container.append( //hpcs
                                 $(document.createElement('div')).attr({
                                     id: "input_container_" + input.name
                                 }).append(
@@ -229,7 +229,7 @@ function renderBlueprintInputs(selector_id, container_id) {
                             );
                             renderHPCData("#input_container_"+input.name);
                         } else if (dataset_pattern.test(input.name)) {
-                            inputs_container.append(
+                            inputs_container.append( //datasets
                                 $(document.createElement('div')).attr({
                                     id: "input_container_" + input.name
                                 }).append(
@@ -253,18 +253,11 @@ function renderBlueprintInputs(selector_id, container_id) {
                                                      "resource_" + input.name);
                             });
                         } else {
-                            inputs_container.append(
+                            inputs_container.append( //other
                                 $(document.createElement('div')).attr({
                                     id: "input_container_" + input.name
                                 }).append(
-                                    $(document.createElement('label')).attr({
-                                        for: "input_" + input.name
-                                    }).text(input.name),
-                                    $(document.createElement('input')).attr({
-                                        id: "input_" + input.name,
-                                        value: inputValueToString(input.default),
-                                        type: 'text'
-                                    })
+                                    inputToForm(input)
                                 )
                             );
                         }
@@ -284,11 +277,110 @@ function renderBlueprintInputs(selector_id, container_id) {
     }
 }
 
-function inputValueToString(value) {
-    if (jQuery.type(value)=="object") {
-        return "{}"
+function inputToForm(input) {
+    if (input.type === "string") {
+        return [
+            $(document.createElement('label')).attr({
+                for: "input_" + input.name
+            }).text(input.name),
+            $(document.createElement('input')).attr({
+                id: "input_" + input.name,
+                value: input.default,
+                type: 'text'
+            })
+        ]
+    } else if (input.type === "integer") {
+        return [
+            $(document.createElement('label')).attr({
+                for: "integer_input_" + input.name
+            }).text(input.name),
+            $(document.createElement('input')).attr({
+                id: "integer_input_" + input.name,
+                value: input.default,
+                type: 'text'
+            })
+        ]
+    } else if (input.type === "boolean") {
+        console.log(jQuery.type(input.default));
+        if (input.default){
+            true_doc = $(document.createElement('input')).attr({
+                id: "boolean_input_" + input.name + '_true',
+                name: "boolean_input_" + input.name,
+                value: 1,
+                type: 'radio',
+                checked: "checked"
+            });
+            false_doc = $(document.createElement('input')).attr({
+                id: "boolean_input_" + input.name + '_false',
+                name: "boolean_input_" + input.name,
+                value: 0,
+                type: 'radio'
+            });
+        } else {
+            true_doc = $(document.createElement('input')).attr({
+                id: "boolean_input_" + input.name + '_true',
+                name: "boolean_input_" + input.name,
+                value: 1,
+                type: 'radio'
+            });
+            false_doc = $(document.createElement('input')).attr({
+                id: "boolean_input_" + input.name + '_false',
+                name: "boolean_input_" + input.name,
+                value: 0,
+                type: 'radio',
+                checked: "checked"
+            });
+        }
+        return [
+            $(document.createElement('label')).attr({
+                for: "boolean_input_" + input.name
+            }).text(input.name),
+            $(document.createElement('div')).attr({
+                    id: "boolean_input_" + input.name
+                }).append(
+                    $(document.createElement('label')).attr({
+                        for: "boolean_input_" + input.name + '_true'
+                    }).text("True"),
+                    true_doc,
+                    $(document.createElement('label')).attr({
+                        for: "boolean_input_" + input.name + '_false',
+                    }).text("False"),
+                    false_doc
+                )
+        ]
+    } else if (jQuery.type(input.default)=="array") {
+        return [
+            $(document.createElement('label')).attr({
+                for: "array_input_" + input.name
+            }).text(input.name),
+            $(document.createElement('input')).attr({
+                id: "array_input_" + input.name,
+                value: input.default,
+                type: 'text'
+            })
+        ]
+    } else if (jQuery.type(input.default)=="object") {
+        return [
+            $(document.createElement('label')).attr({
+                for: "dict_input_" + input.name
+            }).text(input.name),
+            $(document.createElement('input')).attr({
+                id: "dict_input_" + input.name,
+                value: JSON.stringify(input.default),
+                type: 'text'
+            })
+        ]
     } else {
-        return value
+        return [
+            $(document.createElement('label')).attr({
+                for: "input_" + input.name
+            }).text(input.name),
+            $(document.createElement('input')).attr({
+                id: "input_" + input.name,
+                value: input.default,
+                type: 'text'
+            })
+        ]
     }
 }
 
@@ -326,7 +418,7 @@ function renderHPCData(container_id, select=true, clear_notifications=true) {
                                         attr("class", "s-12 m-6 l-6").
                                         append(
                                             $(document.createElement('div')).
-                                                attr("class", "l-6 left").
+                                                attr("class", "l-9 left").
                                                 append(
                                                     $(document.createElement('div')).append(
                                                         $(document.createElement('span')).attr("class", "hpc_label hpc_label_name").text('Name: '),
@@ -351,7 +443,7 @@ function renderHPCData(container_id, select=true, clear_notifications=true) {
                                                 )
                                             ,
                                             $(document.createElement('div')).
-                                                attr("class", "l-6 right").
+                                                attr("class", "l-3 right").
                                                 append(
                                                     $(document.createElement('button')).
                                                         attr("id", "del_hpc_"+hpc.pk).
@@ -373,9 +465,7 @@ function renderHPCData(container_id, select=true, clear_notifications=true) {
                     }
                 });
             } else {
-                if (select) {
-                    pass
-                } else {
+                if (!select) {
                     hpc_container.append(
                         $(document.createElement('div')).attr("id", "no_hpc_list").text("No HPC infrastructures found")
                     )
@@ -704,7 +794,27 @@ $("#deploy_form").find("button").on('click', function (event) {
     var blueprint_index = $("#blueprint_selector").find("select").val();
     
     var inputs_dict = {};
-    $('input[id^="input_"]').each(function(index, input){
+    $('input[id^="input_"]').each(function(index, input){ // text inputs
+        inputs_dict[$('label[for="' + $(input).attr('id') + '"]').html()] = 
+            String($(input).val());
+    });
+    $('input[id^="integer_input_"]').each(function(index, input){ // integer inputs
+        inputs_dict[$('label[for="' + $(input).attr('id') + '"]').html()] = 
+            parseInt($(input).val());
+    });
+    $('input[name^="boolean_input_"]:checked').each(function(index, input){ // boolean inputs
+        inputs_dict[$('label[for="' + $(input).attr('name') + '"]').html()] = 
+            1 === parseInt($(input).val());
+    });
+    $('input[id^="array_input_"]').each(function(index, input){ // array inputs
+        inputs_dict[$('label[for="' + $(input).attr('id') + '"]').html()] = 
+            $(input).val().split(",");
+    });
+    $('input[id^="dict_input_"]').each(function(index, input){ // dict inputs
+        inputs_dict[$('label[for="' + $(input).attr('id') + '"]').html()] = 
+            JSON.parse($(input).val());
+    });
+    $('select[id^="input_"]').each(function(index, input){ // hpc inputs
         try {
             inputs_dict[$('label[for="' + $(input).attr('id') + '"]').html()] = 
                 JSON.parse($(input).val());
@@ -714,17 +824,7 @@ $("#deploy_form").find("button").on('click', function (event) {
                 JSON.parse('"'+$(input).val()+'"');
         }
     });
-    $('select[id^="input_"]').each(function(index, input){
-        try {
-            inputs_dict[$('label[for="' + $(input).attr('id') + '"]').html()] = 
-                JSON.parse($(input).val());
-        }
-        catch(err) {
-            inputs_dict[$('label[for="' + $(input).attr('id') + '"]').html()] = 
-                JSON.parse('"'+$(input).val()+'"');
-        }
-    });
-    $('input[name^="resource_"]:checked').each(function(index, input){
+    $('input[name^="resource_"]:checked').each(function(index, input){ // resource inputs
         try {
             inputs_dict[$(input).attr('name')] = JSON.parse($(input).val());
         }
@@ -733,6 +833,7 @@ $("#deploy_form").find("button").on('click', function (event) {
         }
     });
     var deployment_inputs = JSON.stringify(inputs_dict);
+    console.log(deployment_inputs);
 
     var data = new FormData();
     data.append('deployment_id', deployment_id);

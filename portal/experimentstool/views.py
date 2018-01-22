@@ -229,11 +229,8 @@ def get_dataset_info(request):
 def create_deployment(request):
     if 'blueprints' not in request.session:
         return JsonResponse({'error': 'No applications loaded'})
-    if 'datasets' not in request.session:
-        return JsonResponse({'error': 'No datasets loaded'})
 
     blueprints = request.session['blueprints']
-    datasets = request.session['datasets']
 
     deployment_id = request.POST.get('deployment_id', None)
     blueprint_index = int(request.POST.get('blueprint_index', -1))
@@ -271,6 +268,10 @@ def create_deployment(request):
 
             tosca_inputs[input] = hpc.to_dict()
         elif dataset_pattern.match(input):
+            if 'datasets' not in request.session:
+                return JsonResponse({'error': 'No datasets loaded'})
+            datasets = request.session['datasets']
+
             # get the dataset
             dataset_index = value
             if dataset_index >= len(datasets) or dataset_index < 0:
