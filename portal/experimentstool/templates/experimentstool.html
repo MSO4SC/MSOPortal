@@ -356,7 +356,7 @@ function renderHPCData(container_id, select=true, clear_notifications=true) {
 }
 
 function renderHPCEditButtons(button_id, pk, refresh_function) {
-    $(button_id).on('click', function () {
+    $(button_id).on('click', function (event) {
         event.preventDefault();
         $.ajax({
             method: "POST",

@@ -266,7 +266,8 @@ def create_deployment(request):
                     hpc = hpc_item
                     break
             if not hpc:
-                return JsonResponse({'error': 'Bad HPC provided. Please refresh and try again'})
+                return JsonResponse({'error': 'Bad HPC provided. Please ' +
+                                     'refresh and try again'})
 
             tosca_inputs[input] = hpc.to_dict()
         elif dataset_pattern.match(input):
@@ -291,7 +292,8 @@ def create_deployment(request):
             if dataset_resource_index >= dataset["num_resources"] or \
                     dataset_resource_index < 0:
                 return JsonResponse(
-                    {'error': 'Bad dataset resource provided. Please refresh and try again'})
+                    {'error': 'Bad dataset resource provided. Please ' +
+                     'refresh and try again'})
             dataset_resource = dataset["resources"][dataset_resource_index]
 
             # finally put the url of the resource
