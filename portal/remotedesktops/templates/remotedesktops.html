@@ -174,9 +174,9 @@ function cleanNotifications() {
 }
 
 function appendNotification(message, error = false) {
-    note_class = "note_success";
+    note_class = "note note_success";
     if (error) {
-        note_class = "note_failure";
+        note_class = "note note_failure";
     }
 
     $("#remotedesktops_notification_container").append(

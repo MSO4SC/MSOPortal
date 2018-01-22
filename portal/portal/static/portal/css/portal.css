@@ -103,3 +103,37 @@ div.tab button.active {
     text-align: center;
     vertical-align: middle;
 }
+
+
+/********************************************************/
+
+div.hpc_settings_block {
+    padding: 5px;
+}
+
+span.hpc_label {
+    font-style: italic;
+}
+
+span.hpc_label_name {
+    font-weight: bold;
+}
+
+div#experiments_notification_container {
+    clear: both;
+}
+
+div.note {
+    margin: 2px;
+    text-align: center;
+    border-style: solid;
+    border-radius: 5px;
+}
+
+div.note_success {
+    border-color: green;
+}
+
+div.note_failure {
+    border-color: red;
+}

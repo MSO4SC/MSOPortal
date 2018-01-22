@@ -319,14 +319,49 @@ function renderHPCData(container_id, select=true, clear_notifications=true) {
                     } else {
                         hpc_container.append(
                             $(document.createElement('div')).
-                                attr("id", "hpc_"+hpc.pk).
-                                text(hpc.fields.name).append(
-                                    $(document.createElement('button')).
-                                        attr("id", "del_hpc_"+hpc.pk).
-                                        text('Delete')
+                                attr("id", "hpc_block_"+hpc.pk).
+                                attr("class", "margin hpc_settings_block").
+                                append(
+                                    $(document.createElement('div')).
+                                        attr("class", "s-12 m-6 l-6").
+                                        append(
+                                            $(document.createElement('div')).
+                                                attr("class", "l-6 left").
+                                                append(
+                                                    $(document.createElement('div')).append(
+                                                        $(document.createElement('span')).attr("class", "hpc_label hpc_label_name").text('Name: '),
+                                                        $(document.createElement('span')).text(hpc.fields.name),
+                                                    ),
+                                                    $(document.createElement('div')).append(
+                                                        $(document.createElement('span')).attr("class", "hpc_label").text('Host: '),
+                                                        $(document.createElement('span')).text(hpc.fields.host),
+                                                    ),
+                                                    $(document.createElement('div')).append(
+                                                        $(document.createElement('span')).attr("class", "hpc_label").text('User: '),
+                                                        $(document.createElement('span')).text(hpc.fields.user),
+                                                    ),
+                                                    $(document.createElement('div')).append(
+                                                        $(document.createElement('span')).attr("class", "hpc_label").text('WM: '),
+                                                        $(document.createElement('span')).text(hpc.fields.manager),
+                                                    ),
+                                                    $(document.createElement('div')).append(
+                                                        $(document.createElement('span')).attr("class", "hpc_label").text('Time Zone: '),
+                                                        $(document.createElement('span')).text(hpc.fields.time_zone),
+                                                    )
+                                                )
+                                            ,
+                                            $(document.createElement('div')).
+                                                attr("class", "l-6 right").
+                                                append(
+                                                    $(document.createElement('button')).
+                                                        attr("id", "del_hpc_"+hpc.pk).
+                                                        text('Delete')
+                                                )
+                                        )
                                 )
                         );
-                        renderHPCEditButtons(
+                        console.log(hpc.fields)
+                        setHPCEditButtonsHandler(
                             "#del_hpc_"+hpc.pk,
                             hpc.pk,
                             refresh_function = function() {
@@ -355,7 +390,7 @@ function renderHPCData(container_id, select=true, clear_notifications=true) {
     });
 }
 
-function renderHPCEditButtons(button_id, pk, refresh_function) {
+function setHPCEditButtonsHandler(button_id, pk, refresh_function) {
     $(button_id).on('click', function (event) {
         event.preventDefault();
         $.ajax({
@@ -575,9 +610,9 @@ function cleanNotifications() {
 }
 
 function appendNotification(message, error = false) {
-    note_class = "note_success";
+    note_class = "note note_success";
     if (error) {
-        note_class = "note_failure";
+        note_class = "note note_failure";
     }
 
     $("#experiments_notification_container").append(
