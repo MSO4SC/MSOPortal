@@ -27,8 +27,8 @@ class RemoteDesktopInfrastructure(models.Model):
     )
 
     def __str__(self):
-        return format("%s: HPC at %s from %s(%s)",
-                      self.name,
-                      self.host,
-                      self.owner.name,
-                      self.user)
+        return "{0}: Remote Desktop at {1} from {2}({3})".format(
+            self.name,
+            self.host,
+            self.owner.username,
+            self.user)
