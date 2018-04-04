@@ -1,31 +1,21 @@
 """ Experiments Tool views module """
 
 import re
-import time
 import json
 import requests
 import sso.utils
 
-from urllib.parse import urlparse
 from portal import settings
 
-from django.core import serializers
-from django.contrib.auth.decorators import login_required
+# from django.core import serializers
+from django.contrib.auth.decorators import login_required, permission_required
 from django.shortcuts import render, redirect
 from django.http import JsonResponse
-from django.forms.models import model_to_dict
 
-from cloudify_rest_client import CloudifyClient
-from cloudify_rest_client.executions import Execution
-from cloudify_rest_client.exceptions import CloudifyClientError
-from cloudify_rest_client.exceptions \
-    import DeploymentEnvironmentCreationPendingError
-from cloudify_rest_client.exceptions \
-    import DeploymentEnvironmentCreationInProgressError
-
-from experimentstool.models import HPCInfrastructure
-
-WAIT_FOR_EXECUTION_SLEEP_INTERVAL = 3
+from experimentstool.models import (Application,
+                                    AppInstance,
+                                    WorkflowExecution,
+                                    HPCInfrastructure)
 
 
 @login_required
@@ -40,15 +30,10 @@ def experimentstool(request):
 
 @login_required
 def get_hpc_list(request):
-    response = _get_hpc_list(request.user)
-    if response:
-        hpc_list = serializers.serialize(
-            'json',
-            response
-        )
-    else:
-        hpc_list = []
-    return JsonResponse(hpc_list, safe=False)
+    # TODO: remove passwords from response
+    return JsonResponse(
+        HPCInfrastructure.list(request.user, return_dict=True),
+        safe=False)
 
 
 @login_required
@@ -77,13 +62,15 @@ def add_hpc(request):
         # TODO validation
         return JsonResponse({'error': 'No time zone provided'})
 
-    return JsonResponse(_add_hpc(name,
+    return JsonResponse(
+        HPCInfrastructure.create(name,
                                  request.user,
                                  host,
                                  user,
                                  password,
                                  tz,
-                                 HPCInfrastructure.SLURM))
+                                 HPCInfrastructure.SLURM,
+                                 return_dict=True))
 
 
 @login_required
@@ -93,11 +80,14 @@ def delete_hpc(request):
         # TODO validation
         return JsonResponse({'error': 'No hpc provided'})
 
-    return JsonResponse(_delete_hpc(request.user, pk))
+    return JsonResponse(
+        HPCInfrastructure.remove(pk,
+                                 request.user,
+                                 return_dict=True))
 
 
 @login_required
-def get_products(request):
+def get_stock(request):
     valid, data = sso.utils.get_token(request.user, request.get_full_path())
     if valid:
         access_token = data
@@ -125,7 +115,8 @@ def get_products(request):
 
 
 @login_required
-def upload_blueprint(request):
+@permission_required('experimentstool.register_app')
+def upload_application(request):
     if 'products' not in request.session:
         return JsonResponse({'error': 'No products loaded'})
 
@@ -147,42 +138,50 @@ def upload_blueprint(request):
     if not product:
         return JsonResponse({'error': 'Product not found'})
 
-    blueprint_path = None
+    application_path = None
     for pc in product['productSpecCharacteristic']:
         if pc['name'] == 'BLUEPRINT_PATH':
-            blueprint_path = pc['productSpecCharacteristicValue'][0]['value']
+            application_path = pc['productSpecCharacteristicValue'][0]['value']
             break
-    if not blueprint_path:
+    if not application_path:
         return JsonResponse({'error': 'The product does not have a ' +
                              '\'BLUEPRINT_PATH\' charasteristic'})
 
-    return JsonResponse(_upload_blueprint(blueprint_path, mso4sc_id))
+    return JsonResponse(Application.create(application_path,
+                                           mso4sc_id,
+                                           request.user,
+                                           return_dict=True))
 
 
 @login_required
-def load_blueprints(request):
-    response = _get_blueprints()
-
-    if 'error' not in response:
-        request.session['blueprints'] = response['blueprints']
-        request.session.modified = True
-    return JsonResponse(response)
+def load_applications(request):
+    return JsonResponse(
+        Application.list(request.user, return_dict=True),
+        safe=False)
 
 
 @login_required
-def get_blueprint_inputs(request):
-    if 'blueprints' not in request.session:
-        return JsonResponse({'error': 'No blueprints loaded'})
+def get_application_inputs(request):
+    application_id = int(request.GET.get('application_id', -1))
 
-    blueprints = request.session['blueprints']
-    blueprint_index = int(request.GET.get('blueprint_index', -1))
+    if application_id < 0:
+        return JsonResponse({'error': 'Bad application id provided'})
 
-    if blueprint_index >= len(blueprints) or blueprint_index < 0:
-        return JsonResponse({'error': 'Bad blueprint index provided'})
+    return JsonResponse(Application.get_inputs(application_id,
+                                               request.user,
+                                               return_dict=True))
 
-    blueprint_id = blueprints[blueprint_index]['id']
 
-    return JsonResponse(_get_blueprint_inputs(blueprint_id))
+@login_required
+def remove_application(request):
+    application_id = int(request.POST.get('application_id', -1))
+
+    if application_id < 0:
+        return JsonResponse({'error': 'Bad application id provided'})
+
+    return JsonResponse(Application.remove(application_id,
+                                           request.user,
+                                           return_dict=True))
 
 
 @login_required
@@ -226,48 +225,45 @@ def get_dataset_info(request):
 
 
 @login_required
+@permission_required('experimentstool.create_instance')
 def create_deployment(request):
-    if 'blueprints' not in request.session:
-        return JsonResponse({'error': 'No applications loaded'})
-
-    blueprints = request.session['blueprints']
-
     deployment_id = request.POST.get('deployment_id', None)
-    blueprint_index = int(request.POST.get('blueprint_index', -1))
+    application_id = int(request.POST.get('application_id', -1))
     inputs_str = request.POST.get('deployment_inputs', "{}")
     inputs = json.loads(inputs_str)
 
     if not deployment_id or deployment_id is '':
         return JsonResponse({'error': 'No instance name provided'})
-    if blueprint_index >= len(blueprints) or blueprint_index < 0:
+    if application_id < 0:
         return JsonResponse({'error': 'No application selected'})
 
-    blueprint_id = blueprints[blueprint_index]['id']
+    hpc_list, error = HPCInfrastructure.list(request.user)
+    if error is not None:
+        return JsonResponse({'error': error})
 
     hpc_pattern = re.compile('^mso4sc_hpc_(.)*$')
     dataset_pattern = re.compile('^mso4sc_dataset_(.)*$')
     dataset_resource_pattern = re.compile('^resource_mso4sc_dataset_(.)*$')
     tosca_inputs = {}
-    for input, value in inputs.items():
-        if hpc_pattern.match(input):
+    for _input, value in inputs.items():
+        if hpc_pattern.match(_input):
             hpc_pk = value
-            hpc_list = HPCInfrastructure.objects.filter(owner=request.user)
             if hpc_pk < 0:
                 # the hpc input has no configuration
-                tosca_inputs[input] = {}
+                tosca_inputs[_input] = {}
                 continue
 
             hpc = None
             for hpc_item in hpc_list:
-                if hpc_item.pk == hpc_pk:
+                if hpc_item.id == hpc_pk:
                     hpc = hpc_item
                     break
             if not hpc:
                 return JsonResponse({'error': 'Bad HPC provided. Please ' +
                                      'refresh and try again'})
 
-            tosca_inputs[input] = hpc.to_dict()
-        elif dataset_pattern.match(input):
+            tosca_inputs[_input] = hpc.to_dict()
+        elif dataset_pattern.match(_input):
             if 'datasets' not in request.session:
                 return JsonResponse({'error': 'No datasets loaded'})
             datasets = request.session['datasets']
@@ -276,18 +272,18 @@ def create_deployment(request):
             dataset_index = value
             if dataset_index >= len(datasets) or dataset_index < 0:
                 # the dataset input has no configuration
-                tosca_inputs[input] = ""
+                tosca_inputs[_input] = ""
                 continue
             dataset = _get_dataset(datasets[dataset_index])
             if 'error' in dataset:
                 return JsonResponse(dataset)
 
             # get the resource
-            if "resource_" + input in inputs:
-                dataset_resource_index = int(inputs["resource_" + input])
+            if "resource_" + _input in inputs:
+                dataset_resource_index = int(inputs["resource_" + _input])
             else:
                 # the dataset input has no configuration
-                tosca_inputs[input] = ""
+                tosca_inputs[_input] = ""
                 continue
 
             if dataset_resource_index >= dataset["num_resources"] or \
@@ -298,49 +294,43 @@ def create_deployment(request):
             dataset_resource = dataset["resources"][dataset_resource_index]
 
             # finally put the url of the resource
-            tosca_inputs[input] = dataset_resource["url"]
-        elif dataset_resource_pattern.match(input):
+            tosca_inputs[_input] = dataset_resource["url"]
+        elif dataset_resource_pattern.match(_input):
             # Resources are managed in the dataset section above
             pass
         else:
-            tosca_inputs[input] = value
+            tosca_inputs[_input] = value
 
-    return JsonResponse(_create_deployment(blueprint_id,
+    return JsonResponse(AppInstance.create(application_id,
                                            deployment_id,
-                                           tosca_inputs))
+                                           tosca_inputs,
+                                           request.user,
+                                           return_dict=True))
 
 
 @login_required
 def get_deployments(request):
-    client = _get_client()
-    try:
-        deployments = client.deployments.list().items
-    except CloudifyClientError as e:
-        print(e)
-        return JsonResponse({'error': str(e)})
-
-    request.session['deployments'] = deployments
-    request.session.modified = True
-
-    return JsonResponse({'deployments': deployments})
+    return JsonResponse(
+        AppInstance.list(request.user, return_dict=True),
+        safe=False)
 
 
 @login_required
 def install_deployment(request):
-    response = _execute_deployment(request, _install_deployment)
-    if 'error' not in response:
+    execution, error = _execute_deployment(request, WorkflowExecution.INSTALL)
+    if error is None:
         request.session['install_execution'] = {
-            'id': response['execution']['id'],
+            'id': execution.execution_id,
             'offset': 0
         }
         request.session.modified = True
-    return JsonResponse(response)
+    return JsonResponse({'execution': execution, 'error': error})
 
 
 @login_required
 def get_install_events(request):
     if 'install_execution' not in request.session:
-        response = {'error': 'No install execution'}
+        return JsonResponse({'error': 'No install execution'})
     else:
         execution_id = request.session['install_execution']['id']
         reset = request.GET.get("reset", "False") in ["True", "true", "TRUE"]
@@ -348,33 +338,34 @@ def get_install_events(request):
         if not reset:
             offset = request.session['install_execution']['offset']
 
-        response = _get_execution_events(execution_id, offset)
-        if offset != response['last']:
-            request.session['install_execution']['offset'] = \
-                response.pop('last')
-            request.session.modified = True
-            print("new offset: " +
-                  str(request.session['install_execution']['offset']))
+        events, error = WorkflowExecution.get_execution_events(execution_id,
+                                                               offset,
+                                                               request.user)
+        if error is None:
+            if offset != events['last']:
+                request.session['install_execution']['offset'] = \
+                    events.pop('last')
+                request.session.modified = True
 
-    return JsonResponse(response)
+    return JsonResponse({'events': events, 'error': error})
 
 
 @login_required
 def run_deployment(request):
-    response = _execute_deployment(request, _run_deployment)
-    if 'error' not in response:
+    execution, error = _execute_deployment(request, WorkflowExecution.RUN)
+    if error is None:
         request.session['run_execution'] = {
-            'id': response['execution']['id'],
+            'id': execution.execution_id,
             'offset': 0
         }
         request.session.modified = True
-    return JsonResponse(response)
+    return JsonResponse({'execution': execution, 'error': error})
 
 
 @login_required
 def get_run_events(request):
     if 'run_execution' not in request.session:
-        response = {'error': 'No run execution'}
+        return JsonResponse({'error': 'No run execution'})
     else:
         execution_id = request.session['run_execution']['id']
         reset = request.GET.get("reset", "False") in ["True", "true", "TRUE"]
@@ -382,31 +373,35 @@ def get_run_events(request):
         if not reset:
             offset = request.session['run_execution']['offset']
 
-        response = _get_execution_events(execution_id, offset)
-        if offset != response['last']:
-            request.session['run_execution']['offset'] = response.pop('last')
-            request.session.modified = True
+        events, error = WorkflowExecution.get_execution_events(execution_id,
+                                                               offset,
+                                                               request.user)
+        if error is None:
+            if offset != events['last']:
+                request.session['run_execution']['offset'] = \
+                    events.pop('last')
+                request.session.modified = True
 
-    return JsonResponse(response)
+    return JsonResponse({'events': events, 'error': error})
 
 
 @login_required
 def uninstall_deployment(request):
-    response = _execute_deployment(request, _uninstall_deployment)
-    if 'error' not in response:
+    execution, error = _execute_deployment(
+        request, WorkflowExecution.UNINSTALL)
+    if error is None:
         request.session['uninstall_execution'] = {
-            'id': response['execution']['id'],
+            'id': execution.execution_id,
             'offset': 0
         }
         request.session.modified = True
-    print(response)
-    return JsonResponse(response)
+    return JsonResponse({'execution': execution, 'error': error})
 
 
 @login_required
 def get_uninstall_events(request):
     if 'uninstall_execution' not in request.session:
-        response = {'error': 'No uninstall execution'}
+        return JsonResponse({'error': 'No uninstall execution'})
     else:
         execution_id = request.session['uninstall_execution']['id']
         reset = request.GET.get("reset", "False") in ["True", "true", "TRUE"]
@@ -414,18 +409,34 @@ def get_uninstall_events(request):
         if not reset:
             offset = request.session['uninstall_execution']['offset']
 
-        response = _get_execution_events(execution_id, offset)
-        if offset != response['last']:
-            request.session['uninstall_execution']['offset'] = response['last']
-            request.session.modified = True
+        events, error = WorkflowExecution.get_execution_events(execution_id,
+                                                               offset,
+                                                               request.user)
+        if error is None:
+            if offset != events['last']:
+                request.session['uninstall_execution']['offset'] = \
+                    events['last']
+                request.session.modified = True
 
-    return JsonResponse(response)
+    return JsonResponse({'events': events, 'error': error})
 
 
 @login_required
 def destroy_deployment(request):
-    response = _execute_deployment(request, _destroy_deployment)
-    if 'error' not in response:
+    deployment_id = int(request.POST.get('deployment_id', -1))
+
+    if deployment_id is None:
+        return {'error': 'No deployment provided'}
+
+    if deployment_id < 0:
+        return {'error': 'Bad deployment provided'}
+
+    force = bool(request.POST.get('force', False))
+
+    execution, error = AppInstance.remove(deployment_id,
+                                          request.user,
+                                          force=force)
+    if error is None:
         if 'install_execution' in request.session:
             request.session.pop('install_execution')
         if 'run_execution' in request.session:
@@ -433,85 +444,24 @@ def destroy_deployment(request):
         if 'uninstall_execution' in request.session:
             request.session.pop('uninstall_execution')
         request.session.modified = True
-    return JsonResponse(response)
-
-
-@login_required
-def remove_blueprint(request):
-    if 'blueprints' not in request.session:
-        return JsonResponse({'error': 'No blueprints loaded'})
-
-    blueprints = request.session['blueprints']
-
-    blueprint_index = int(request.POST.get('blueprint_index', -1))
-
-    if blueprint_index is None:
-        return JsonResponse({'error': 'No blueprint provided'})
-
-    if blueprint_index >= len(blueprints) or blueprint_index < 0:
-        return JsonResponse({'error': 'Bad blueprint index provided'})
-
-    blueprint = blueprints[blueprint_index]['id']
-    return JsonResponse(_remove_blueprint(blueprint))
+    return JsonResponse({'execution': execution, 'error': error})
 
 
 def _execute_deployment(request, operation):
-    if 'deployments' not in request.session:
-        return {'error': 'No deployments loaded'}
+    deployment_id = int(request.POST.get('deployment_id', -1))
 
-    deployments = request.session['deployments']
-
-    deployment_index = int(request.POST.get('deployment_index', -1))
-
-    if deployment_index is None:
+    if deployment_id is None:
         return {'error': 'No deployment provided'}
 
-    if deployment_index >= len(deployments) or deployment_index < 0:
-        return {'error': 'Bad deployment index provided'}
+    if deployment_id < 0:
+        return {'error': 'Bad deployment provided'}
 
-    deployment = deployments[deployment_index]['id']
     force = bool(request.POST.get('force', False))
 
-    return operation(deployment, force)
-
-
-def _get_hpc_list(user):
-    try:
-        hpc_list = HPCInfrastructure.objects.filter(owner=user)
-    except HPCInfrastructure.DoesNotExist:
-        hpc_list = []
-    return hpc_list
-
-
-def _add_hpc(name, owner, host, user, password, tz, manager):
-    hpc = HPCInfrastructure.objects.create(name=name,
-                                           owner=owner,
-                                           host=host,
-                                           user=user,
-                                           password=password,
-                                           time_zone=tz,
-                                           manager=manager)
-    return {'hpc': model_to_dict(hpc)}
-
-
-def _delete_hpc(owner, pk):
-    hpc = _get_hpc_infrastructure(pk)
-    if not hpc:
-        return {'error': 'HPC does not exists'}
-
-    if (owner == hpc.owner):
-        hpc.delete()
-        return {'hpc': model_to_dict(hpc)}
-    else:
-        return {'error': 'HPC does not belong to user'}
-
-
-def _get_hpc_infrastructure(pk):
-    try:
-        hpc = HPCInfrastructure.objects.get(pk=pk)
-    except HPCInfrastructure.DoesNotExist:
-        hpc = None
-    return hpc
+    return WorkflowExecution.create(deployment_id,
+                                    operation,
+                                    request.owner,
+                                    force=force)
 
 
 def _get_dataset(dataset_name):
@@ -535,187 +485,3 @@ def _get_dataset(dataset_name):
                 return dataset
 
     return {'error': "No dataset match"}
-
-
-def _get_client():
-    client = CloudifyClient(host=settings.ORCHESTRATOR_HOST,
-                            username=settings.ORCHESTRATOR_USER,
-                            password=settings.ORCHESTRATOR_PASS,
-                            tenant=settings.ORCHESTRATOR_TENANT)
-    return client
-
-
-def _upload_blueprint(path, blueprint_id):
-    is_url = bool(urlparse(path).scheme)
-
-    client = _get_client()
-    try:
-        if is_url:
-            blueprint = client.blueprints.publish_archive(path, blueprint_id)
-        else:
-            blueprint = client.blueprints.upload(path, blueprint_id)
-    except CloudifyClientError as e:
-        print(e)
-        return {'error': str(e)}
-
-    return {'blueprint': blueprint}
-
-
-def _get_blueprints():
-    client = _get_client()
-    try:
-        blueprints = client.blueprints.list().items
-    except CloudifyClientError as e:
-        print(e)
-        return {'error': str(e)}
-
-    return {'blueprints': blueprints}
-
-
-def _get_blueprint_inputs(blueprint_id):
-    client = _get_client()
-    try:
-        blueprint_dict = client.blueprints.get(blueprint_id)
-        inputs = blueprint_dict['plan']['inputs']
-        data = [{'name': name,
-                 'type': input.get('type', '-'),
-                 'default': input.get('default', '-'),
-                 'description': input.get('description', '-')}
-                for name, input in inputs.items()]
-    except CloudifyClientError as e:
-        print(e)
-        return {'error': str(e)}
-    return {'inputs': data}
-
-
-def _create_deployment(blueprint_id, development_id, inputs, retries=3):
-    client = _get_client()
-    try:
-        deployment = client.deployments.create(
-            blueprint_id,
-            development_id,
-            inputs=inputs,
-            skip_plugins_validation=True
-        )
-    except (DeploymentEnvironmentCreationPendingError,
-            DeploymentEnvironmentCreationInProgressError) as e:
-        if (retries > 0):
-            time.sleep(WAIT_FOR_EXECUTION_SLEEP_INTERVAL)
-            return _create_deployment(blueprint_id, development_id, inputs,
-                                      retries - 1)
-        print(e)
-        return {'error': str(e)}
-    except CloudifyClientError as e:
-        print(e)
-        return {'error': str(e)}
-    return {'deployment': deployment}
-
-
-def _install_deployment(development_id, force):
-    return _execute_workflow(development_id, 'install', force)
-
-
-def _run_deployment(development_id, force):
-    return _execute_workflow(development_id, 'run_jobs', force)
-
-
-def _uninstall_deployment(development_id, force):
-    params = None
-    if force:
-        params = {'ignore_failure': True}
-    return _execute_workflow(development_id, 'uninstall', force, params=params)
-
-
-def _execute_workflow(development_id, workflow, force, params=None):
-    client = _get_client()
-    print(force)
-    try:
-        execution = client.executions.start(development_id,
-                                            workflow,
-                                            parameters=params,
-                                            force=force)
-    except CloudifyClientError as e:
-        return {'error': str(e)}
-    return {'execution': execution}
-
-
-def _get_execution_events(execution_id, offset):
-    client = _get_client()
-
-    execution = client.executions.get(execution_id)
-    events = client.events.list(execution_id=execution_id,
-                                _offset=offset,
-                                _size=100)
-    last_message = events.metadata.pagination.total
-
-    return {
-        'events': _events_to_string(events.items),
-        'last': last_message,
-        'status': execution.status,
-        'finished': _is_execution_finished(execution.status)
-    }
-
-
-def _events_to_string(events):
-    response = []
-    for event in events:
-        event_type = event["type"]
-        message = ""
-        if event_type == "cloudify_event":
-            cloudify_event_type = event["event_type"]
-            message = event["reported_timestamp"] + \
-                " " + event["message"]
-            if cloudify_event_type == "workflow_node_event":
-                message += " " + event["node_instance_id"] + \
-                    " (" + event["node_name"] + ")"
-            elif cloudify_event_type == "sending_task" \
-                    or cloudify_event_type == "task_started" \
-                    or cloudify_event_type == "task_succeeded" \
-                    or cloudify_event_type == "task_failed":
-                # message += " [" + event["operation"] + "]"
-                if event["node_instance_id"]:
-                    message += " " + event["node_instance_id"]
-                if event["node_name"]:
-                    message += " (" + event["node_name"] + ")"
-            elif cloudify_event_type == "workflow_started" \
-                    or cloudify_event_type == "workflow_succeeded" \
-                    or cloudify_event_type == "workflow_failed" \
-                    or cloudify_event_type == "workflow_cancelled":
-                pass
-            else:
-                message = json.dumps(event)
-            if event["error_causes"]:
-                for cause in event["error_causes"]:
-                    message += "\n" + cause['type'] + ": " + cause["message"]
-                    message += "\n\t" + cause["traceback"]
-        else:
-            message = json.dumps(event)
-        response.append(message)
-
-    return response
-
-
-def _is_execution_finished(status):
-    return status in Execution.END_STATES
-
-
-def _destroy_deployment(development_id, force=False):
-    client = _get_client()
-    try:
-        deployment = client.deployments.delete(
-            development_id, ignore_live_nodes=force)
-    except CloudifyClientError as e:
-        print(e)
-        return {'error': str(e)}
-    return {'deployment': deployment}
-
-
-def _remove_blueprint(blueprint_id):
-    client = _get_client()
-    try:
-        blueprint = client.blueprints.delete(blueprint_id)
-    except CloudifyClientError as e:
-        print(e)
-        return {'error': str(e)}
-
-    return {'blueprint': blueprint}

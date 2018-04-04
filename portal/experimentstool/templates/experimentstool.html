@@ -86,10 +86,10 @@ function openExperimentsTool(evt, toolName) {
 
     switch(toolName) {
         case "upload":
-            renderProductData("#product_selector");
+            renderStockData("#product_selector");
             break;
         case "deploy":
-            renderBlueprintData("#blueprint_selector");
+            renderApplicationData("#application_selector");
             break;
         case "install":
             renderDeploymentData("#install_deployment_selector");
@@ -113,7 +113,7 @@ function openExperimentsTool(evt, toolName) {
             renderDeploymentData("#destroy_deployment_selector");
             break;
         case "remove":
-            renderBlueprintData("#remove_blueprint_selector");
+            renderApplicationData("#remove_application_selector");
             break;
         case "settings":
             renderHPCData("#infrastructure_list", select=false);
@@ -125,13 +125,13 @@ function openExperimentsTool(evt, toolName) {
     evt.currentTarget.className += " active";
 }
 
-function renderProductData(selector_id) {
+function renderStockData(selector_id) {
     var product_selector = $(selector_id).find("select")
     product_selector.empty();
     cleanNotifications();
 
     $.ajax({
-        url: '/experimentstool/_get_products',
+        url: '/experimentstool/_get_stock',
         success: function (products) {
             if (products.length > 0) {
                 $.each(products, function (index, product) {
@@ -145,41 +145,45 @@ function renderProductData(selector_id) {
                 product_selector.append(
                     $(document.createElement('option'))
                         .attr("value", "-1")
-                        .text("No products found")
+                        .text("No products found in stock")
                 );
             }
         },
         error: function (jqXHR, status, errorThrown) {
-            message = "Couldn't get products list: ";
+            message = "Couldn't get stock list: ";
             message += jqXHR.status+": "+errorThrown+": "+jqXHR.responseText
             appendNotification(message, error=true);
         }
     });
 }
 
-function renderBlueprintData(selector_id) {
-    var blueprint_selector = $(selector_id).find("select")
-    blueprint_selector.empty();
-    blueprint_selector.append(
+function renderApplicationData(selector_id) {
+    var application_selector = $(selector_id).find("select")
+    application_selector.empty();
+    application_selector.append(
         $(document.createElement('option')).attr("value", "-1").text("Loading..")
     );
 
     $.ajax({
-        url: '/experimentstool/_load_blueprints',
+        url: '/experimentstool/_load_applications',
         success: function (data) {
-            blueprint_selector.empty();
-            blueprint_selector.append(
-                $(document.createElement('option')).attr("value", "-1").text("None")
-            );
-            blueprints = data.blueprints
-            if (blueprints.length > 0) {
-                $.each(blueprints, function (index, blueprint) {
-                    blueprint_selector.append(
-                        $(document.createElement('option')).attr("value", index).text(blueprint.id)
+            application_selector.empty();
+            if (data.error!==undefined && data.error!==null) {
+                appendNotification("Couldn't read Application data: "+data.error, error=true);
+                application_selector.append(
+                    $(document.createElement('option')).attr("value", "-1").text("Error")
+                );
+            } else if (data.app_list.length > 0) {
+                application_selector.append(
+                    $(document.createElement('option')).attr("value", "-1").text("None")
+                );
+                $.each(data.app_list, function (index, application) {
+                    application_selector.append(
+                        $(document.createElement('option')).attr("value", application.id).text(application.name)
                     )
                 });
             } else {
-                blueprint_selector.append(
+                application_selector.append(
                     $(document.createElement('option')).attr("value", "-1").text("No applications found")
                 );
             }
@@ -192,33 +196,33 @@ function renderBlueprintData(selector_id) {
     });
 }
 
-function renderBlueprintInputs(selector_id, container_id) {
-    var blueprint = $(selector_id).find("select").val();
+function renderApplicationInputs(selector_id, container_id) {
+    var application = $(selector_id).find("select").val();
     var inputs_container = $(container_id);
     inputs_container.empty();
 
     var hpc_pattern = new RegExp("^mso4sc_hpc_(.)*$");
     var dataset_pattern = new RegExp("^mso4sc_dataset_(.)*$");
 
-    if (parseInt(blueprint) >= 0) {
+    if (parseInt(application) >= 0) {
         $.ajax({
-            url: '/experimentstool/_get_blueprint_inputs',
+            url: '/experimentstool/_get_application_inputs',
             data: {
-                'blueprint_index': blueprint
+                'application_id': application
             },
             dataType: 'json',
             success: function (data) {
-                data.inputs.sort(function(a, b){
-                    var nameA=a.name.toLowerCase(), nameB=b.name.toLowerCase();
-                    if (nameA < nameB) //sort string ascending
-                     return -1;
-                    if (nameA > nameB)
-                     return 1;
-                    return 0; //default return value (no sorting)
-                });
-                if (data.error!==undefined) {
+                if (data.error!==undefined && data.error!==null) {
                     appendNotification("Couldn't read the inputs: "+data.error, error=true);
                 } else if (data.inputs.length > 0) {
+                    data.inputs.sort(function(a, b){
+                        var nameA=a.name.toLowerCase(), nameB=b.name.toLowerCase();
+                        if (nameA < nameB) //sort string ascending
+                         return -1;
+                        if (nameA > nameB)
+                         return 1;
+                        return 0; //default return value (no sorting)
+                    });
                     //First render HPCs inputs
                     $(data.inputs).each(function (index, input) {
                         if (hpc_pattern.test(input.name)) {
@@ -428,78 +432,82 @@ function renderHPCData(container_id, select=true, clear_notifications=true) {
 
     $.ajax({
         url: '/experimentstool/_get_hpc_list',
-        success: function (response) {
-            var hpc_list = response;
-            if (hpc_list.length > 0) {
-                var hpc_list =$.parseJSON(response);
-                $.each(hpc_list, function (index, hpc) {
-                    if (select) {
-                        hpc_container.append(
-                            $(document.createElement('option'))
-                                .attr("value", hpc.pk)
-                                .text(hpc.fields.name)
-                        )
-                    } else {
-                        hpc_container.append(
-                            $(document.createElement('div')).
-                                attr("id", "hpc_block_"+hpc.pk).
-                                attr("class", "margin hpc_settings_block").
-                                append(
-                                    $(document.createElement('div')).
-                                        attr("class", "s-12 m-6 l-6").
-                                        append(
-                                            $(document.createElement('div')).
-                                                attr("class", "l-9 left").
-                                                append(
-                                                    $(document.createElement('div')).append(
-                                                        $(document.createElement('span')).attr("class", "hpc_label hpc_label_name").text('Name: '),
-                                                        $(document.createElement('span')).text(hpc.fields.name),
-                                                    ),
-                                                    $(document.createElement('div')).append(
-                                                        $(document.createElement('span')).attr("class", "hpc_label").text('Host: '),
-                                                        $(document.createElement('span')).text(hpc.fields.host),
-                                                    ),
-                                                    $(document.createElement('div')).append(
-                                                        $(document.createElement('span')).attr("class", "hpc_label").text('User: '),
-                                                        $(document.createElement('span')).text(hpc.fields.user),
-                                                    ),
-                                                    $(document.createElement('div')).append(
-                                                        $(document.createElement('span')).attr("class", "hpc_label").text('WM: '),
-                                                        $(document.createElement('span')).text(hpc.fields.manager),
-                                                    ),
-                                                    $(document.createElement('div')).append(
-                                                        $(document.createElement('span')).attr("class", "hpc_label").text('Time Zone: '),
-                                                        $(document.createElement('span')).text(hpc.fields.time_zone),
-                                                    )
-                                                )
-                                            ,
-                                            $(document.createElement('div')).
-                                                attr("class", "l-3 right").
-                                                append(
-                                                    $(document.createElement('button')).
-                                                        attr("id", "del_hpc_"+hpc.pk).
-                                                        text('Delete')
-                                                )
-                                        )
-                                )
-                        );
-                        console.log(hpc.fields)
-                        setHPCEditButtonsHandler(
-                            "#del_hpc_"+hpc.pk,
-                            hpc.pk,
-                            refresh_function = function() {
-                                renderHPCData(container_id,
-                                                 select=false,
-                                                 clear_notifications=false); 
-                            }
-                        );
-                    }
-                });
+        success: function (data) {
+            if (data.error!==undefined && data.error!==null) {
+                message = "Couldn't get hpc list: "+data.error;
+                appendNotification(message, error=true);
             } else {
-                if (!select) {
-                    hpc_container.append(
-                        $(document.createElement('div')).attr("id", "no_hpc_list").text("No HPC infrastructures found")
-                    )
+                var hpc_list = data.hpc_list;
+                if (hpc_list.length > 0) {
+                    //var hpc_list =$.parseJSON(response); 
+                    $.each(hpc_list, function (index, hpc) {
+                        if (select) {
+                            hpc_container.append(
+                                $(document.createElement('option'))
+                                    .attr("value", hpc.id)
+                                    .text(hpc.name)
+                            )
+                        } else {
+                            hpc_container.append(
+                                $(document.createElement('div')).
+                                    attr("id", "hpc_block_"+hpc.id).
+                                    attr("class", "margin hpc_settings_block").
+                                    append(
+                                        $(document.createElement('div')).
+                                            attr("class", "s-12 m-6 l-6").
+                                            append(
+                                                $(document.createElement('div')).
+                                                    attr("class", "l-9 left").
+                                                    append(
+                                                        $(document.createElement('div')).append(
+                                                            $(document.createElement('span')).attr("class", "hpc_label hpc_label_name").text('Name: '),
+                                                            $(document.createElement('span')).text(hpc.name),
+                                                        ),
+                                                        $(document.createElement('div')).append(
+                                                            $(document.createElement('span')).attr("class", "hpc_label").text('Host: '),
+                                                            $(document.createElement('span')).text(hpc.host),
+                                                        ),
+                                                        $(document.createElement('div')).append(
+                                                            $(document.createElement('span')).attr("class", "hpc_label").text('User: '),
+                                                            $(document.createElement('span')).text(hpc.user),
+                                                        ),
+                                                        $(document.createElement('div')).append(
+                                                            $(document.createElement('span')).attr("class", "hpc_label").text('WM: '),
+                                                            $(document.createElement('span')).text(hpc.manager),
+                                                        ),
+                                                        $(document.createElement('div')).append(
+                                                            $(document.createElement('span')).attr("class", "hpc_label").text('Time Zone: '),
+                                                            $(document.createElement('span')).text(hpc.time_zone),
+                                                        )
+                                                    )
+                                                ,
+                                                $(document.createElement('div')).
+                                                    attr("class", "l-3 right").
+                                                    append(
+                                                        $(document.createElement('button')).
+                                                            attr("id", "del_hpc_"+hpc.id).
+                                                            text('Delete')
+                                                    )
+                                            )
+                                    )
+                            );
+                            setHPCEditButtonsHandler(
+                                "#del_hpc_"+hpc.id,
+                                hpc.id,
+                                refresh_function = function() {
+                                    renderHPCData(container_id,
+                                                  select=false,
+                                                  clear_notifications=false); 
+                                }
+                            );
+                        }
+                    });
+                } else {
+                    if (!select) {
+                        hpc_container.append(
+                            $(document.createElement('div')).attr("id", "no_hpc_list").text("No HPC infrastructures found")
+                        )
+                    }
                 }
             }
         },
@@ -522,7 +530,7 @@ function setHPCEditButtonsHandler(button_id, pk, refresh_function) {
             },
             dataType: 'json',
             success: function (data) {
-                if (data.error!==undefined) {
+                if (data.error!==undefined && data.error!==null) {
                     appendNotification("Couldn't delete the hpc: "+data.error, error=true);
                 } else {
                     console.log(data)
@@ -627,18 +635,21 @@ function renderDeploymentData(selector_id) {
     $.ajax({
         url: '/experimentstool/_get_deployments',
         success: function (data) {
-            deployment_selector.empty();
-            deployments = data.deployments
-            if (deployments.length > 0) {
-                $.each(deployments, function (index, deployment) {
-                    deployment_selector.append(
-                        $(document.createElement('option')).attr("value", index).text(deployment.id)
-                    )
-                });
+            if (data.error!==undefined && data.error!==null) {
+                appendNotification("Couldn't read the instances: "+data.error, error=true);
             } else {
-                deployment_selector.append(
-                    $(document.createElement('option')).attr("value", "-1").text("No instances found")
-                );
+                deployment_selector.empty();
+                if (data.instance_list.length > 0) {
+                    $.each(data.instance_list, function (index, deployment) {
+                        deployment_selector.append(
+                            $(document.createElement('option')).attr("value", deployment.id).text(deployment.name)
+                        )
+                    });
+                } else {
+                    deployment_selector.append(
+                        $(document.createElement('option')).attr("value", "-1").text("No instances found")
+                    );
+                }
             }
         },
         error: function (jqXHR, status, errorThrown) {
@@ -660,25 +671,25 @@ function renderLogData(log_id, url, reset=false) {
         url: url,
         data: {'reset': reset},
         success: function (data) {
-            if (data.error !== undefined && !reset) {
+            if (data.error!==undefined && data.error!==null && !reset) {
                 appendNotification("Couldn't monitor the operation: "+data.error, error=true);
             } else {
-                if (data.events !== undefined) {
+                if (data.events !== undefined && data.events.logs !== undefined) {
                     // Write events in the textarea
-                    data.events.forEach(function(event) {
+                    data.events.logs.forEach(function(event) {
                         textarea.val(textarea.val()+event+'\n');
                     });
                     textarea.scrollTop = textarea.scrollHeight;
 
                     // Schedule the next request when the current one's complete
-                    if (!data.finished) {
+                    if (!data.events.finished) {
                         $log_timeout = setTimeout(function () {renderLogData(log_id, url, reset=false);}, 3000);
                         if (reset) {
                             $(log_id).find("img").attr("src", "/static/experimentstool/img/light_blue.png");
                         }
                     } else {
                         var light = $(log_id).find("img");
-                        if (data.status=="terminated") {
+                        if (data.events.status=="terminated") {
                             light.attr("src", "/static/experimentstool/img/light_green.png");
                         } else {
                             light.attr("src", "/static/experimentstool/img/light_red.png");
@@ -696,19 +707,19 @@ function renderLogData(log_id, url, reset=false) {
 }
 
 function executeDeployment(selector_id, url_exec, log_id = null, url_log = null, force = false) {
-    var deployment_index = $(selector_id).find("select").val();
+    var deployment_id = $(selector_id).find("select").val();
     cleanNotifications();
 
     $.ajax({
         method: "POST",
         url: url_exec,
         data: {
-            'deployment_index': deployment_index,
+            'deployment_id': deployment_id,
             'force': force
         },
         dataType: 'json',
         success: function (data) {
-            if (data.error!==undefined) {
+            if (data.error!==undefined && data.error!==null) {
                 appendNotification("Execution error: "+data.error, error=true);
             } else {
                 if (log_id && url_log) {
@@ -765,7 +776,7 @@ $("#add_hpc").find("button").on('click', function (event) {
             },
             dataType: 'json',
             success: function (data) {
-                if (data.error!==undefined) {
+                if (data.error!==undefined && data.error!==null) {
                     appendNotification("Couldn't add the HPC: "+data.error, error=true);
                 } else {
                     appendNotification("HPC "+data.hpc.name+" added.");
@@ -799,10 +810,10 @@ $("#upload").find("button").on('click', function (event) {
             },
             dataType: 'json',
             success: function (data) {
-                if (data.error!==undefined) {
+                if (data.error!==undefined && data.error!==null) {
                     appendNotification("Couldn't register the app: "+data.error, error=true);
                 } else {
-                    appendNotification("App "+data.blueprint.id+" registered.");
+                    appendNotification("App "+data.app.name+" registered.");
                 }
             },
             error: function (jqXHR, status, errorThrown) {
@@ -814,15 +825,15 @@ $("#upload").find("button").on('click', function (event) {
     }
 });
 
-$("#blueprint_selector").find("select").on('change', function () {
-    renderBlueprintInputs("#blueprint_selector", "#blueprint_inputs")
+$("#application_selector").find("select").on('change', function () {
+    renderApplicationInputs("#application_selector", "#application_inputs")
 });
 
 $("#deploy_form").find("button").on('click', function (event) {
     event.preventDefault();
 
     var deployment_id = $("#deployment_id").find("input").val();
-    var blueprint_index = $("#blueprint_selector").find("select").val();
+    var application_id = $("#application_selector").find("select").val();
     
     var inputs_dict = {};
     $('input[id^="input_"]').each(function(index, input){ // text inputs
@@ -850,7 +861,7 @@ $("#deploy_form").find("button").on('click', function (event) {
 
     var data = new FormData();
     data.append('deployment_id', deployment_id);
-    data.append('blueprint_index', blueprint_index);
+    data.append('application_id', application_id);
     data.append('deployment_inputs', deployment_inputs);
 
     cleanNotifications();
@@ -863,10 +874,10 @@ $("#deploy_form").find("button").on('click', function (event) {
         processData: false,
         cache: false,
         success: function (data) {
-            if (data.error!==undefined) {
+            if (data.error!==undefined && data.error!==null) {
                 appendNotification("Couldn't create the instance: "+data.error, error=true);
             } else {
-                appendNotification("App instance "+data.deployment.id+" created.");
+                appendNotification("App instance "+data.instance.name+" created.");
             }
         },
         error: function (jqXHR, status, errorThrown) {
@@ -925,20 +936,20 @@ $("#force-destroy-instance-button").on('click', function (event) {
 
 $("#remove").find("button").on('click', function (event) {
     event.preventDefault();
-    var blueprint_index = $("#remove_blueprint_selector").find("select").val();
+    var application_id = $("#remove_application_selector").find("select").val();
 
     $.ajax({
         method: "POST",
-        url: '/experimentstool/_remove_blueprint',
+        url: '/experimentstool/_remove_application',
         data: {
-            'blueprint_index': blueprint_index
+            'application_id': application_id
         },
         dataType: 'json',
         success: function (data) {
-            if (data.error!==undefined) {
+            if (data.error!==undefined && data.error!==null) {
                 appendNotification("Couldn't remove the app: "+data.error, error=true);
             } else {
-                appendNotification("App "+data.blueprint.id+" removed.");
+                appendNotification("App "+data.app.name+" removed.");
             }
         },
         error: function (jqXHR, status, errorThrown) {
