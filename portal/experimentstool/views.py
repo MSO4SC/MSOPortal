@@ -317,14 +317,14 @@ def get_deployments(request):
 
 @login_required
 def install_deployment(request):
-    execution, error = _execute_deployment(request, WorkflowExecution.INSTALL)
-    if error is None:
+    response = _execute_deployment(request, WorkflowExecution.INSTALL)
+    if 'error' not in response or response['error'] is None:
         request.session['install_execution'] = {
-            'id': execution.execution_id,
+            'id': response['execution']['id'],
             'offset': 0
         }
         request.session.modified = True
-    return JsonResponse({'execution': execution, 'error': error})
+    return JsonResponse(response)
 
 
 @login_required
@@ -352,14 +352,14 @@ def get_install_events(request):
 
 @login_required
 def run_deployment(request):
-    execution, error = _execute_deployment(request, WorkflowExecution.RUN)
-    if error is None:
+    response = _execute_deployment(request, WorkflowExecution.RUN)
+    if 'error' not in response or response['error'] is None:
         request.session['run_execution'] = {
-            'id': execution.execution_id,
+            'id': response['execution']['id'],
             'offset': 0
         }
         request.session.modified = True
-    return JsonResponse({'execution': execution, 'error': error})
+    return JsonResponse(response)
 
 
 @login_required
@@ -387,15 +387,14 @@ def get_run_events(request):
 
 @login_required
 def uninstall_deployment(request):
-    execution, error = _execute_deployment(
-        request, WorkflowExecution.UNINSTALL)
-    if error is None:
+    response = _execute_deployment(request, WorkflowExecution.UNINSTALL)
+    if 'error' not in response or response['error'] is None:
         request.session['uninstall_execution'] = {
-            'id': execution.execution_id,
+            'id': response['execution']['id'],
             'offset': 0
         }
         request.session.modified = True
-    return JsonResponse({'execution': execution, 'error': error})
+    return JsonResponse(response)
 
 
 @login_required
@@ -433,10 +432,11 @@ def destroy_deployment(request):
 
     force = bool(request.POST.get('force', False))
 
-    execution, error = AppInstance.remove(deployment_id,
-                                          request.user,
-                                          force=force)
-    if error is None:
+    response = AppInstance.remove(deployment_id,
+                                  request.user,
+                                  force=force,
+                                  return_dict=True)
+    if 'error' not in response or response['error'] is None:
         if 'install_execution' in request.session:
             request.session.pop('install_execution')
         if 'run_execution' in request.session:
@@ -444,7 +444,7 @@ def destroy_deployment(request):
         if 'uninstall_execution' in request.session:
             request.session.pop('uninstall_execution')
         request.session.modified = True
-    return JsonResponse({'execution': execution, 'error': error})
+    return JsonResponse(response)
 
 
 def _execute_deployment(request, operation):
@@ -460,8 +460,9 @@ def _execute_deployment(request, operation):
 
     return WorkflowExecution.create(deployment_id,
                                     operation,
-                                    request.owner,
-                                    force=force)
+                                    request.user,
+                                    force=force,
+                                    return_dict=True)
 
 
 def _get_dataset(dataset_name):

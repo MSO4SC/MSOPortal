@@ -1,5 +1,6 @@
 import json
 import time
+import traceback
 from urllib.parse import urlparse
 
 from django.conf import settings
@@ -101,8 +102,9 @@ class HPCInfrastructure(models.Model):
             hpc_list = cls.objects.filter(owner=owner)
         except cls.DoesNotExist:
             pass
-        except Exception as e:
-            error = str(e)
+        except Exception as err:
+            print(traceback.format_exc())
+            error = str(err)
 
         if not return_dict:
             return (hpc_list, error)
@@ -130,9 +132,9 @@ class HPCInfrastructure(models.Model):
                                      password=password,
                                      time_zone=tz,
                                      manager=manager)
-        except Exception as e:
-            print(e)
-            error = str(e)
+        except Exception as err:
+            print(traceback.format_exc())
+            error = str(err)
 
         if not return_dict:
             return (hpc, error)
@@ -240,9 +242,9 @@ class Application(models.Model):
                     name=blueprint['id'],
                     description=blueprint['description'],
                     owner=owner)
-            except Exception as e:
-                print(e)
-                error = str(e)
+            except Exception as err:
+                print(traceback.format_exc())
+                error = str(err)
                 cls._remove_blueprint(blueprint['id'])
 
         if not return_dict:
@@ -302,8 +304,9 @@ class Application(models.Model):
                     path, blueprint_id)
             else:
                 blueprint = client.blueprints.upload(path, blueprint_id)
-        except CloudifyClientError as e:
-            error = str(e)
+        except CloudifyClientError as err:
+            print(traceback.format_exc())
+            error = str(err)
 
         return (blueprint, error)
 
@@ -315,7 +318,8 @@ class Application(models.Model):
         try:
             blueprints = client.blueprints.list().items
         except CloudifyClientError as e:
-            error = str(e)
+            print(traceback.format_exc())
+            error = str(err)
 
         return (blueprints, error)
 
@@ -331,8 +335,9 @@ class Application(models.Model):
                      'default': input.get('default', '-'),
                      'description': input.get('description', '-')}
                     for name, input in inputs.items()]
-        except CloudifyClientError as e:
-            error = str(e)
+        except CloudifyClientError as err:
+            print(traceback.format_exc())
+            error = str(err)
 
         return (data, error)
 
@@ -343,8 +348,9 @@ class Application(models.Model):
         client = _get_client()
         try:
             blueprint = client.blueprints.delete(app_id)
-        except CloudifyClientError as e:
-            error = str(e)
+        except CloudifyClientError as err:
+            print(traceback.format_exc())
+            error = str(err)
 
         return (blueprint, error)
 
@@ -431,8 +437,8 @@ class AppInstance(models.Model):
                         separators=(',', ':')),
                     owner=owner)
             except Exception as e:
-                print(e)
-                error = str(e)
+                print(traceback.format_exc())
+                error = str(err)
                 cls._destroy_deployment(deployment['id'])
 
         if not return_dict:
@@ -486,9 +492,11 @@ class AppInstance(models.Model):
                                                            instance_id,
                                                            inputs,
                                                            retries - 1)
-            error = str(e)
-        except CloudifyClientError as e:
-            error = str(e)
+            print(traceback.format_exc())
+            error = str(err)
+        except CloudifyClientError as err:
+            print(traceback.format_exc())
+            error = str(err)
 
         return (deployment, error)
 
@@ -500,8 +508,9 @@ class AppInstance(models.Model):
         try:
             deployment = client.deployments.delete(
                 instance_id, ignore_live_nodes=force)
-        except CloudifyClientError as e:
-            error = str(e)
+        except CloudifyClientError as err:
+            print(traceback.format_exc())
+            error = str(err)
 
         return (deployment, error)
 
@@ -592,12 +601,12 @@ class WorkflowExecution(models.Model):
         if error is None:
             try:
                 execution = cls.objects.create(
-                    execution_id=execution['id'],
+                    id_code=execution['id'],
                     app_instance=instance,
                     owner=owner)
-            except Exception as e:
-                print(e)
-                error = str(e)
+            except Exception as err:
+                print(traceback.format_exc())
+                error = str(err)
                 # TODO: cancel execution
 
         if not return_dict:
@@ -622,8 +631,9 @@ class WorkflowExecution(models.Model):
                                                 workflow,
                                                 parameters=params,
                                                 force=force)
-        except CloudifyClientError as e:
-            error = str(e)
+        except CloudifyClientError as err:
+            print(traceback.format_exc())
+            error = str(err)
 
         return (execution, error)
 
@@ -631,6 +641,7 @@ class WorkflowExecution(models.Model):
     def get_execution_events(cls, execution_pk, offset, owner,
                              return_dict=False):
         events = None
+        print(execution_pk)
         wf_execution, error = cls.get(execution_pk, owner)
         if error is None:
             if wf_execution is None:
@@ -638,7 +649,7 @@ class WorkflowExecution(models.Model):
                     "Can't get execution events because it doesn't exists"
             else:
                 events = cls._get_execution_events(
-                    wf_execution.execution_id,
+                    wf_execution.id_code,
                     offset)
 
         if not return_dict:
