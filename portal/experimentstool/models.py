@@ -317,7 +317,7 @@ class Application(models.Model):
         client = _get_client()
         try:
             blueprints = client.blueprints.list().items
-        except CloudifyClientError as e:
+        except CloudifyClientError as err:
             print(traceback.format_exc())
             error = str(err)
 
@@ -436,7 +436,7 @@ class AppInstance(models.Model):
                         ensure_ascii=False,
                         separators=(',', ':')),
                     owner=owner)
-            except Exception as e:
+            except Exception as err:
                 print(traceback.format_exc())
                 error = str(err)
                 cls._destroy_deployment(deployment['id'])
@@ -485,7 +485,7 @@ class AppInstance(models.Model):
                 skip_plugins_validation=True
             )
         except (DeploymentEnvironmentCreationPendingError,
-                DeploymentEnvironmentCreationInProgressError) as e:
+                DeploymentEnvironmentCreationInProgressError) as err:
             if (retries > 0):
                 time.sleep(WAIT_FOR_EXECUTION_SLEEP_INTERVAL)
                 deployment, error = cls._create_deployment(app_id,
@@ -538,6 +538,7 @@ class WorkflowExecution(models.Model):
         AppInstance,
         on_delete=models.CASCADE,
     )
+    workflow = models.CharField(max_length=50)
 
     owner = models.ForeignKey(
         settings.AUTH_USER_MODEL,
@@ -582,6 +583,29 @@ class WorkflowExecution(models.Model):
                 'error': error}
 
     @classmethod
+    def list_by_instance_workflow(cls,
+                                  owner,
+                                  instance,
+                                  workflow,
+                                  return_dict=False):
+        error = None
+        execution_list = []
+        try:
+            execution_list = cls.objects.filter(owner=owner,
+                                                app_instance=instance,
+                                                workflow=workflow)
+        except cls.DoesNotExist:
+            pass
+
+        if not return_dict:
+            return (execution_list, error)
+        else:
+            return {
+                'execution_list':
+                    [_to_dict(execution) for execution in execution_list],
+                'error': error}
+
+    @classmethod
     def create(cls, instance_pk, workflow, owner,
                force=False, params=None, return_dict=False):
         error = None
@@ -603,6 +627,7 @@ class WorkflowExecution(models.Model):
                 execution = cls.objects.create(
                     id_code=execution['id'],
                     app_instance=instance,
+                    workflow=workflow,
                     owner=owner)
             except Exception as err:
                 print(traceback.format_exc())
@@ -641,7 +666,6 @@ class WorkflowExecution(models.Model):
     def get_execution_events(cls, execution_pk, offset, owner,
                              return_dict=False):
         events = None
-        print(execution_pk)
         wf_execution, error = cls.get(execution_pk, owner)
         if error is None:
             if wf_execution is None:

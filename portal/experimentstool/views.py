@@ -317,35 +317,43 @@ def get_deployments(request):
 
 @login_required
 def install_deployment(request):
-    response = _execute_deployment(request, WorkflowExecution.INSTALL)
-    if 'error' not in response or response['error'] is None:
-        request.session['install_execution'] = {
-            'id': response['execution']['id'],
-            'offset': 0
-        }
-        request.session.modified = True
-    return JsonResponse(response)
+    return JsonResponse(_execute_deployment(request, WorkflowExecution.INSTALL))
 
 
 @login_required
-def get_install_events(request):
-    if 'install_execution' not in request.session:
-        return JsonResponse({'error': 'No install execution'})
-    else:
-        execution_id = request.session['install_execution']['id']
-        reset = request.GET.get("reset", "False") in ["True", "true", "TRUE"]
-        offset = 0
-        if not reset:
-            offset = request.session['install_execution']['offset']
+def get_executions(request):
+    instance_pk = int(request.GET.get('instance', -1))
+    workflow = request.GET.get('workflow')
+    return JsonResponse(
+        WorkflowExecution.list_by_instance_workflow(
+            request.user,
+            instance_pk,
+            workflow,
+            return_dict=True),
+        safe=False)
 
-        events, error = WorkflowExecution.get_execution_events(execution_id,
-                                                               offset,
-                                                               request.user)
-        if error is None:
-            if offset != events['last']:
-                request.session['install_execution']['offset'] = \
-                    events.pop('last')
-                request.session.modified = True
+
+@login_required
+def get_executions_events(request):
+    execution_pk = int(request.GET.get('exec_id', -1))
+    reset = request.GET.get("reset", "False") in ["True", "true", "TRUE"]
+    offset = 0
+
+    if execution_pk < 0:
+        return JsonResponse({'error': 'Bad execution provided'})
+    # TODO: check owner
+
+    if not reset:
+        offset = request.session['install_execution']['offset']
+
+    events, error = WorkflowExecution.get_execution_events(execution_pk,
+                                                           offset,
+                                                           request.user)
+    if error is None:
+        if offset != events['last']:
+            request.session['install_execution']['offset'] = \
+                events.pop('last')
+            request.session.modified = True
 
     return JsonResponse({'events': events, 'error': error})
 

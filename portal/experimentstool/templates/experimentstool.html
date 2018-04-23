@@ -92,10 +92,9 @@ function openExperimentsTool(evt, toolName) {
             renderApplicationData("#application_selector");
             break;
         case "install":
-            renderDeploymentData("#install_deployment_selector");
-            renderLogData("#install_deployment_log",
-                          "/experimentstool/_get_install_events",
-                          reset=true)
+            renderDeploymentData("#install_deployment_selector",
+                                 "#install_execution_selector",
+                                 "#install_deployment_log");
             break;
         case "run":
             renderDeploymentData("#run_deployment_selector");
@@ -625,11 +624,16 @@ function renderDatasetChoices(selector_id, container_id, group_name){
     }
 }
 
-function renderDeploymentData(selector_id) {
+function renderDeploymentData(selector_id, execution_selector_id, log_id) {
     var deployment_selector = $(selector_id).find("select")
+    var execution_selector = $(execution_selector_id).find("select")
     deployment_selector.empty();
+    execution_selector.empty();
     deployment_selector.append(
         $(document.createElement('option')).attr("value", "-1").text("Loading..")
+    );
+    execution_selector.append(
+        $(document.createElement('option')).attr("value", "-1").text("None")
     );
 
     $.ajax({
@@ -645,9 +649,16 @@ function renderDeploymentData(selector_id) {
                             $(document.createElement('option')).attr("value", deployment.id).text(deployment.name)
                         )
                     });
+                    renderExecutionData(deployment_selector.val(),
+                                        'install',
+                                        execution_selector_id);
+                    renderLogData(execution_selector_id, log_id, reset=true);
                 } else {
                     deployment_selector.append(
                         $(document.createElement('option')).attr("value", "-1").text("No instances found")
+                    );
+                    execution_selector.append(
+                        $(document.createElement('option')).attr("value", "-1").text("None")
                     );
                 }
             }
@@ -660,7 +671,50 @@ function renderDeploymentData(selector_id) {
     });
 }
 
-function renderLogData(log_id, url, reset=false) {
+function renderExecutionData(instance, workflow, execution_selector_id) {
+    var execution_selector = $(execution_selector_id).find("select")
+    execution_selector.empty();
+    execution_selector.append(
+        $(document.createElement('option')).attr("value", "-1").text("Loading..")
+    );
+
+    $.ajax({
+        url: '/experimentstool/_get_executions',
+        data: {
+            'instance': instance,
+            'workflow': workflow
+        },
+        success: function (data) {
+            if (data.error!==undefined && data.error!==null) {
+                appendNotification("Couldn't read the instances: "+data.error, error=true);
+            } else {
+                execution_selector.empty();
+                if (data.execution_list.length > 0) {
+                    $.each(data.execution_list, function (index, execution) {
+                        execution_selector.append( //FIXME: use date instead of id
+                            $(document.createElement('option')).attr("value", execution.id).text(execution.id)
+                        )
+                    });
+                    //TODO: select newest
+                    //TODO: on change reset logger (new function)
+
+                } else {
+                    execution_selector.append(
+                        $(document.createElement('option')).attr("value", "-1").text("None")
+                    );
+                }
+            }
+        },
+        error: function (jqXHR, status, errorThrown) {
+            message = "Couldn't get executions list: ";
+            message += jqXHR.status+": "+errorThrown+": "+jqXHR.responseText
+            appendNotification(message, error=true);
+        }
+    });
+}
+
+function renderLogData(execution_selector_id, log_id, reset=false) {
+    var exec_id = $(execution_selector_id).find("select").val()
     var textarea = $(log_id).find("textarea");
     if (reset) {
         textarea.val("");
@@ -668,8 +722,11 @@ function renderLogData(log_id, url, reset=false) {
     cleanNotifications();
 
     $.ajax({
-        url: url,
-        data: {'reset': reset},
+        url: '/experimentstool/_get_executions_events',
+        data: {
+            'exec_id': exec_id,
+            'reset': reset
+        },
         success: function (data) {
             if (data.error!==undefined && data.error!==null && !reset) {
                 appendNotification("Couldn't monitor the operation: "+data.error, error=true);
@@ -683,7 +740,11 @@ function renderLogData(log_id, url, reset=false) {
 
                     // Schedule the next request when the current one's complete
                     if (!data.events.finished) {
-                        $log_timeout = setTimeout(function () {renderLogData(log_id, url, reset=false);}, 3000);
+                        $log_timeout = setTimeout(
+                            function () {
+                                renderLogData(execution_selector_id, log_id, reset=false);
+                            },
+                            3000);
                         if (reset) {
                             $(log_id).find("img").attr("src", "/static/experimentstool/img/light_blue.png");
                         }
@@ -706,7 +767,7 @@ function renderLogData(log_id, url, reset=false) {
     });
 }
 
-function executeDeployment(selector_id, url_exec, log_id = null, url_log = null, force = false) {
+function executeDeployment(selector_id, url_exec, execution_selector_id, log_id = null, force = false) {
     var deployment_id = $(selector_id).find("select").val();
     cleanNotifications();
 
@@ -723,7 +784,8 @@ function executeDeployment(selector_id, url_exec, log_id = null, url_log = null,
                 appendNotification("Execution error: "+data.error, error=true);
             } else {
                 if (log_id && url_log) {
-                    renderLogData(log_id, url_log, reset=true);
+                    //TODO: add new deployment to execution selector and select it
+                    renderLogData(execution_selector_id, log_id, reset=true);
                 } else {
                     appendNotification("Operation successful.");
                 }
@@ -892,13 +954,13 @@ $("#install").find("button").on('click', function (event) {
     event.preventDefault();
     executeDeployment("#install_deployment_selector",
                       "/experimentstool/_install_deployment",
-                      "#install_deployment_log",
-                      "/experimentstool/_get_install_events");
+                      "#install_execution_selector",
+                      "#install_deployment_log");
 });
 
 $("#run").find("button").on('click', function (event) {
     event.preventDefault();
-    executeDeployment("#run_deployment_selector",
+    executeDeployment("#run_deployment_selector", //FIXME:
                       "/experimentstool/_run_deployment",
                       "#run_deployment_log",
                       "/experimentstool/_get_run_events");
@@ -906,7 +968,7 @@ $("#run").find("button").on('click', function (event) {
 
 $("#undeploy-button").on('click', function (event) {
     event.preventDefault();
-    executeDeployment("#uninstall_deployment_selector",
+    executeDeployment("#uninstall_deployment_selector", //FIXME:
                       "/experimentstool/_uninstall_deployment",
                       "#uninstall_deployment_log",
                       "/experimentstool/_get_uninstall_events");
@@ -914,7 +976,7 @@ $("#undeploy-button").on('click', function (event) {
 
 $("#force-undeploy-button").on('click', function (event) {
     event.preventDefault();
-    executeDeployment("#uninstall_deployment_selector",
+    executeDeployment("#uninstall_deployment_selector", //FIXME:
                       "/experimentstool/_uninstall_deployment",
                       "#uninstall_deployment_log",
                       "/experimentstool/_get_uninstall_events",
