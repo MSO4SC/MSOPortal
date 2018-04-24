@@ -652,7 +652,6 @@ function renderDeploymentData(selector_id, execution_selector_id, log_id) {
                                         'install',
                                         execution_selector_id,
                                         log_id);
-                    //TODO: execution selector on change
                 } else {
                     deployment_selector.append(
                         $(document.createElement('option')).attr("value", "-1").text("No instances found")
@@ -706,6 +705,15 @@ function renderExecutionData(instance, workflow, execution_selector_id, log_id) 
                         $(execution_selector_id).find("select option:last").val(),
                         log_id,
                         reset=true)
+                    
+                    //execution selector on change
+                    execution_selector.change(function (event) {
+                        event.preventDefault();
+                        renderLogData(
+                            $(execution_selector_id).find("select").val(),
+                            log_id,
+                            reset=true)
+                    });
 
                 } else {
                     execution_selector.append(
