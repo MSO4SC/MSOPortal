@@ -98,13 +98,13 @@ function openExperimentsTool(evt, toolName) {
             break;
         case "run":
             renderDeploymentData("#run_deployment_selector");
-            renderLogData("#run_deployment_log",
+            renderLogData("#run_deployment_log", //FIXME:
                           "/experimentstool/_get_run_events",
                           reset=true)
             break;
         case "uninstall":
             renderDeploymentData("#uninstall_deployment_selector");
-            renderLogData("#uninstall_deployment_log",
+            renderLogData("#uninstall_deployment_log", //FIXME:
                           "/experimentstool/_get_uninstall_events",
                           reset=true)
             break;
@@ -532,7 +532,6 @@ function setHPCEditButtonsHandler(button_id, pk, refresh_function) {
                 if (data.error!==undefined && data.error!==null) {
                     appendNotification("Couldn't delete the hpc: "+data.error, error=true);
                 } else {
-                    console.log(data)
                     appendNotification("HPC "+data.hpc.name+" removed.");
                 }
             },
@@ -651,8 +650,9 @@ function renderDeploymentData(selector_id, execution_selector_id, log_id) {
                     });
                     renderExecutionData(deployment_selector.val(),
                                         'install',
-                                        execution_selector_id);
-                    renderLogData(execution_selector_id, log_id, reset=true);
+                                        execution_selector_id,
+                                        log_id);
+                    //TODO: execution selector on change
                 } else {
                     deployment_selector.append(
                         $(document.createElement('option')).attr("value", "-1").text("No instances found")
@@ -671,7 +671,7 @@ function renderDeploymentData(selector_id, execution_selector_id, log_id) {
     });
 }
 
-function renderExecutionData(instance, workflow, execution_selector_id) {
+function renderExecutionData(instance, workflow, execution_selector_id, log_id) {
     var execution_selector = $(execution_selector_id).find("select")
     execution_selector.empty();
     execution_selector.append(
@@ -691,12 +691,21 @@ function renderExecutionData(instance, workflow, execution_selector_id) {
                 execution_selector.empty();
                 if (data.execution_list.length > 0) {
                     $.each(data.execution_list, function (index, execution) {
-                        execution_selector.append( //FIXME: use date instead of id
-                            $(document.createElement('option')).attr("value", execution.id).text(execution.id)
+                        execution_selector.append(
+                            $(document.createElement('option'))
+                                .attr("value", execution.id)
+                                .text(execution.created_on)
                         )
                     });
-                    //TODO: select newest
-                    //TODO: on change reset logger (new function)
+                    //select newest
+                    $(execution_selector_id).find("select option:last")
+                        .attr("selected", "selected");
+                    
+                    //render the log of selected execution
+                    renderLogData(
+                        $(execution_selector_id).find("select option:last").val(),
+                        log_id,
+                        reset=true)
 
                 } else {
                     execution_selector.append(
@@ -713,8 +722,7 @@ function renderExecutionData(instance, workflow, execution_selector_id) {
     });
 }
 
-function renderLogData(execution_selector_id, log_id, reset=false) {
-    var exec_id = $(execution_selector_id).find("select").val()
+function renderLogData(exec_id, log_id, reset=false) {
     var textarea = $(log_id).find("textarea");
     if (reset) {
         textarea.val("");
@@ -728,7 +736,7 @@ function renderLogData(execution_selector_id, log_id, reset=false) {
             'reset': reset
         },
         success: function (data) {
-            if (data.error!==undefined && data.error!==null && !reset) {
+            if (data.error!==undefined && data.error!==null) {
                 appendNotification("Couldn't monitor the operation: "+data.error, error=true);
             } else {
                 if (data.events !== undefined && data.events.logs !== undefined) {
@@ -737,24 +745,24 @@ function renderLogData(execution_selector_id, log_id, reset=false) {
                         textarea.val(textarea.val()+event+'\n');
                     });
                     textarea.scrollTop = textarea.scrollHeight;
+                }
 
-                    // Schedule the next request when the current one's complete
-                    if (!data.events.finished) {
-                        $log_timeout = setTimeout(
-                            function () {
-                                renderLogData(execution_selector_id, log_id, reset=false);
-                            },
-                            3000);
-                        if (reset) {
-                            $(log_id).find("img").attr("src", "/static/experimentstool/img/light_blue.png");
-                        }
+                // Schedule the next request when the current one's complete
+                if (!data.events.finished) {
+                    $log_timeout = setTimeout(
+                        function () {
+                            renderLogData(exec_id, log_id, reset=false);
+                        },
+                        3000);
+                    if (reset) {
+                        $(log_id).find("img").attr("src", "/static/experimentstool/img/light_blue.png");
+                    }
+                } else {
+                    var light = $(log_id).find("img");
+                    if (data.events.status=="terminated") {
+                        light.attr("src", "/static/experimentstool/img/light_green.png");
                     } else {
-                        var light = $(log_id).find("img");
-                        if (data.events.status=="terminated") {
-                            light.attr("src", "/static/experimentstool/img/light_green.png");
-                        } else {
-                            light.attr("src", "/static/experimentstool/img/light_red.png");
-                        }
+                        light.attr("src", "/static/experimentstool/img/light_red.png");
                     }
                 }
             }
@@ -783,9 +791,15 @@ function executeDeployment(selector_id, url_exec, execution_selector_id, log_id 
             if (data.error!==undefined && data.error!==null) {
                 appendNotification("Execution error: "+data.error, error=true);
             } else {
-                if (log_id && url_log) {
-                    //TODO: add new deployment to execution selector and select it
-                    renderLogData(execution_selector_id, log_id, reset=true);
+                if (execution_selector_id && log_id) {
+                    var execution_selector = $(execution_selector_id).find("select");
+                    execution_selector.append(
+                        $(document.createElement('option'))
+                            .attr("value", data.execution.id)
+                            .attr("selected", "selected")
+                            .text(data.execution.created_on)
+                    )
+                    renderLogData(data.execution.id, log_id, reset=true);
                 } else {
                     appendNotification("Operation successful.");
                 }

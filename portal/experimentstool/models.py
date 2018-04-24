@@ -539,6 +539,9 @@ class WorkflowExecution(models.Model):
         on_delete=models.CASCADE,
     )
     workflow = models.CharField(max_length=50)
+    # can't use auto_now_add because it set editable=False
+    # and therefore model_to_dict skips the field
+    created_on = models.DateTimeField(editable=True)
 
     owner = models.ForeignKey(
         settings.AUTH_USER_MODEL,

@@ -317,7 +317,8 @@ def get_deployments(request):
 
 @login_required
 def install_deployment(request):
-    return JsonResponse(_execute_deployment(request, WorkflowExecution.INSTALL))
+    return JsonResponse(_execute_deployment(request,
+                                            WorkflowExecution.INSTALL))
 
 
 @login_required
@@ -343,16 +344,15 @@ def get_executions_events(request):
         return JsonResponse({'error': 'Bad execution provided'})
     # TODO: check owner
 
-    if not reset:
-        offset = request.session['install_execution']['offset']
+    if not reset and 'log_offset' in request.session:
+        offset = request.session['log_offset']
 
     events, error = WorkflowExecution.get_execution_events(execution_pk,
                                                            offset,
                                                            request.user)
     if error is None:
         if offset != events['last']:
-            request.session['install_execution']['offset'] = \
-                events.pop('last')
+            request.session['log_offset'] = events.pop('last')
             request.session.modified = True
 
     return JsonResponse({'events': events, 'error': error})
