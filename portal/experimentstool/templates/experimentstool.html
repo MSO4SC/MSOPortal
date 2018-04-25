@@ -8,8 +8,12 @@
     <p class="nav-text"></p> 
     <div class="top-nav">        
             <ul>
-                <li><a onclick="openExperimentsTool(event, 'upload')">Register App</a></li>
+                {% if perms.experimentstool.register_app %}
+                    <li><a onclick="openExperimentsTool(event, 'upload')">Register App</a></li>
+                {% endif %}
+                {% if perms.experimentstool.remove_app %}
                 <li><a onclick="openExperimentsTool(event, 'remove')">Remove App</a></li>
+                {% endif %}
                 <li><a onclick="openExperimentsTool(event, 'deploy')">Create App Instance</a></li>
                 <li><a onclick="openExperimentsTool(event, 'install')">Deploy Instance</a></li>
                 <li><a onclick="openExperimentsTool(event, 'run')">Run Instance</a></li>
@@ -23,13 +27,17 @@
 
 <div id="experiments_notification_container"></div>
 
+{% if perms.experimentstool.register_app %}
 <div id="upload" class="tabcontent">
     {% include "sections/upload.html" %}
 </div>
+{% endif %}
 
+{% if perms.experimentstool.remove_app %}
 <div id="deploy" class="tabcontent">
     {% include "sections/deploy.html" %}
 </div>
+{% endif %}
 
 <div id="install" class="tabcontent">
     {% include "sections/install.html" %}

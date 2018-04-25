@@ -173,6 +173,7 @@ def get_application_inputs(request):
 
 
 @login_required
+@permission_required('experimentstool.remove_app')
 def remove_application(request):
     application_id = int(request.POST.get('application_id', -1))
 
@@ -316,6 +317,7 @@ def get_deployments(request):
 
 
 @login_required
+@permission_required('experimentstool.run_instance')
 def execute_deployment(request):
     deployment_id = int(request.POST.get('deployment_id', -1))
     workflow = request.POST.get('workflow')
@@ -373,74 +375,7 @@ def get_executions_events(request):
 
 
 @login_required
-def run_deployment(request):
-    response = _execute_deployment(request, WorkflowExecution.RUN)
-    if 'error' not in response or response['error'] is None:
-        request.session['run_execution'] = {
-            'id': response['execution']['id'],
-            'offset': 0
-        }
-        request.session.modified = True
-    return JsonResponse(response)
-
-
-@login_required
-def get_run_events(request):
-    if 'run_execution' not in request.session:
-        return JsonResponse({'error': 'No run execution'})
-    else:
-        execution_id = request.session['run_execution']['id']
-        reset = request.GET.get("reset", "False") in ["True", "true", "TRUE"]
-        offset = 0
-        if not reset:
-            offset = request.session['run_execution']['offset']
-
-        events, error = WorkflowExecution.get_execution_events(execution_id,
-                                                               offset,
-                                                               request.user)
-        if error is None:
-            if offset != events['last']:
-                request.session['run_execution']['offset'] = events.pop('last')
-                request.session.modified = True
-
-    return JsonResponse({'events': events, 'error': error})
-
-
-@login_required
-def uninstall_deployment(request):
-    response = _execute_deployment(request, WorkflowExecution.UNINSTALL)
-    if 'error' not in response or response['error'] is None:
-        request.session['uninstall_execution'] = {
-            'id': response['execution']['id'],
-            'offset': 0
-        }
-        request.session.modified = True
-    return JsonResponse(response)
-
-
-@login_required
-def get_uninstall_events(request):
-    if 'uninstall_execution' not in request.session:
-        return JsonResponse({'error': 'No uninstall execution'})
-    else:
-        execution_id = request.session['uninstall_execution']['id']
-        reset = request.GET.get("reset", "False") in ["True", "true", "TRUE"]
-        offset = 0
-        if not reset:
-            offset = request.session['uninstall_execution']['offset']
-
-        events, error = WorkflowExecution.get_execution_events(execution_id,
-                                                               offset,
-                                                               request.user)
-        if error is None:
-            if offset != events['last']:
-                request.session['uninstall_execution']['offset'] = events['last']
-                request.session.modified = True
-
-    return JsonResponse({'events': events, 'error': error})
-
-
-@login_required
+@permission_required('experimentstool.destroy_instance')
 def destroy_deployment(request):
     deployment_id = int(request.POST.get('deployment_id', -1))
 

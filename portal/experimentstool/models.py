@@ -42,12 +42,8 @@ class Orchestrator(models.Model):
              'Can remove an app in the orchestrator'),
             ('create_instance',
              'Can create a new app instance in the orchestrator'),
-            ('deploy_instance',
-             'Can install an instance in the orchestrator'),
             ('run_instance',
-             'Can run jobs of an instance in the orchestrator'),
-            ('undeploy_instance',
-             'Can uninstall an install in the orchestrator'),
+             'Can run workflows of an instance in the orchestrator'),
             ('destroy_instance',
              'Can delete an app instance in the orchestrator'),
         )
