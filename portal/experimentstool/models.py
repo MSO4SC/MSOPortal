@@ -2,6 +2,7 @@ import json
 import time
 import traceback
 from urllib.parse import urlparse
+from datetime import datetime
 
 from django.conf import settings
 from django.db import models
@@ -193,6 +194,8 @@ class Application(models.Model):
         on_delete=models.CASCADE,
     )
 
+    # TODO: Link to marketplace app
+
     @classmethod
     def get(cls, pk, owner, return_dict=False):
         error = None
@@ -323,6 +326,7 @@ class Application(models.Model):
 
         return (blueprints, error)
 
+    @staticmethod
     def _get_inputs(app_id):
         error = None
         data = None
@@ -631,6 +635,7 @@ class WorkflowExecution(models.Model):
                     id_code=execution['id'],
                     app_instance=instance,
                     workflow=workflow,
+                    created_on=datetime.now(),
                     owner=owner)
             except Exception as err:
                 print(traceback.format_exc())

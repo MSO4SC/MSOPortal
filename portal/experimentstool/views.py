@@ -316,9 +316,23 @@ def get_deployments(request):
 
 
 @login_required
-def install_deployment(request):
-    return JsonResponse(_execute_deployment(request,
-                                            WorkflowExecution.INSTALL))
+def execute_deployment(request):
+    deployment_id = int(request.POST.get('deployment_id', -1))
+    workflow = request.POST.get('workflow')
+    force = bool(request.POST.get('force', False))
+
+    if deployment_id is None:
+        return {'error': 'No deployment provided'}
+
+    if deployment_id < 0:
+        return {'error': 'Bad deployment provided'}
+
+    return JsonResponse(
+        WorkflowExecution.create(deployment_id,
+                                 workflow,
+                                 request.user,
+                                 force=force,
+                                 return_dict=True))
 
 
 @login_required
@@ -386,8 +400,7 @@ def get_run_events(request):
                                                                request.user)
         if error is None:
             if offset != events['last']:
-                request.session['run_execution']['offset'] = \
-                    events.pop('last')
+                request.session['run_execution']['offset'] = events.pop('last')
                 request.session.modified = True
 
     return JsonResponse({'events': events, 'error': error})
@@ -421,8 +434,7 @@ def get_uninstall_events(request):
                                                                request.user)
         if error is None:
             if offset != events['last']:
-                request.session['uninstall_execution']['offset'] = \
-                    events['last']
+                request.session['uninstall_execution']['offset'] = events['last']
                 request.session.modified = True
 
     return JsonResponse({'events': events, 'error': error})
@@ -453,24 +465,6 @@ def destroy_deployment(request):
             request.session.pop('uninstall_execution')
         request.session.modified = True
     return JsonResponse(response)
-
-
-def _execute_deployment(request, operation):
-    deployment_id = int(request.POST.get('deployment_id', -1))
-
-    if deployment_id is None:
-        return {'error': 'No deployment provided'}
-
-    if deployment_id < 0:
-        return {'error': 'Bad deployment provided'}
-
-    force = bool(request.POST.get('force', False))
-
-    return WorkflowExecution.create(deployment_id,
-                                    operation,
-                                    request.user,
-                                    force=force,
-                                    return_dict=True)
 
 
 def _get_dataset(dataset_name):

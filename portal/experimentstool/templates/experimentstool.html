@@ -93,20 +93,21 @@ function openExperimentsTool(evt, toolName) {
             break;
         case "install":
             renderDeploymentData("#install_deployment_selector",
+                                 "install",
                                  "#install_execution_selector",
                                  "#install_deployment_log");
             break;
         case "run":
-            renderDeploymentData("#run_deployment_selector");
-            renderLogData("#run_deployment_log", //FIXME:
-                          "/experimentstool/_get_run_events",
-                          reset=true)
+            renderDeploymentData("#run_deployment_selector",
+                                 "run_jobs",
+                                 "#run_execution_selector",
+                                 "#run_deployment_log");
             break;
         case "uninstall":
-            renderDeploymentData("#uninstall_deployment_selector");
-            renderLogData("#uninstall_deployment_log", //FIXME:
-                          "/experimentstool/_get_uninstall_events",
-                          reset=true)
+            renderDeploymentData("#uninstall_deployment_selector",
+                                 "uninstall",
+                                 "#uninstall_execution_selector",
+                                 "#uninstall_deployment_log");
             break;
         case "destroy":
             renderDeploymentData("#destroy_deployment_selector");
@@ -623,7 +624,7 @@ function renderDatasetChoices(selector_id, container_id, group_name){
     }
 }
 
-function renderDeploymentData(selector_id, execution_selector_id, log_id) {
+function renderDeploymentData(selector_id, workflow, execution_selector_id, log_id) {
     var deployment_selector = $(selector_id).find("select")
     var execution_selector = $(execution_selector_id).find("select")
     deployment_selector.empty();
@@ -649,7 +650,7 @@ function renderDeploymentData(selector_id, execution_selector_id, log_id) {
                         )
                     });
                     renderExecutionData(deployment_selector.val(),
-                                        'install',
+                                        workflow,
                                         execution_selector_id,
                                         log_id);
                 } else {
@@ -783,15 +784,16 @@ function renderLogData(exec_id, log_id, reset=false) {
     });
 }
 
-function executeDeployment(selector_id, url_exec, execution_selector_id, log_id = null, force = false) {
+function executeDeployment(selector_id, workflow, execution_selector_id, log_id = null, force = false) {
     var deployment_id = $(selector_id).find("select").val();
     cleanNotifications();
 
     $.ajax({
         method: "POST",
-        url: url_exec,
+        url: "/experimentstool/_execute_deployment",
         data: {
             'deployment_id': deployment_id,
+            'workflow': workflow,
             'force': force
         },
         dataType: 'json',
@@ -975,33 +977,33 @@ $("#deploy_form").find("button").on('click', function (event) {
 $("#install").find("button").on('click', function (event) {
     event.preventDefault();
     executeDeployment("#install_deployment_selector",
-                      "/experimentstool/_install_deployment",
+                      "install",
                       "#install_execution_selector",
                       "#install_deployment_log");
 });
 
 $("#run").find("button").on('click', function (event) {
     event.preventDefault();
-    executeDeployment("#run_deployment_selector", //FIXME:
-                      "/experimentstool/_run_deployment",
-                      "#run_deployment_log",
-                      "/experimentstool/_get_run_events");
+    executeDeployment("#run_deployment_selector",
+                      "run_jobs",
+                      "#run_execution_selector",
+                      "#run_deployment_log");
 });
 
 $("#undeploy-button").on('click', function (event) {
     event.preventDefault();
-    executeDeployment("#uninstall_deployment_selector", //FIXME:
-                      "/experimentstool/_uninstall_deployment",
-                      "#uninstall_deployment_log",
-                      "/experimentstool/_get_uninstall_events");
+    executeDeployment("#uninstall_deployment_selector",
+                      "uninstall",
+                      "#uninstall_execution_selector",
+                      "#uninstall_deployment_log");
 });
 
 $("#force-undeploy-button").on('click', function (event) {
     event.preventDefault();
-    executeDeployment("#uninstall_deployment_selector", //FIXME:
-                      "/experimentstool/_uninstall_deployment",
+    executeDeployment("#uninstall_deployment_selector",
+                      "uninstall",
+                      "#uninstall_execution_selector",
                       "#uninstall_deployment_log",
-                      "/experimentstool/_get_uninstall_events",
                       force = true);
 });
 

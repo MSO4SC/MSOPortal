@@ -32,11 +32,39 @@ class KeyrockOAuth2(BaseOAuth2):
     ]
 
     def get_user_id(self, details, response):
-        return response['id']
+        print("USER_ID-----------------"+str(response))
+        # {'access_token': '53ERoBZXTDzjDrvSMAzEbLPW9JWX6f',
+        #  'expires_in': 3600,
+        #  'token_type': 'Bearer',
+        #  'state': 'IVbDtzMyx9fZib77Eiwqb4jtBwFLxgt0',
+        #  'scope': 'all_info',
+        #  'refresh_token': 'VGyiMKgKMISjmUraVmMb8ALIrtYb3u',
+        #  'organizations': [],
+        #  'displayName': 'j*******',
+        #  'roles': [{'name': 'Provider', 'id': 'provider'}],
+        #  'app_id': '0db45bbbfe05409685c2e043892d7d00',
+        #  'isGravatarEnabled': False,
+        #  'email': 'j*****.c******@atos.net',
+        #  'id': 'j*******'}
+        return response['email']
 
     def get_user_details(self, response):
         """Return user details from FI-WARE account"""
-        return {'username': response.get('id'),
+        print("USER_DETAILS-----------------"+str(response))
+        # {'access_token': 'uN1mFJKd9m0pGMdLyRFdvew5VLFMs3',
+        #  'expires_in': 3600,
+        #  'token_type': 'Bearer',
+        #  'state': 'HuQGmypp6QjjIcp4Izw097egFV1wd55f',
+        #  'scope': 'all_info',
+        #  'refresh_token': '35pOUhNnaUOEAicjyF4C8F9ZAa3jG8',
+        #  'organizations': [],
+        #  'displayName': 'j*******',
+        #  'roles': [{'name': 'Provider', 'id': 'provider'}],
+        #  'app_id': '0db45bbbfe05409685c2e043892d7d00',
+        #  'isGravatarEnabled': False,
+        #  'email': 'j*****.c******@atos.net',
+        #  'id': 'j*******'}
+        return {'username': response.get('id').replace('-', '_'),
                 'email': response.get('email') or '',
                 'fullname': response.get('displayName') or ''}
 
@@ -45,7 +73,16 @@ class KeyrockOAuth2(BaseOAuth2):
         url = urljoin(settings.FIWARE_IDM_ENDPOINT, '/user?' + urlencode({
             'access_token': access_token
         }))
-        return self.get_json(url)
+        response = self.get_json(url)
+        print("USER_DATA-----------------"+str(response))
+        # {'organizations': [],
+        #  'displayName': 'j*******',
+        #  'roles': [{'name': 'Provider', 'id': 'provider'}],
+        #  'app_id': '0db45bbbfe05409685c2e043892d7d00',
+        #  'isGravatarEnabled': False,
+        #  'email': 'j*****.c******@atos.net',
+        #  'id': 'j*******'}
+        return response
 
     def auth_headers(self):
         response = super(KeyrockOAuth2, self).auth_headers()
@@ -55,7 +92,6 @@ class KeyrockOAuth2(BaseOAuth2):
         authorization_basic = base64.b64encode(
             keys.encode('ascii')).decode('ascii')
         response['Authorization'] = 'Basic ' + authorization_basic
-
         return response
 
     def auth_complete_params(self, state=None):
