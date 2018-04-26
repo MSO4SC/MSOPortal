@@ -184,6 +184,7 @@ class Application(models.Model):
     name = models.CharField(max_length=50)
 
     description = models.CharField(max_length=256, null=True)
+    marketplace_id = models.CharField(max_length=10, db_index=True)
 
     owner = models.ForeignKey(
         settings.AUTH_USER_MODEL,
@@ -213,11 +214,11 @@ class Application(models.Model):
             return {'app': app, 'error': error}
 
     @classmethod
-    def list(cls, owner, return_dict=False):
+    def list(cls, marketplace_ids, return_dict=False):
         error = None
         app_list = []
         try:
-            app_list = cls.objects.filter(owner=owner)
+            app_list = cls.objects.filter(marketplace_id__in=marketplace_ids)
         except cls.DoesNotExist:
             pass
 
@@ -228,7 +229,12 @@ class Application(models.Model):
                     'error': error}
 
     @classmethod
-    def create(cls, path, blueprint_id, owner, return_dict=False):
+    def create(cls,
+               path,
+               blueprint_id,
+               marketplace_id,
+               owner,
+               return_dict=False):
         error = None
         app = None
 
@@ -240,6 +246,7 @@ class Application(models.Model):
                 app = cls.objects.create(
                     name=blueprint['id'],
                     description=blueprint['description'],
+                    marketplace_id=marketplace_id,
                     owner=owner)
             except Exception as err:
                 print(traceback.format_exc())

@@ -99,23 +99,17 @@ def get_stock(request):
         #   cm0X1hLcmaSCNoa3E&response_type=code.
         #   (Reason: CORS header ‘Access-Control-Allow-Origin’ missing).
         return redirect(data)
-    headers = {"Authorization": "bearer " + access_token}
-    url = settings.MARKETPLACE_URL + \
-        "/DSProductCatalog/api/catalogManagement/v2/productSpecification" + \
-        "?lifecycleStatus=Launched" + \
-        "&relatedParty.id=" + request.user.get_username()
 
-    text_data = requests.request("GET", url, headers=headers).text
-    json_data = json.loads(text_data)
+    data = _get_stock(access_token, request.user.get_username())
 
-    request.session['products'] = json_data
+    request.session['stock'] = data
     request.session.modified = True
 
-    return JsonResponse(json_data, safe=False)
+    return JsonResponse(data, safe=False)
 
 
 @login_required
-def get_products(request):
+def load_applications(request):
     valid, data = sso.utils.get_token(request.user, request.get_full_path())
     if valid:
         access_token = data
@@ -127,28 +121,69 @@ def get_products(request):
         #   cm0X1hLcmaSCNoa3E&response_type=code.
         #   (Reason: CORS header ‘Access-Control-Allow-Origin’ missing).
         return redirect(data)
+
+    stock_data = _get_stock(access_token, request.user.get_username())
+    inventory_data = _get_inventory(access_token, request.user.get_username())
+
+    marketplace_ids = []
+    for product in stock_data:
+        marketplace_ids.append(_get_productid_from_specification(product))
+    for offering in inventory_data:
+        marketplace_ids.append(
+            _get_productid_from_offering(offering, access_token))
+
+    applications = Application.list(marketplace_ids, return_dict=True)
+
+    if 'error' not in applications or applications['error'] is None:
+        request.session['applications'] = applications
+        request.session.modified = True
+
+    return JsonResponse(applications, safe=False)
+
+
+def _get_stock(access_token, username):
     headers = {"Authorization": "bearer " + access_token}
     url = settings.MARKETPLACE_URL + \
         "/DSProductCatalog/api/catalogManagement/v2/productSpecification" + \
         "?lifecycleStatus=Launched" + \
-        "&relatedParty.id=" + request.user.get_username()
+        "&relatedParty.id=" + username
+
+    text_data = requests.request("GET", url, headers=headers).text
+    return json.loads(text_data)
+
+
+def _get_inventory(access_token, username):
+    headers = {"Authorization": "bearer " + access_token}
+    url = settings.MARKETPLACE_URL + \
+        "/DSProductInventory/api/productInventory/v2/product" + \
+        "?status=Active" + \
+        "&relatedParty.id=" + username
+
+    text_data = requests.request("GET", url, headers=headers).text
+    return json.loads(text_data)
+
+
+def _get_productid_from_specification(data):
+    return data["id"]
+
+
+def _get_productid_from_offering(data, access_token):
+    headers = {"Authorization": "bearer " + access_token}
+    url = data["productOffering"]
 
     text_data = requests.request("GET", url, headers=headers).text
     json_data = json.loads(text_data)
 
-    request.session['products'] = json_data
-    request.session.modified = True
-
-    return JsonResponse(json_data, safe=False)
+    return json_data["productSpecification"]["id"]
 
 
 @login_required
 @permission_required('experimentstool.register_app')
 def upload_application(request):
-    if 'products' not in request.session:
-        return JsonResponse({'error': 'No products loaded'})
+    if 'stock' not in request.session:
+        return JsonResponse({'error': 'No stock products loaded'})
 
-    products = request.session['products']
+    products = request.session['stock']
     product_id = request.POST.get('product', None)
     if not product_id:
         return JsonResponse({'error': 'No product id provided'})
@@ -177,15 +212,9 @@ def upload_application(request):
 
     return JsonResponse(Application.create(application_path,
                                            mso4sc_id,
+                                           product_id,
                                            request.user,
                                            return_dict=True))
-
-
-@login_required
-def load_applications(request):
-    return JsonResponse(
-        Application.list(request.user, return_dict=True),
-        safe=False)
 
 
 @login_required

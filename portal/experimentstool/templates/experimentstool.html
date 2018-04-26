@@ -641,7 +641,7 @@ function renderDeploymentData(selector_id, workflow, execution_selector_id, log_
         $(document.createElement('option')).attr("value", "-1").text("Loading..")
     );
     execution_selector.append(
-        $(document.createElement('option')).attr("value", "-1").text("None")
+        $(document.createElement('option')).attr("value", "-1").text("...")
     );
 
     $.ajax({
@@ -665,6 +665,7 @@ function renderDeploymentData(selector_id, workflow, execution_selector_id, log_
                     deployment_selector.append(
                         $(document.createElement('option')).attr("value", "-1").text("No instances found")
                     );
+                    execution_selector.empty();
                     execution_selector.append(
                         $(document.createElement('option')).attr("value", "-1").text("None")
                     );
@@ -772,10 +773,10 @@ function renderLogData(exec_id, log_id, reset=false) {
                         },
                         3000);
                     if (reset) {
-                        $(log_id).find("img").attr("src", "/static/experimentstool/img/light_blue.png");
+                        $(log_id+"_light").attr("src", "/static/experimentstool/img/light_blue.png");
                     }
                 } else {
-                    var light = $(log_id).find("img");
+                    var light = $(log_id+"_light");
                     if (data.events.status=="terminated") {
                         light.attr("src", "/static/experimentstool/img/light_green.png");
                     } else {
@@ -796,9 +797,14 @@ function executeDeployment(selector_id, workflow, execution_selector_id, log_id 
     var deployment_id = $(selector_id).find("select").val();
     cleanNotifications();
 
+    var url = "/experimentstool/_execute_deployment";
+    if (workflow=='destroy') {
+        url = "/experimentstool/_destroy_deployment";
+    }
+
     $.ajax({
         method: "POST",
-        url: "/experimentstool/_execute_deployment",
+        url: url,
         data: {
             'deployment_id': deployment_id,
             'workflow': workflow,
@@ -1018,13 +1024,13 @@ $("#force-undeploy-button").on('click', function (event) {
 $("#destroy-instance-button").on('click', function (event) {
     event.preventDefault();
     executeDeployment("#destroy_deployment_selector",
-                      "/experimentstool/_destroy_deployment");
+                      "destroy");
 });
 
 $("#force-destroy-instance-button").on('click', function (event) {
     event.preventDefault();
     executeDeployment("#destroy_deployment_selector",
-                      "/experimentstool/_destroy_deployment",
+                      "destroy",
                       force=true);
 });
 

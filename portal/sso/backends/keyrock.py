@@ -21,7 +21,7 @@ class KeyrockOAuth2(BaseOAuth2):
     AUTHORIZATION_URL = urljoin(
         settings.FIWARE_IDM_ENDPOINT, '/oauth2/authorize')
     ACCESS_TOKEN_URL = urljoin(settings.FIWARE_IDM_ENDPOINT, '/oauth2/token')
-    #LOGOUT_URL = urljoin(settings.FIWARE_IDM_ENDPOINT, '/auth/logout')
+    # LOGOUT_URL = urljoin(settings.FIWARE_IDM_ENDPOINT, '/auth/logout')
     ACCESS_TOKEN_METHOD = 'POST'
 
     REDIRECT_STATE = False
@@ -39,7 +39,6 @@ class KeyrockOAuth2(BaseOAuth2):
     ]
 
     def get_user_id(self, details, response):
-        print("USER_ID-----------------"+str(response))
         # {'access_token': '53ERoBZXTDzjDrvSMAzEbLPW9JWX6f',
         #  'expires_in': 3600,
         #  'token_type': 'Bearer',
@@ -57,7 +56,6 @@ class KeyrockOAuth2(BaseOAuth2):
 
     def get_user_details(self, response):
         """Return user details from FI-WARE account"""
-        print("USER_DETAILS-----------------"+str(response))
         # {'access_token': 'uN1mFJKd9m0pGMdLyRFdvew5VLFMs3',
         #  'expires_in': 3600,
         #  'token_type': 'Bearer',
@@ -83,7 +81,6 @@ class KeyrockOAuth2(BaseOAuth2):
             'access_token': access_token
         }))
         response = self.get_json(url)
-        print("USER_DATA-----------------"+str(response))
         # {'organizations': [],
         #  'displayName': 'j*******',
         #  'roles': [{'name': 'Provider', 'id': 'provider'}],
