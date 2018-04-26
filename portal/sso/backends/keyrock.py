@@ -1,6 +1,5 @@
 """
-Github OAuth2 backend, docs at:
-    https://python-social-auth.readthedocs.io/en/latest/backends/github.html
+Keyrock (Fiware) OAuth2 backend
 """
 from urllib.parse import urlencode
 from requests import HTTPError
@@ -18,6 +17,7 @@ import base64
 class KeyrockOAuth2(BaseOAuth2):
     """Keyrock OAuth authentication backend"""
     name = 'fiware'
+    ID_KEY = 'email'
     AUTHORIZATION_URL = urljoin(
         settings.FIWARE_IDM_ENDPOINT, '/oauth2/authorize')
     ACCESS_TOKEN_URL = urljoin(settings.FIWARE_IDM_ENDPOINT, '/oauth2/token')
@@ -28,7 +28,14 @@ class KeyrockOAuth2(BaseOAuth2):
 
     EXTRA_DATA = [
         ('id', 'username'),
-        ('id', 'uid')
+        ('email', 'id'),
+        ('email', 'uid'),
+        ('email', 'email'),
+        ('displayName', 'fullname'),
+        ('roles', 'roles'),
+        ('refresh_token', 'refresh_token'),
+        ('expires_in', 'expires_in'),
+        ('organizations', 'organizations')
     ]
 
     def get_user_id(self, details, response):
@@ -64,9 +71,11 @@ class KeyrockOAuth2(BaseOAuth2):
         #  'isGravatarEnabled': False,
         #  'email': 'j*****.c******@atos.net',
         #  'id': 'j*******'}
-        return {'username': response.get('id').replace('-', '_'),
-                'email': response.get('email') or '',
-                'fullname': response.get('displayName') or ''}
+        # return {'username': response.get('id').replace('-', '_'),
+        #        'email': response.get('email') or '',
+        #        'fullname': response.get('displayName') or ''}
+        response['id'] = response['id'].replace('-', '_')
+        return response
 
     def user_data(self, access_token, *args, **kwargs):
         """Loads user data from service"""

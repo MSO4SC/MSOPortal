@@ -115,6 +115,34 @@ def get_stock(request):
 
 
 @login_required
+def get_products(request):
+    valid, data = sso.utils.get_token(request.user, request.get_full_path())
+    if valid:
+        access_token = data
+    else:
+        # FIXME Cross-Origin Request Blocked: The Same Origin Policy disallows
+        # reading the remote resource at https://account.lab.fiware.org/oauth2/
+        #   authorize?client_id=859680e0c8cb4c65b5d2d6fb99ef1595&redirect_uri=
+        #   http://localhost:8000/oauth/complete/fiware/&state=eXpNpKJ5jqsZoOB
+        #   cm0X1hLcmaSCNoa3E&response_type=code.
+        #   (Reason: CORS header ‘Access-Control-Allow-Origin’ missing).
+        return redirect(data)
+    headers = {"Authorization": "bearer " + access_token}
+    url = settings.MARKETPLACE_URL + \
+        "/DSProductCatalog/api/catalogManagement/v2/productSpecification" + \
+        "?lifecycleStatus=Launched" + \
+        "&relatedParty.id=" + request.user.get_username()
+
+    text_data = requests.request("GET", url, headers=headers).text
+    json_data = json.loads(text_data)
+
+    request.session['products'] = json_data
+    request.session.modified = True
+
+    return JsonResponse(json_data, safe=False)
+
+
+@login_required
 @permission_required('experimentstool.register_app')
 def upload_application(request):
     if 'products' not in request.session:
