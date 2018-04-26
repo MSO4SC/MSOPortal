@@ -191,16 +191,20 @@ class Application(models.Model):
         on_delete=models.CASCADE,
     )
 
-    # TODO: Link to marketplace app
-
     @classmethod
-    def get(cls, pk, owner, return_dict=False):
-        error = None
+    def _get(cls, pk):
         app = None
         try:
             app = cls.objects.get(pk=pk)
         except cls.DoesNotExist:
             pass
+
+        return app
+
+    @classmethod
+    def get(cls, pk, owner, return_dict=False):
+        error = None
+        app = cls._get(pk)
 
         if (owner != app.owner):
             app = None
@@ -259,16 +263,15 @@ class Application(models.Model):
             return {'app': _to_dict(app), 'error': error}
 
     @classmethod
-    def get_inputs(cls, pk, owner, return_dict=False):
+    def get_inputs(cls, pk, return_dict=False):
         """ Returns a list of dict with inputs, and a string error """
         inputs = None
-        app, error = cls.get(pk, owner)
+        app = cls._get(pk)
 
-        if error is None:
-            if app is not None:
-                inputs, error = cls._get_inputs(app.name)
-            else:
-                error = "Can't get app inputs because it doesn't exists"
+        if app is not None:
+            inputs, error = cls._get_inputs(app.name)
+        else:
+            error = "Can't get app inputs because it doesn't exists"
 
         if not return_dict:
             return (inputs, error)

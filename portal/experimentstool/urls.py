@@ -4,8 +4,8 @@ from . import views
 
 urlpatterns = [
     url(r'^$', views.experimentstool, name='experimentstool'),
-    url(r'^_get_stock$',
-        views.get_stock, name='_get_stock'),
+    url(r'^_get_new_stock$',
+        views.get_new_stock, name='_get_new_stock'),
     url(r'^_upload_application$',
         views.upload_application, name='_upload_application'),
     url(r'^_load_applications$',

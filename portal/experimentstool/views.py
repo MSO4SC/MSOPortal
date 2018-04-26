@@ -87,12 +87,12 @@ def delete_hpc(request):
 
 
 @login_required
-def get_stock(request):
+def get_new_stock(request):
     valid, data = sso.utils.get_token(request.user, request.get_full_path())
     if valid:
         access_token = data
     else:
-        # FIXME Cross-Origin Request Blocked: The Same Origin Policy disallows
+        # FIXME: Cross-Origin Request Blocked: The Same Origin Policy disallows
         # reading the remote resource at https://account.lab.fiware.org/oauth2/
         #   authorize?client_id=859680e0c8cb4c65b5d2d6fb99ef1595&redirect_uri=
         #   http://localhost:8000/oauth/complete/fiware/&state=eXpNpKJ5jqsZoOB
@@ -101,6 +101,10 @@ def get_stock(request):
         return redirect(data)
 
     data = _get_stock(access_token, request.user.get_username())
+
+    # response = []
+    # for product in data:
+    #     if _get_productid_from_specification(product) !=
 
     request.session['stock'] = data
     request.session.modified = True
@@ -114,7 +118,7 @@ def load_applications(request):
     if valid:
         access_token = data
     else:
-        # FIXME Cross-Origin Request Blocked: The Same Origin Policy disallows
+        # FIXME: Cross-Origin Request Blocked: The Same Origin Policy disallows
         # reading the remote resource at https://account.lab.fiware.org/oauth2/
         #   authorize?client_id=859680e0c8cb4c65b5d2d6fb99ef1595&redirect_uri=
         #   http://localhost:8000/oauth/complete/fiware/&state=eXpNpKJ5jqsZoOB
@@ -123,7 +127,11 @@ def load_applications(request):
         return redirect(data)
 
     stock_data = _get_stock(access_token, request.user.get_username())
+    if 'error' in stock_data:
+        return JsonResponse(stock_data, safe=False)
     inventory_data = _get_inventory(access_token, request.user.get_username())
+    if 'error' in inventory_data:
+        return JsonResponse(inventory_data, safe=False)
 
     marketplace_ids = []
     for product in stock_data:
@@ -135,7 +143,7 @@ def load_applications(request):
     applications = Application.list(marketplace_ids, return_dict=True)
 
     if 'error' not in applications or applications['error'] is None:
-        request.session['applications'] = applications
+        request.session['applications'] = applications['app_list']
         request.session.modified = True
 
     return JsonResponse(applications, safe=False)
@@ -169,6 +177,7 @@ def _get_productid_from_specification(data):
 
 def _get_productid_from_offering(data, access_token):
     headers = {"Authorization": "bearer " + access_token}
+    print("-------------"+str(data))
     url = data["productOffering"]
 
     text_data = requests.request("GET", url, headers=headers).text
@@ -219,13 +228,17 @@ def upload_application(request):
 
 @login_required
 def get_application_inputs(request):
-    application_id = int(request.GET.get('application_id', -1))
+    if 'applications' not in request.session:
+        return JsonResponse({'error': 'No applications loaded'})
 
-    if application_id < 0:
+    application_index = int(request.GET.get('application_index', -1))
+
+    if application_index < 0:
         return JsonResponse({'error': 'Bad application id provided'})
 
+    application_id = request.session['applications'][application_index]["id"]
+
     return JsonResponse(Application.get_inputs(application_id,
-                                               request.user,
                                                return_dict=True))
 
 
