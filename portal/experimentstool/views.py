@@ -113,6 +113,37 @@ def get_new_stock(request):
 
 
 @login_required
+def load_owned_applications(request):
+    valid, data = sso.utils.get_token(request.user, request.get_full_path())
+    if valid:
+        access_token = data
+    else:
+        # FIXME: Cross-Origin Request Blocked: The Same Origin Policy disallows
+        # reading the remote resource at https://account.lab.fiware.org/oauth2/
+        #   authorize?client_id=859680e0c8cb4c65b5d2d6fb99ef1595&redirect_uri=
+        #   http://localhost:8000/oauth/complete/fiware/&state=eXpNpKJ5jqsZoOB
+        #   cm0X1hLcmaSCNoa3E&response_type=code.
+        #   (Reason: CORS header ‘Access-Control-Allow-Origin’ missing).
+        return redirect(data)
+
+    stock_data = _get_stock(access_token, request.user.get_username())
+    if 'error' in stock_data:
+        return JsonResponse(stock_data, safe=False)
+
+    marketplace_ids = []
+    for product in stock_data:
+        marketplace_ids.append(_get_productid_from_specification(product))
+
+    applications = Application.list(marketplace_ids, return_dict=True)
+
+    if 'error' not in applications or applications['error'] is None:
+        request.session['owned_apps'] = applications['app_list']
+        request.session.modified = True
+
+    return JsonResponse(applications, safe=False)
+
+
+@login_required
 def load_applications(request):
     valid, data = sso.utils.get_token(request.user, request.get_full_path())
     if valid:
@@ -177,8 +208,7 @@ def _get_productid_from_specification(data):
 
 def _get_productid_from_offering(data, access_token):
     headers = {"Authorization": "bearer " + access_token}
-    print("-------------"+str(data))
-    url = data["productOffering"]
+    url = data["productOffering"]['href']
 
     text_data = requests.request("GET", url, headers=headers).text
     json_data = json.loads(text_data)
@@ -245,10 +275,15 @@ def get_application_inputs(request):
 @login_required
 @permission_required('experimentstool.remove_app')
 def remove_application(request):
-    application_id = int(request.POST.get('application_id', -1))
+    if 'owned_apps' not in request.session:
+        return JsonResponse({'error': 'No applications loaded'})
 
-    if application_id < 0:
+    application_index = int(request.GET.get('owned_apps', -1))
+
+    if application_index < 0:
         return JsonResponse({'error': 'Bad application id provided'})
+
+    application_id = request.session['owned_apps'][application_index]["id"]
 
     return JsonResponse(Application.remove(application_id,
                                            request.user,

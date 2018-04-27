@@ -10,6 +10,8 @@ urlpatterns = [
         views.upload_application, name='_upload_application'),
     url(r'^_load_applications$',
         views.load_applications, name='_load_applications'),
+    url(r'^_load_owned_applications$',
+        views.load_owned_applications, name='_load_owned_applications'),
     url(r'^_get_application_inputs$',
         views.get_application_inputs, name='_get_application_inputs'),
     url(r'^_get_datasets$',

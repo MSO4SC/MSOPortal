@@ -121,7 +121,7 @@ function openExperimentsTool(evt, toolName) {
             renderDeploymentData("#destroy_deployment_selector");
             break;
         case "remove":
-            renderApplicationData("#remove_application_selector");
+            renderApplicationData("#remove_application_selector", only_owned=true);
             break;
         case "settings":
             renderHPCData("#infrastructure_list", select=false);
@@ -139,7 +139,7 @@ function renderStockData(selector_id) {
     cleanNotifications();
 
     $.ajax({
-        url: '/experimentstool/_get_stock',
+        url: '/experimentstool/_get_new_stock',
         success: function (products) {
             if (products.length > 0) {
                 $.each(products, function (index, product) {
@@ -153,7 +153,7 @@ function renderStockData(selector_id) {
                 product_selector.append(
                     $(document.createElement('option'))
                         .attr("value", "-1")
-                        .text("No products found in stock")
+                        .text("No new products found in stock")
                 );
             }
         },
@@ -165,15 +165,20 @@ function renderStockData(selector_id) {
     });
 }
 
-function renderApplicationData(selector_id) {
+function renderApplicationData(selector_id, only_owned=false) {
     var application_selector = $(selector_id).find("select")
     application_selector.empty();
     application_selector.append(
         $(document.createElement('option')).attr("value", "-1").text("Loading..")
     );
 
+    var url = '/experimentstool/_load_applications';
+    if (only_owned) {
+        url = '/experimentstool/_load_owned_applications';
+    }
+
     $.ajax({
-        url: '/experimentstool/_load_applications',
+        url: url,
         success: function (data) {
             application_selector.empty();
             if (data.error!==undefined && data.error!==null) {
@@ -187,12 +192,18 @@ function renderApplicationData(selector_id) {
                 );
                 $.each(data.app_list, function (index, application) {
                     application_selector.append(
-                        $(document.createElement('option')).attr("value", index).text(application.name)
+                        $(document.createElement('option')).attr("value", index)
+                            .text(application.name)
                     )
                 });
             } else {
+                var msg = "No applications found";
+                if (only_owned) {
+                    msg = "No owned applications found";
+                }
                 application_selector.append(
-                    $(document.createElement('option')).attr("value", "-1").text("No applications found")
+                    $(document.createElement('option')).attr("value", "-1")
+                        .text(msg)
                 );
             }
         },
