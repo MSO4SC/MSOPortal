@@ -140,7 +140,11 @@ function renderStockData(selector_id) {
 
     $.ajax({
         url: '/experimentstool/_get_new_stock',
+        beforeSend: function () {
+            $(".loader").show();
+        },
         success: function (products) {
+            $(".loader").hide();
             if (products.length > 0) {
                 $.each(products, function (index, product) {
                     product_selector.append(
@@ -179,7 +183,11 @@ function renderApplicationData(selector_id, only_owned=false) {
 
     $.ajax({
         url: url,
+        beforeSend: function () {
+            $(".loader").show();
+        },
         success: function (data) {
+            $(".loader").hide();
             application_selector.empty();
             if (data.error!==undefined && data.error!==null) {
                 appendNotification("Couldn't read Application data: "+data.error, error=true);
@@ -230,7 +238,11 @@ function renderApplicationInputs(selector_id, container_id) {
                 'application_index': application
             },
             dataType: 'json',
+            beforeSend: function () {
+                $(".loader").show();
+            },
             success: function (data) {
+                $(".loader").hide();
                 if (data.error!==undefined && data.error!==null) {
                     appendNotification("Couldn't read the inputs: "+data.error, error=true);
                 } else if (data.inputs.length > 0) {
@@ -451,7 +463,11 @@ function renderHPCData(container_id, select=true, clear_notifications=true) {
 
     $.ajax({
         url: '/experimentstool/_get_hpc_list',
+        beforeSend: function () {
+            $(".loader").show();
+        },
         success: function (data) {
+            $(".loader").hide();
             if (data.error!==undefined && data.error!==null) {
                 message = "Couldn't get hpc list: "+data.error;
                 appendNotification(message, error=true);
@@ -548,7 +564,11 @@ function setHPCEditButtonsHandler(button_id, pk, refresh_function) {
                 'pk': pk
             },
             dataType: 'json',
+            beforeSend: function () {
+                $(".loader").show();
+            },
             success: function (data) {
+                $(".loader").hide();
                 if (data.error!==undefined && data.error!==null) {
                     appendNotification("Couldn't delete the hpc: "+data.error, error=true);
                 } else {
@@ -573,7 +593,11 @@ function renderDatasetsData(selector_id) {
     );
     $.ajax({
         url: '/experimentstool/_get_datasets',
+        beforeSend: function () {
+            $(".loader").show();
+        },
         success: function (datasets) {
+            $(".loader").hide();
             dataset_selector.empty();
             dataset_selector.append(
                 $(document.createElement('option')).attr("value", "-1").text("None")
@@ -607,7 +631,11 @@ function renderDatasetChoices(selector_id, container_id, group_name){
                 'dataset': dataset
             },
             dataType: 'json',
+            beforeSend: function () {
+                $(".loader").show();
+            },
             success: function (data) {
+                $(".loader").hide();
                 if (data.error!==undefined) {
                     appendNotification("Couldn't read the dataset info: "+data.error, error=true);
                 } else if (data.num_resources > 0) {
@@ -657,7 +685,11 @@ function renderDeploymentData(selector_id, workflow, execution_selector_id, log_
 
     $.ajax({
         url: '/experimentstool/_get_deployments',
+        beforeSend: function () {
+            $(".loader").show();
+        },
         success: function (data) {
+            $(".loader").hide();
             if (data.error!==undefined && data.error!==null) {
                 appendNotification("Couldn't read the instances: "+data.error, error=true);
             } else {
@@ -704,7 +736,11 @@ function renderExecutionData(instance, workflow, execution_selector_id, log_id) 
             'instance': instance,
             'workflow': workflow
         },
+        beforeSend: function () {
+            $(".loader").show();
+        },
         success: function (data) {
+            $(".loader").hide();
             if (data.error!==undefined && data.error!==null) {
                 appendNotification("Couldn't read the instances: "+data.error, error=true);
             } else {
@@ -764,7 +800,11 @@ function renderLogData(exec_id, log_id, reset=false) {
             'exec_id': exec_id,
             'reset': reset
         },
+        beforeSend: function () {
+            $(".loader").show();
+        },
         success: function (data) {
+            $(".loader").hide();
             if (data.error!==undefined && data.error!==null) {
                 appendNotification("Couldn't monitor the operation: "+data.error, error=true);
             } else {
@@ -822,7 +862,11 @@ function executeDeployment(selector_id, workflow, execution_selector_id, log_id 
             'force': force
         },
         dataType: 'json',
+        beforeSend: function () {
+            $(".loader").show();
+        },
         success: function (data) {
+            $(".loader").hide();
             if (data.error!==undefined && data.error!==null) {
                 appendNotification("Execution error: "+data.error, error=true);
             } else {
@@ -886,7 +930,11 @@ $("#add_hpc").find("button").on('click', function (event) {
                 'timezone': timezone,
             },
             dataType: 'json',
+            beforeSend: function () {
+                $(".loader").show();
+            },
             success: function (data) {
+                $(".loader").hide();
                 if (data.error!==undefined && data.error!==null) {
                     appendNotification("Couldn't add the HPC: "+data.error, error=true);
                 } else {
@@ -920,7 +968,11 @@ $("#upload").find("button").on('click', function (event) {
                 'mso_id': mso_id
             },
             dataType: 'json',
+            beforeSend: function () {
+                $(".loader").show();
+            },
             success: function (data) {
+                $(".loader").hide();
                 if (data.error!==undefined && data.error!==null) {
                     appendNotification("Couldn't register the app: "+data.error, error=true);
                 } else {
@@ -984,7 +1036,11 @@ $("#deploy_form").find("button").on('click', function (event) {
         contentType: false,
         processData: false,
         cache: false,
+        beforeSend: function () {
+            $(".loader").show();
+        },
         success: function (data) {
+            $(".loader").hide();
             if (data.error!==undefined && data.error!==null) {
                 appendNotification("Couldn't create the instance: "+data.error, error=true);
             } else {
@@ -1055,7 +1111,11 @@ $("#remove").find("button").on('click', function (event) {
             'application_index': application_index
         },
         dataType: 'json',
+        beforeSend: function () {
+            $(".loader").show();
+        },
         success: function (data) {
+            $(".loader").hide();
             if (data.error!==undefined && data.error!==null) {
                 appendNotification("Couldn't remove the app: "+data.error, error=true);
             } else {
