@@ -51,7 +51,7 @@
 }
 
 .camera_wrap img {
-	max-width: none!important;
+	max-width: none !important;
 }
 
 .camera_fakehover {
@@ -140,8 +140,8 @@
 }
 
 .camera_loader {
-	background: #fff url(../images/camera-loader.gif) no-repeat center;
-	background: rgba(255, 255, 255, 0.9) url(../images/camera-loader.gif) no-repeat center;
+	background: #fff url(../img/slide/camera-loader.gif) no-repeat center;
+	background: rgba(255, 255, 255, 0.9) url(../img/slide/camera-loader.gif) no-repeat center;
 	border: 1px solid #ffffff;
 	-webkit-border-radius: 18px;
 	-moz-border-radius: 18px;
@@ -453,7 +453,6 @@
 	position: relative;
 }
 
-
 /**************************
 *
 *	COLORS & SKINS
@@ -550,7 +549,6 @@
 	border-color: 1px solid #000;
 }
 
-
 /*AMBER SKIN*/
 
 .camera_amber_skin .camera_prevThumbs div {
@@ -576,7 +574,6 @@
 .camera_amber_skin .camera_commands>.camera_stop {
 	background-position: -120px -160px;
 }
-
 
 /*ASH SKIN*/
 
@@ -604,7 +601,6 @@
 	background-position: -120px -200px;
 }
 
-
 /*AZURE SKIN*/
 
 .camera_azure_skin .camera_prevThumbs div {
@@ -630,7 +626,6 @@
 .camera_azure_skin .camera_commands>.camera_stop {
 	background-position: -120px -240px;
 }
-
 
 /*BEIGE SKIN*/
 
@@ -658,7 +653,6 @@
 	background-position: -120px -120px;
 }
 
-
 /*BLACK SKIN*/
 
 .camera_black_skin .camera_prevThumbs div {
@@ -684,7 +678,6 @@
 .camera_black_skin .camera_commands>.camera_stop {
 	background-position: -120px -40px;
 }
-
 
 /*BLUE SKIN*/
 
@@ -712,7 +705,6 @@
 	background-position: -120px -280px;
 }
 
-
 /*BROWN SKIN*/
 
 .camera_brown_skin .camera_prevThumbs div {
@@ -738,7 +730,6 @@
 .camera_brown_skin .camera_commands>.camera_stop {
 	background-position: -120px -320px;
 }
-
 
 /*BURGUNDY SKIN*/
 
@@ -766,7 +757,6 @@
 	background-position: -120px -360px;
 }
 
-
 /*CHARCOAL SKIN*/
 
 .camera_charcoal_skin .camera_prevThumbs div {
@@ -792,7 +782,6 @@
 .camera_charcoal_skin .camera_commands>.camera_stop {
 	background-position: -120px -400px;
 }
-
 
 /*CHOCOLATE SKIN*/
 
@@ -820,7 +809,6 @@
 	background-position: -120px -440px;
 }
 
-
 /*COFFEE SKIN*/
 
 .camera_coffee_skin .camera_prevThumbs div {
@@ -846,7 +834,6 @@
 .camera_coffee_skin .camera_commands>.camera_stop {
 	background-position: -120px -480px;
 }
-
 
 /*CYAN SKIN*/
 
@@ -874,7 +861,6 @@
 	background-position: -120px -520px;
 }
 
-
 /*FUCHSIA SKIN*/
 
 .camera_fuchsia_skin .camera_prevThumbs div {
@@ -900,7 +886,6 @@
 .camera_fuchsia_skin .camera_commands>.camera_stop {
 	background-position: -120px -560px;
 }
-
 
 /*GOLD SKIN*/
 
@@ -928,7 +913,6 @@
 	background-position: -120px -600px;
 }
 
-
 /*GREEN SKIN*/
 
 .camera_green_skin .camera_prevThumbs div {
@@ -954,7 +938,6 @@
 .camera_green_skin .camera_commands>.camera_stop {
 	background-position: -120px -640px;
 }
-
 
 /*GREY SKIN*/
 
@@ -982,7 +965,6 @@
 	background-position: -120px -680px;
 }
 
-
 /*INDIGO SKIN*/
 
 .camera_indigo_skin .camera_prevThumbs div {
@@ -1008,7 +990,6 @@
 .camera_indigo_skin .camera_commands>.camera_stop {
 	background-position: -120px -720px;
 }
-
 
 /*KHAKI SKIN*/
 
@@ -1036,7 +1017,6 @@
 	background-position: -120px -760px;
 }
 
-
 /*LIME SKIN*/
 
 .camera_lime_skin .camera_prevThumbs div {
@@ -1062,7 +1042,6 @@
 .camera_lime_skin .camera_commands>.camera_stop {
 	background-position: -120px -800px;
 }
-
 
 /*MAGENTA SKIN*/
 
@@ -1090,7 +1069,6 @@
 	background-position: -120px -840px;
 }
 
-
 /*MAROON SKIN*/
 
 .camera_maroon_skin .camera_prevThumbs div {
@@ -1116,7 +1094,6 @@
 .camera_maroon_skin .camera_commands>.camera_stop {
 	background-position: -120px -880px;
 }
-
 
 /*ORANGE SKIN*/
 
@@ -1144,7 +1121,6 @@
 	background-position: -120px -920px;
 }
 
-
 /*OLIVE SKIN*/
 
 .camera_olive_skin .camera_prevThumbs div {
@@ -1170,7 +1146,6 @@
 .camera_olive_skin .camera_commands>.camera_stop {
 	background-position: -120px -1080px;
 }
-
 
 /*PINK SKIN*/
 
@@ -1198,7 +1173,6 @@
 	background-position: -120px -960px;
 }
 
-
 /*PISTACHIO SKIN*/
 
 .camera_pistachio_skin .camera_prevThumbs div {
@@ -1224,7 +1198,6 @@
 .camera_pistachio_skin .camera_commands>.camera_stop {
 	background-position: -120px -1040px;
 }
-
 
 /*PINK SKIN*/
 
@@ -1252,7 +1225,6 @@
 	background-position: -120px -80px;
 }
 
-
 /*RED SKIN*/
 
 .camera_red_skin .camera_prevThumbs div {
@@ -1278,7 +1250,6 @@
 .camera_red_skin .camera_commands>.camera_stop {
 	background-position: -120px -1000px;
 }
-
 
 /*TANGERINE SKIN*/
 
@@ -1306,7 +1277,6 @@
 	background-position: -120px -1120px;
 }
 
-
 /*TURQUOISE SKIN*/
 
 .camera_turquoise_skin .camera_prevThumbs div {
@@ -1332,7 +1302,6 @@
 .camera_turquoise_skin .camera_commands>.camera_stop {
 	background-position: -120px -1160px;
 }
-
 
 /*VIOLET SKIN*/
 
@@ -1360,7 +1329,6 @@
 	background-position: -120px -1200px;
 }
 
-
 /*WHITE SKIN*/
 
 .camera_white_skin .camera_prevThumbs div {
@@ -1386,7 +1354,6 @@
 .camera_white_skin .camera_commands>.camera_stop {
 	background-position: -120px -80px;
 }
-
 
 /*YELLOW SKIN*/
 

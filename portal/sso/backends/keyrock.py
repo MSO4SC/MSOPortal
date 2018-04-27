@@ -17,19 +17,17 @@ import base64
 class KeyrockOAuth2(BaseOAuth2):
     """Keyrock OAuth authentication backend"""
     name = 'fiware'
-    ID_KEY = 'email'
     AUTHORIZATION_URL = urljoin(
         settings.FIWARE_IDM_ENDPOINT, '/oauth2/authorize')
     ACCESS_TOKEN_URL = urljoin(settings.FIWARE_IDM_ENDPOINT, '/oauth2/token')
-    # LOGOUT_URL = urljoin(settings.FIWARE_IDM_ENDPOINT, '/auth/logout')
+    #LOGOUT_URL = urljoin(settings.FIWARE_IDM_ENDPOINT, '/auth/logout')
     ACCESS_TOKEN_METHOD = 'POST'
 
     REDIRECT_STATE = False
 
     EXTRA_DATA = [
         ('id', 'username'),
-        ('email', 'id'),
-        ('email', 'uid'),
+        ('id', 'uid'),
         ('email', 'email'),
         ('displayName', 'fullname'),
         ('roles', 'roles'),
@@ -52,7 +50,7 @@ class KeyrockOAuth2(BaseOAuth2):
         #  'isGravatarEnabled': False,
         #  'email': 'j*****.c******@atos.net',
         #  'id': 'j*******'}
-        return response['email']
+        return response['id'].replace('-', '_')
 
     def get_user_details(self, response):
         """Return user details from FI-WARE account"""
@@ -69,18 +67,15 @@ class KeyrockOAuth2(BaseOAuth2):
         #  'isGravatarEnabled': False,
         #  'email': 'j*****.c******@atos.net',
         #  'id': 'j*******'}
-        # return {'username': response.get('id').replace('-', '_'),
-        #        'email': response.get('email') or '',
-        #        'fullname': response.get('displayName') or ''}
-        response['id'] = response['id'].replace('-', '_')
-        return response
+        return {'username': response.get('id').replace('-', '_'),
+                'email': response.get('email') or '',
+                'fullname': response.get('displayName') or ''}
 
     def user_data(self, access_token, *args, **kwargs):
         """Loads user data from service"""
         url = urljoin(settings.FIWARE_IDM_ENDPOINT, '/user?' + urlencode({
             'access_token': access_token
         }))
-        response = self.get_json(url)
         # {'organizations': [],
         #  'displayName': 'j*******',
         #  'roles': [{'name': 'Provider', 'id': 'provider'}],
@@ -88,7 +83,7 @@ class KeyrockOAuth2(BaseOAuth2):
         #  'isGravatarEnabled': False,
         #  'email': 'j*****.c******@atos.net',
         #  'id': 'j*******'}
-        return response
+        return self.get_json(url)
 
     def auth_headers(self):
         response = super(KeyrockOAuth2, self).auth_headers()
@@ -98,6 +93,7 @@ class KeyrockOAuth2(BaseOAuth2):
         authorization_basic = base64.b64encode(
             keys.encode('ascii')).decode('ascii')
         response['Authorization'] = 'Basic ' + authorization_basic
+
         return response
 
     def auth_complete_params(self, state=None):

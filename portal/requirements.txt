@@ -1,6 +1,6 @@
-Django==2.0.1
-paramiko==2.4.0
+Django==2.0.4
+paramiko==2.4.1
 python-decouple==3.1
 social-auth-app-django==2.1.0
-cloudify-rest-client==4.1
+cloudify-rest-client==4.3.1
 PyYAML==3.12
