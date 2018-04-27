@@ -100,11 +100,28 @@ def get_new_stock(request):
         #   (Reason: CORS header ‘Access-Control-Allow-Origin’ missing).
         return redirect(data)
 
-    data = _get_stock(access_token, request.user.get_username())
+    stock_data = _get_stock(access_token, request.user.get_username())
+    if 'error' in stock_data:
+        return JsonResponse(stock_data, safe=False)
 
-    # response = []
-    # for product in data:
-    #     if _get_productid_from_specification(product) !=
+    marketplace_ids = []
+    for product in stock_data:
+        marketplace_ids.append(_get_productid_from_specification(product))
+
+    applications, error = Application.list(marketplace_ids)
+    if error is not None:
+        return JsonResponse({'error': error})
+
+    data = []
+    for product in stock_data:
+        pid = _get_productid_from_specification(product)
+        found = False
+        for application in applications:
+            if pid == application.marketplace_id:
+                found = True
+                break
+        if not found:
+            data.append(product)
 
     request.session['stock'] = data
     request.session.modified = True
@@ -278,7 +295,7 @@ def remove_application(request):
     if 'owned_apps' not in request.session:
         return JsonResponse({'error': 'No applications loaded'})
 
-    application_index = int(request.GET.get('owned_apps', -1))
+    application_index = int(request.GET.get('application_index', -1))
 
     if application_index < 0:
         return JsonResponse({'error': 'Bad application id provided'})

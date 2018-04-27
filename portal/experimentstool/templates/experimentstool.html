@@ -1047,13 +1047,12 @@ $("#force-destroy-instance-button").on('click', function (event) {
 
 $("#remove").find("button").on('click', function (event) {
     event.preventDefault();
-    var application_id = $("#remove_application_selector").find("select").val();
+    var application_index = $("#remove_application_selector").find("select").val();
 
     $.ajax({
-        method: "POST",
         url: '/experimentstool/_remove_application',
         data: {
-            'application_id': application_id
+            'application_index': application_index
         },
         dataType: 'json',
         success: function (data) {
