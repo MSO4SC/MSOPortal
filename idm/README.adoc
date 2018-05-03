@@ -1,0 +1,11 @@
+== How to run
+
+*Requires* docker >= 18 and docker-compose >= 1.16
+
+* Copy _template.env_ to _.env_, and edit the created file with your configuration.
+
+NOTE: `IDM_HOST` refers to the domain of the IDM server. `IDM_CONFIG` is the path to the config.js file. `MYSQL_ROOT_PASSWORD` is the root password that mysql will use, and `MYSQL_DATA` is the path to where mysql files are/will be stored.
+
+* Crate the folder(s) refered in `MYSQL_DATA` if it doesn't exists.
+* Run `docker-compose up -d`
+* Access to the IDM through the 3000 port in a web browser. Default admin user _admin@test.com_, password _1234_.

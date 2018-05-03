@@ -1,0 +1,49 @@
+version: '3.3'
+
+services:
+    mysql:
+        container_name: mysql
+        image: mysql/mysql-server:5.7.22
+        restart: always
+        ports:
+            - "3306:3306"
+        environment:
+            - MYSQL_ROOT_PASSWORD=$MYSQL_ROOT_PASSWORD
+            - MYSQL_ROOT_HOST=172.18.1.6
+        volumes:
+            - $MYSQL_DATA:/var/lib/mysql
+        networks:
+            network:
+                ipv4_address: 172.18.1.5
+
+    idm:
+        depends_on:
+            - mysql
+        container_name: idm
+        image: mso4sc/idm
+        restart: always
+        ports:
+            - "3000:3000"
+            - "443:443"
+        environment:
+            - IDM_HOST=$IDM_HOST
+            - SMTP_HOST=$SMTP_HOST
+            - SMTP_PORT=$SMTP_PORT
+            - SMTP_SECURE=$SMTP_SECURE
+            - SMTP_FROM=$SMTP_FROM
+            - SMTP_USER=$SMTP_USER
+            - SMTP_PASS=$SMTP_PASS
+            - DATABASE_HOST=mysql
+            - MYSQL_ROOT_PASSWORD=$MYSQL_ROOT_PASSWORD
+        volumes:
+            - $IDM_CONFIG:/opt/fiware-idm/config.js
+
+        networks:
+            network:
+                ipv4_address: 172.18.1.6
+
+networks:
+    network:
+        ipam:
+            config:
+                - subnet: 172.18.1.0/24
