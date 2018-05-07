@@ -30,7 +30,6 @@ def experimentstool(request):
 
 @login_required
 def get_hpc_list(request):
-    # TODO: remove passwords from response
     return JsonResponse(
         HPCInfrastructure.list(request.user, return_dict=True),
         safe=False)

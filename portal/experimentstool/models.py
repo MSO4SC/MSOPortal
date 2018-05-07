@@ -73,6 +73,7 @@ class HPCInfrastructure(models.Model):
 
     @classmethod
     def get(cls, pk, owner, return_dict=False):
+        """ If returning a dict, password is removed """
         error = None
         hpc = None
         try:
@@ -80,7 +81,7 @@ class HPCInfrastructure(models.Model):
         except cls.DoesNotExist:
             pass
 
-        if (owner != hpc.owner):
+        if hpc is not None and owner != hpc.owner:
             hpc = None
             error = 'HPC does not belong to user'
 
@@ -89,10 +90,12 @@ class HPCInfrastructure(models.Model):
         else:
             if hpc is not None:
                 hpc = _to_dict(hpc)
+                hpc.pop('password')
             return {'hpc': hpc, 'error': error}
 
     @classmethod
     def list(cls, owner, return_dict=False):
+        """ If returning a dict, passwords are removed """
         error = None
         hpc_list = []
         try:
@@ -103,10 +106,18 @@ class HPCInfrastructure(models.Model):
             print(traceback.format_exc())
             error = str(err)
 
+        # if not passwd:
+        #
+
         if not return_dict:
             return (hpc_list, error)
         else:
-            return {'hpc_list':  [_to_dict(hpc) for hpc in hpc_list],
+            passwordless_list = []
+            for hpc in hpc_list:
+                hpc_dict = _to_dict(hpc)
+                hpc_dict.pop('password')
+                passwordless_list.append(hpc_dict)
+            return {'hpc_list':  passwordless_list,
                     'error': error}
 
     @classmethod
@@ -140,6 +151,7 @@ class HPCInfrastructure(models.Model):
 
     @classmethod
     def remove(cls, pk, owner, return_dict=False):
+        # TODO: remove passwords from response
         hpc, error = cls.get(pk, owner)
 
         if error is None:
@@ -206,7 +218,7 @@ class Application(models.Model):
         error = None
         app = cls._get(pk)
 
-        if (owner != app.owner):
+        if app is not None and owner != app.owner:
             app = None
             error = 'Application does not belong to user'
 
@@ -390,7 +402,7 @@ class AppInstance(models.Model):
         except cls.DoesNotExist:
             pass
 
-        if (owner != instance.owner):
+        if instance is not None and owner != instance.owner:
             instance = None
             error = 'Application instance does not belong to user'
 
@@ -567,7 +579,7 @@ class WorkflowExecution(models.Model):
         except cls.DoesNotExist:
             pass
 
-        if (owner != execution.owner):
+        if execution is not None and owner != execution.owner:
             execution = None
             error = 'Instance execution does not belong to user'
 

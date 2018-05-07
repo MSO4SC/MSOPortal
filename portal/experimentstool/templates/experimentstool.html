@@ -67,6 +67,32 @@
 
 {% block javascript %}
 <script>
+
+function getCookie(name) {
+    var cookieValue = null;
+    if (document.cookie && document.cookie != '') {
+        var cookies = document.cookie.split(';');
+        for (var i = 0; i < cookies.length; i++) {
+            var cookie = jQuery.trim(cookies[i]);
+            // Does this cookie string begin with the name we want?
+            if (cookie.substring(0, name.length + 1) == (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+}
+
+$.ajaxSetup({
+    beforeSend: function(xhr, settings) {
+        if (!(/^http:.*/.test(settings.url) || /^https:.*/.test(settings.url))) {
+            // Only send the token to relative URLs i.e. locally.
+            xhr.setRequestHeader("X-CSRFToken", getCookie('csrftoken'));
+        }
+    }
+});
+
 $log_timeout = null;
 function openExperimentsTool(evt, toolName) {
     // Declare all variables
@@ -140,7 +166,8 @@ function renderStockData(selector_id) {
 
     $.ajax({
         url: '/experimentstool/_get_new_stock',
-        beforeSend: function () {
+        beforeSend: function (xhr, settings) {
+            $.ajaxSettings.beforeSend(xhr, settings);
             $(".loader").show();
         },
         success: function (products) {
@@ -162,6 +189,7 @@ function renderStockData(selector_id) {
             }
         },
         error: function (jqXHR, status, errorThrown) {
+            $(".loader").hide();
             message = "Couldn't get stock list: ";
             message += jqXHR.status+": "+errorThrown+": "+jqXHR.responseText
             appendNotification(message, error=true);
@@ -183,7 +211,8 @@ function renderApplicationData(selector_id, only_owned=false) {
 
     $.ajax({
         url: url,
-        beforeSend: function () {
+        beforeSend: function (xhr, settings) {
+            $.ajaxSettings.beforeSend(xhr, settings);
             $(".loader").show();
         },
         success: function (data) {
@@ -216,6 +245,7 @@ function renderApplicationData(selector_id, only_owned=false) {
             }
         },
         error: function (jqXHR, status, errorThrown) {
+            $(".loader").hide();
             message = "Couldn't get applications list: ";
             message += jqXHR.status+": "+errorThrown+": "+jqXHR.responseText
             appendNotification(message, error=true);
@@ -238,7 +268,8 @@ function renderApplicationInputs(selector_id, container_id) {
                 'application_index': application
             },
             dataType: 'json',
-            beforeSend: function () {
+            beforeSend: function (xhr, settings) {
+                $.ajaxSettings.beforeSend(xhr, settings);
                 $(".loader").show();
             },
             success: function (data) {
@@ -325,6 +356,7 @@ function renderApplicationInputs(selector_id, container_id) {
                 }
             },
             error: function (jqXHR, status, errorThrown) {
+                $(".loader").hide();
                 message = "Couldn't read the inputs: ";
                 message += jqXHR.status+": "+errorThrown+": "+jqXHR.responseText
                 appendNotification(message, error=true);
@@ -463,7 +495,8 @@ function renderHPCData(container_id, select=true, clear_notifications=true) {
 
     $.ajax({
         url: '/experimentstool/_get_hpc_list',
-        beforeSend: function () {
+        beforeSend: function (xhr, settings) {
+            $.ajaxSettings.beforeSend(xhr, settings);
             $(".loader").show();
         },
         success: function (data) {
@@ -547,6 +580,7 @@ function renderHPCData(container_id, select=true, clear_notifications=true) {
             }
         },
         error: function (jqXHR, status, errorThrown) {
+            $(".loader").hide();
             message = "Couldn't get hpc list: ";
             message += jqXHR.status+": "+errorThrown+": "+jqXHR.responseText
             appendNotification(message, error=true);
@@ -564,7 +598,8 @@ function setHPCEditButtonsHandler(button_id, pk, refresh_function) {
                 'pk': pk
             },
             dataType: 'json',
-            beforeSend: function () {
+            beforeSend: function (xhr, settings) {
+                $.ajaxSettings.beforeSend(xhr, settings);
                 $(".loader").show();
             },
             success: function (data) {
@@ -576,6 +611,7 @@ function setHPCEditButtonsHandler(button_id, pk, refresh_function) {
                 }
             },
             error: function (jqXHR, status, errorThrown) {
+                $(".loader").hide();
                 message = "Couldn't remove the hpc: ";
                 message += jqXHR.status+": "+errorThrown+": "+jqXHR.responseText
                 appendNotification(message, error=true);
@@ -593,7 +629,8 @@ function renderDatasetsData(selector_id) {
     );
     $.ajax({
         url: '/experimentstool/_get_datasets',
-        beforeSend: function () {
+        beforeSend: function (xhr, settings) {
+            $.ajaxSettings.beforeSend(xhr, settings);
             $(".loader").show();
         },
         success: function (datasets) {
@@ -611,6 +648,7 @@ function renderDatasetsData(selector_id) {
             }
         },
         error: function (jqXHR, status, errorThrown) {
+            $(".loader").hide();
             message = "Couldn't get datasets list: ";
             message += jqXHR.status+": "+errorThrown+": "+jqXHR.responseText
             appendNotification(message, error=true);
@@ -631,7 +669,8 @@ function renderDatasetChoices(selector_id, container_id, group_name){
                 'dataset': dataset
             },
             dataType: 'json',
-            beforeSend: function () {
+            beforeSend: function (xhr, settings) {
+                $.ajaxSettings.beforeSend(xhr, settings);
                 $(".loader").show();
             },
             success: function (data) {
@@ -663,6 +702,7 @@ function renderDatasetChoices(selector_id, container_id, group_name){
                 }
             },
             error: function (jqXHR, status, errorThrown) {
+                $(".loader").hide();
                 message = "Couldn't read the dataset info: ";
                 message += jqXHR.status+": "+errorThrown+": "+jqXHR.responseText
                 appendNotification(message, error=true);
@@ -685,7 +725,8 @@ function renderDeploymentData(selector_id, workflow, execution_selector_id, log_
 
     $.ajax({
         url: '/experimentstool/_get_deployments',
-        beforeSend: function () {
+        beforeSend: function (xhr, settings) {
+            $.ajaxSettings.beforeSend(xhr, settings);
             $(".loader").show();
         },
         success: function (data) {
@@ -716,6 +757,7 @@ function renderDeploymentData(selector_id, workflow, execution_selector_id, log_
             }
         },
         error: function (jqXHR, status, errorThrown) {
+            $(".loader").hide();
             message = "Couldn't get instances list: ";
             message += jqXHR.status+": "+errorThrown+": "+jqXHR.responseText
             appendNotification(message, error=true);
@@ -736,7 +778,8 @@ function renderExecutionData(instance, workflow, execution_selector_id, log_id) 
             'instance': instance,
             'workflow': workflow
         },
-        beforeSend: function () {
+        beforeSend: function (xhr, settings) {
+            $.ajaxSettings.beforeSend(xhr, settings);
             $(".loader").show();
         },
         success: function (data) {
@@ -780,6 +823,7 @@ function renderExecutionData(instance, workflow, execution_selector_id, log_id) 
             }
         },
         error: function (jqXHR, status, errorThrown) {
+            $(".loader").hide();
             message = "Couldn't get executions list: ";
             message += jqXHR.status+": "+errorThrown+": "+jqXHR.responseText
             appendNotification(message, error=true);
@@ -800,7 +844,8 @@ function renderLogData(exec_id, log_id, reset=false) {
             'exec_id': exec_id,
             'reset': reset
         },
-        beforeSend: function () {
+        beforeSend: function (xhr, settings) {
+            $.ajaxSettings.beforeSend(xhr, settings);
             $(".loader").show();
         },
         success: function (data) {
@@ -837,6 +882,7 @@ function renderLogData(exec_id, log_id, reset=false) {
             }
         },
         error: function (jqXHR, status, errorThrown) {
+            $(".loader").hide();
             message = "Couldn't monitor the operation: ";
             message += jqXHR.status+": "+errorThrown+": "+jqXHR.responseText
             appendNotification(message, error=true);
@@ -862,7 +908,8 @@ function executeDeployment(selector_id, workflow, execution_selector_id, log_id 
             'force': force
         },
         dataType: 'json',
-        beforeSend: function () {
+        beforeSend: function (xhr, settings) {
+            $.ajaxSettings.beforeSend(xhr, settings);
             $(".loader").show();
         },
         success: function (data) {
@@ -885,6 +932,7 @@ function executeDeployment(selector_id, workflow, execution_selector_id, log_id 
             }
         },
         error: function (jqXHR, status, errorThrown) {
+            $(".loader").hide();
             message = "Couldn't execute the operation: ";
             message += jqXHR.status+": "+errorThrown+": "+jqXHR.responseText
             appendNotification(message, error=true);
@@ -930,7 +978,8 @@ $("#add_hpc").find("button").on('click', function (event) {
                 'timezone': timezone,
             },
             dataType: 'json',
-            beforeSend: function () {
+            beforeSend: function (xhr, settings) {
+                $.ajaxSettings.beforeSend(xhr, settings);
                 $(".loader").show();
             },
             success: function (data) {
@@ -942,6 +991,7 @@ $("#add_hpc").find("button").on('click', function (event) {
                 }
             },
             error: function (jqXHR, status, errorThrown) {
+                $(".loader").hide();
                 message = "Couldn't add the hpc: ";
                 message += jqXHR.status+": "+errorThrown+": "+jqXHR.responseText
                 appendNotification(message, error=true);
@@ -968,7 +1018,8 @@ $("#upload").find("button").on('click', function (event) {
                 'mso_id': mso_id
             },
             dataType: 'json',
-            beforeSend: function () {
+            beforeSend: function (xhr, settings) {
+                $.ajaxSettings.beforeSend(xhr, settings);
                 $(".loader").show();
             },
             success: function (data) {
@@ -980,6 +1031,7 @@ $("#upload").find("button").on('click', function (event) {
                 }
             },
             error: function (jqXHR, status, errorThrown) {
+                $(".loader").hide();
                 message = "Couldn't register the app: ";
                 message += jqXHR.status+": "+errorThrown+": "+jqXHR.responseText
                 appendNotification(message, error=true);
@@ -1036,7 +1088,8 @@ $("#deploy_form").find("button").on('click', function (event) {
         contentType: false,
         processData: false,
         cache: false,
-        beforeSend: function () {
+        beforeSend: function (xhr, settings) {
+            $.ajaxSettings.beforeSend(xhr, settings);
             $(".loader").show();
         },
         success: function (data) {
@@ -1048,6 +1101,7 @@ $("#deploy_form").find("button").on('click', function (event) {
             }
         },
         error: function (jqXHR, status, errorThrown) {
+            $(".loader").hide();
             message = "Couldn't create the instance: ";
             message += jqXHR.status+": "+errorThrown+": "+jqXHR.responseText
             appendNotification(message, error=true);
@@ -1111,7 +1165,8 @@ $("#remove").find("button").on('click', function (event) {
             'application_index': application_index
         },
         dataType: 'json',
-        beforeSend: function () {
+        beforeSend: function (xhr, settings) {
+            $.ajaxSettings.beforeSend(xhr, settings);
             $(".loader").show();
         },
         success: function (data) {
@@ -1123,6 +1178,7 @@ $("#remove").find("button").on('click', function (event) {
             }
         },
         error: function (jqXHR, status, errorThrown) {
+            $(".loader").hide();
             message = "Couldn't remove the app: ";
             message += jqXHR.status+": "+errorThrown+": "+jqXHR.responseText
             appendNotification(message, error=true);
