@@ -3,7 +3,7 @@ version: '3.3'
 services:
     mysql:
         container_name: mysql
-        image: mysql/mysql-server:5.7.22
+        image: mysql/mysql-server:5.7
         restart: always
         ports:
             - "3306:3306"
@@ -27,6 +27,7 @@ services:
             - "443:443"
         environment:
             - IDM_HOST=$IDM_HOST
+            - IDM_PORT=$IDM_PORT
             - SMTP_HOST=$SMTP_HOST
             - SMTP_PORT=$SMTP_PORT
             - SMTP_SECURE=$SMTP_SECURE

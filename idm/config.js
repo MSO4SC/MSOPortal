@@ -1,9 +1,10 @@
 var config = {};
 
 var idm_host = (process.env.IDM_HOST) ? process.env.IDM_HOST : 'localhost'
+var idm_port = (process.env.IDM_PORT) ? process.env.IDM_PORT : 'localhost'
 
-config.host = 'http://'+ idm_host +':3000';
-config.port = 3000
+config.host = 'http://'+ idm_host +':' + idm_port;
+config.port = idm_port
 
 // HTTPS enable
 config.https = {

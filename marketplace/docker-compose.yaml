@@ -1,0 +1,122 @@
+version: '3.3'
+services:
+    mongo:
+        container_name: mongo
+        image: mongo:3.2
+        restart: always
+        ports:
+            - 27017:27017
+        networks:
+            main:
+        volumes:
+            - $DATA_PATH/mongo:/data/db
+
+    mysql:
+        container_name: mysql
+        image: mysql:5.7
+        restart: always
+        ports:
+            - 3333:3306
+        volumes:
+            - $DATA_PATH/mysql:/var/lib/mysql
+        networks:
+            main:
+        environment:
+            - MYSQL_ROOT_PASSWORD=$MYSQL_ROOT_PASSWORD
+            - MYSQL_DATABASE=RSS
+
+    charging:
+        container_name: charging_biz
+        image: conwetlab/biz-ecosystem-charging-backend:develop
+        restart: always
+        links:
+            - mongo
+        depends_on:
+            - mongo
+            - apis
+            - rss
+        ports:
+            - 8006:8006
+        networks:
+            main:
+                aliases:
+                    - charging.docker
+        volumes:
+            - $DATA_PATH/charging/bills:/business-ecosystem-charging-backend/src/media/bills
+            - $DATA_PATH/charging/assets:/business-ecosystem-charging-backend/src/media/assets
+            - $DATA_PATH/charging/plugins:/business-ecosystem-charging-backend/src/plugins
+            - $CONFIG_PATH/charging:/business-ecosystem-charging-backend/src/user_settings
+            - $DATA_PATH/charging/inst-plugins:/business-ecosystem-charging-backend/src/wstore/asset_manager/resource_plugins/plugins
+        environment:
+          - PAYPAL_CLIENT_ID=$PAYPAL_ID
+          - PAYPAL_CLIENT_SECRET=$PAYPAL_SECRET
+
+    proxy:
+        container_name: biz
+        image: mso4sc/marketplace-proxy
+        restart: always
+        links:
+            - mongo
+        depends_on:
+            - mongo
+            - apis
+        ports:
+            - 8004:8000
+        networks:
+            main:
+                aliases:
+                    - proxy.docker
+        volumes:
+            - $CONFIG_PATH/proxy:/business-ecosystem-logic-proxy/etc
+            - $DATA_PATH/proxy/indexes:/business-ecosystem-logic-proxy/indexes
+            - $DATA_PATH/proxy/themes:/business-ecosystem-logic-proxy/themes
+            - $DATA_PATH/proxy/static:/business-ecosystem-logic-proxy/static
+        environment:
+            - PORTAL_HOST=$PORTAL_HOST
+            - BIZ_HOST=$BIZ_HOST
+            - IDM_HOST=$IDM_HOST
+            - IDM_PORT=$IDM_PORT
+            - IDM_BIZ_ID=$IDM_BIZ_ID
+            - IDM_BIZ_SECRET=$IDM_BIZ_SECRET
+            - NODE_ENV=development
+
+    apis:
+        container_name: apis_biz
+        image: conwetlab/biz-ecosystem-apis:develop
+        restart: always
+        ports:
+            - 4848:4848
+            - 8080:8080
+        links:
+            - mysql
+        depends_on:
+            - mysql
+        networks:
+            main:
+                aliases:
+                    - apis.docker
+        environment:
+            - MYSQL_ROOT_PASSWORD=$MYSQL_ROOT_PASSWORD
+            - MYSQL_HOST=mysql
+
+    rss:
+        container_name: rss_biz
+        image: conwetlab/biz-ecosystem-rss:develop
+        restart: always
+        ports:
+            - 9999:8080
+            - 4444:4848
+            - 1111:8181
+        links:
+            - mysql
+        depends_on:
+            - mysql
+        networks:
+            main:
+                aliases:
+                    - rss.docker
+        volumes:
+            - $CONFIG_PATH/rss:/etc/default/rss
+
+networks:
+    main:

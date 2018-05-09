@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-FROM fiware/idm
+FROM fiware/idm:7.0.0
 
 LABEL maintainer="javier.carnero@atos.net"
 
