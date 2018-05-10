@@ -7,19 +7,39 @@ from portal import settings
 
 from django.contrib.auth.decorators import login_required
 from django.shortcuts import render, redirect
+from django.contrib.auth.models import Group
 
 
 def index(request):
     if request.user.is_authenticated:
-        social_user = sso.utils.get_social_user(request.user)
-        # access_token = social_user.access_token
+        user = request.user
+        social_user = sso.utils.get_social_user(user)
+
+        # refresh token FIXME: improve (#3)
         valid, data = sso.utils.get_token(
-            request.user, request.get_full_path())
+            user, request.get_full_path())
         if valid:
             access_token = data
         else:
             return redirect(data)
-        token_expires_in = 3600 - \
+
+        # match user roles with groups
+        roles = [role['name'] for role in social_user.extra_data['roles']]
+        groups = []
+        for group in user.groups.all():
+            if group.name not in roles:
+                user.groups.remove(group)
+            else:
+                groups.append(group.name)
+        new_groups = groups
+        for role in roles:
+            if role not in groups:
+                group = Group.objects.get(name=role)
+                user.groups.add(group)
+                new_groups.append(role)
+
+        # get user info
+        token_expires_in = social_user.extra_data['expires_in'] - \
             (int(time.time()) - social_user.extra_data['auth_time'])
         m, s = divmod(token_expires_in, 60)
         h, m = divmod(m, 60)
@@ -30,6 +50,7 @@ def index(request):
 
         return render(request, 'home.html', {'access_token': access_token +
                                              ', expires in ' + str_expires_in,
+                                             'groups': str(new_groups),
                                              'extra_data': extra_data})
     else:
         return render(request, 'landing.html', {})

@@ -1,6 +1,6 @@
 #!/bin/bash -l
 
-# Copyright 2017 MSO4SC - javier.carnero@atos.net
+# Copyright 2018 MSO4SC - javier.carnero@atos.net
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -33,4 +33,5 @@ sed -i -e 's|ckan.oauth2.client_id =.*$|ckan.oauth2.client_id = '$FIWARE_ID'|g' 
 sed -i -e 's|ckan.oauth2.client_secret =.*$|ckan.oauth2.client_secret = '$FIWARE_SECRET'|g' $CONFIG
 
 # Reinstall OAuth2 extension
-ckan-python setup.py install
+source $CKAN_HOME/venv/bin/activate
+python setup.py install

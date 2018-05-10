@@ -1,4 +1,4 @@
-from sso import utils
+import sso
 
 from django.contrib.auth.decorators import login_required
 from django.shortcuts import render, redirect
@@ -25,7 +25,7 @@ def signup(request):
             return redirect('home')
     else:
         form = UserCreationForm()
-    return render(request, 'signup.html', {'form': form})
+        return render(request, 'signup.html', {'form': form})
 
 
 def login_error(request):
@@ -41,7 +41,7 @@ def settings(request):
     user = request.user
     context = {}
 
-    context['fiware_login'] = utils.get_social_user(request.user)
+    context['fiware_login'] = sso.utils.get_social_user(request.user)
     if context['fiware_login'] is not None:
         context['fiware_idm_endpoint'] = global_settings.FIWARE_IDM_ENDPOINT
 

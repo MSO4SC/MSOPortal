@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Copyright 2017 MSO4SC - javier.carnero@atos.net
+# Copyright 2018 MSO4SC - javier.carnero@atos.net
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -15,7 +15,7 @@
 # limitations under the License.
 
 set -e
-CKAN_CONFIG_FILE="${CKAN_CONFIG}/ckan.ini"
+CKAN_CONFIG_FILE="${CKAN_CONFIG}/production.ini"
 
 ## OAuth2 (Fiware IDM) extension
 mkdir /plugins

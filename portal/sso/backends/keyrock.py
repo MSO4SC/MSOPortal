@@ -26,10 +26,10 @@ class KeyrockOAuth2(BaseOAuth2):
     REDIRECT_STATE = False
 
     EXTRA_DATA = [
-        ('id', 'username'),
+        ('displayName', 'id'),
         ('id', 'uid'),
         ('email', 'email'),
-        ('displayName', 'fullname'),
+        ('displayName', 'username'),
         ('roles', 'roles'),
         ('refresh_token', 'refresh_token'),
         ('expires_in', 'expires_in'),
@@ -37,6 +37,7 @@ class KeyrockOAuth2(BaseOAuth2):
     ]
 
     def get_user_id(self, details, response):
+        # ---- v5.4.0
         # {'access_token': '53ERoBZXTDzjDrvSMAzEbLPW9JWX6f',
         #  'expires_in': 3600,
         #  'token_type': 'Bearer',
@@ -50,10 +51,25 @@ class KeyrockOAuth2(BaseOAuth2):
         #  'isGravatarEnabled': False,
         #  'email': 'j*****.c******@atos.net',
         #  'id': 'j*******'}
-        return response['id'].replace('-', '_')
+        # ---- v7.0.0
+        # {'access_token': '4bb8dee1ea3e1f4523623af71d52e265f05304f3',
+        #  'token_type': 'Bearer',
+        #  'expires_in': 3599,
+        #  'refresh_token': 'd200de308c8694a3edde6afe9e19c89196754d29',
+        #  'organizations': [],
+        #  'displayName': 'jcarnero',
+        #  'roles': [
+        #      {'id': 'b6208353-cd6d-4443-ad55-2a34b4c6df4f', 'name': 'Developer'},
+        #      {'id': '8a2fc748-d7d9-48b9-be17-2cad3c1140c3', 'name': 'User'}],
+        #  'app_id': '390f1cbf-0582-4d65-aa93-531c3aed9a3f',
+        #  'email': 'javier.carnero@atos.net',
+        #  'id': 'f8297ebc-4a60-4a43-9d74-cec472bbc01f',
+        #  'app_azf_domain': ''})
+        return response['displayName'].replace('-', '_')
 
     def get_user_details(self, response):
         """Return user details from FI-WARE account"""
+        # ---- v5.4.0
         # {'access_token': 'uN1mFJKd9m0pGMdLyRFdvew5VLFMs3',
         #  'expires_in': 3600,
         #  'token_type': 'Bearer',
@@ -67,15 +83,30 @@ class KeyrockOAuth2(BaseOAuth2):
         #  'isGravatarEnabled': False,
         #  'email': 'j*****.c******@atos.net',
         #  'id': 'j*******'}
-        return {'username': response.get('id').replace('-', '_'),
+        # ---- v7.0.0
+        # {'access_token': '4bb8dee1ea3e1f4523623af71d52e265f05304f3',
+        #  'token_type': 'Bearer',
+        #  'expires_in': 3599,
+        #  'refresh_token': 'd200de308c8694a3edde6afe9e19c89196754d29',
+        #  'organizations': [],
+        #  'displayName': 'jcarnero',
+        #  'roles': [
+        #      {'id': 'b6208353-cd6d-4443-ad55-2a34b4c6df4f', 'name': 'Developer'},
+        #      {'id': '8a2fc748-d7d9-48b9-be17-2cad3c1140c3', 'name': 'User'}],
+        #  'app_id': '390f1cbf-0582-4d65-aa93-531c3aed9a3f',
+        #  'email': 'javier.carnero@atos.net',
+        #  'id': 'f8297ebc-4a60-4a43-9d74-cec472bbc01f',
+        #  'app_azf_domain': ''}
+        return {'username': response.get('displayName').replace('-', '_'),
                 'email': response.get('email') or '',
-                'fullname': response.get('displayName') or ''}
+                'roles': response.get('roles') or []}
 
     def user_data(self, access_token, *args, **kwargs):
         """Loads user data from service"""
         url = urljoin(settings.FIWARE_IDM_ENDPOINT, '/user?' + urlencode({
             'access_token': access_token
         }))
+        # ---- v5.4.0
         # {'organizations': [],
         #  'displayName': 'j*******',
         #  'roles': [{'name': 'Provider', 'id': 'provider'}],
@@ -83,6 +114,16 @@ class KeyrockOAuth2(BaseOAuth2):
         #  'isGravatarEnabled': False,
         #  'email': 'j*****.c******@atos.net',
         #  'id': 'j*******'}
+        # ---- v7.0.0
+        # {'organizations': [],
+        #  'displayName': 'jcarnero',
+        #  'roles': [
+        #     {'id': 'b6208353-cd6d-4443-ad55-2a34b4c6df4f', 'name': 'Developer'},
+        #     {'id': '8a2fc748-d7d9-48b9-be17-2cad3c1140c3', 'name': 'User'}],
+        #  'app_id': '390f1cbf-0582-4d65-aa93-531c3aed9a3f',
+        #  'email': 'javier.carnero@atos.net',
+        #  'id': 'f8297ebc-4a60-4a43-9d74-cec472bbc01f',
+        #  'app_azf_domain': ''}
         return self.get_json(url)
 
     def auth_headers(self):
