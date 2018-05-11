@@ -1,0 +1,17 @@
+= Data Catalogue docker image
+
+Brings the MSO4SC catalogue through _docker-compose_, based on CKAN: https://github.com/ckan/ckan
+
+== How to run
+
+.*Requires*
+* docker >= 18, docker-compose >= 1.16
+* A working IDM instance
+* A working portal instance to which the data catalogue will redirect after log in
+
+* Copy _template.env_ to _.env_, and edit the created file with your configuration.
+
+NOTE: `CONFIG_PATH` references to _conf_ folder, and `DATA_PATH` to where application data will be stored.
+
+* Run `docker-compose up -d`
+* Access to the data catalogue through a web browser.
