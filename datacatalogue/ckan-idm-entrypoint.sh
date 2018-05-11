@@ -33,5 +33,6 @@ sed -i -e 's|ckan.oauth2.client_id =.*$|ckan.oauth2.client_id = '$FIWARE_ID'|g' 
 sed -i -e 's|ckan.oauth2.client_secret =.*$|ckan.oauth2.client_secret = '$FIWARE_SECRET'|g' $CONFIG
 
 # Reinstall OAuth2 extension
-source $CKAN_HOME/venv/bin/activate
+#ckan-python setup.py install
+source $CKAN_HOME/bin/activate
 python setup.py install

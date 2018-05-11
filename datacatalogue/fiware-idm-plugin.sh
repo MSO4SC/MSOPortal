@@ -15,7 +15,7 @@
 # limitations under the License.
 
 set -e
-CKAN_CONFIG_FILE="${CKAN_CONFIG}/production.ini"
+CKAN_CONFIG_FILE="${CKAN_CONFIG}/ckan.ini"
 
 ## OAuth2 (Fiware IDM) extension
 mkdir /plugins
@@ -24,4 +24,3 @@ cd /plugins
 # Extension & MSO4SC OAuth2 hack
 git clone https://github.com/conwetlab/ckanext-oauth2
 cd ckanext-oauth2
-git checkout fiware_migration

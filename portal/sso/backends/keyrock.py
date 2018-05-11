@@ -22,6 +22,7 @@ class KeyrockOAuth2(BaseOAuth2):
     ACCESS_TOKEN_URL = urljoin(settings.FIWARE_IDM_ENDPOINT, '/oauth2/token')
     #LOGOUT_URL = urljoin(settings.FIWARE_IDM_ENDPOINT, '/auth/logout')
     ACCESS_TOKEN_METHOD = 'POST'
+    # TODO: REFRESH_TOKEN_URL =
 
     REDIRECT_STATE = False
 

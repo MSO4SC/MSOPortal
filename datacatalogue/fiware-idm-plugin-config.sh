@@ -15,7 +15,7 @@
 # limitations under the License.
 
 set -e
-CKAN_CONFIG_FILE="${CKAN_CONFIG}/production.ini"
+CKAN_CONFIG_FILE="${CKAN_CONFIG}/ckan.ini"
 
 # Add plugin to ckan config
 sed -i -e 's|ckan.plugins =|ckan.plugins = oauth2|g' $CKAN_CONFIG_FILE
@@ -32,7 +32,7 @@ ckan.oauth2.client_id = ID\
 ckan.oauth2.client_secret = SECRET\
 ckan.oauth2.scope = all_info\
 ckan.oauth2.rememberer_name = auth_tkt\
-ckan.oauth2.profile_api_user_field = id\
+ckan.oauth2.profile_api_user_field = displayName\
 ckan.oauth2.profile_api_fullname_field = displayName\
 ckan.oauth2.profile_api_mail_field = email\
 ckan.oauth2.authorization_header = Bearer\

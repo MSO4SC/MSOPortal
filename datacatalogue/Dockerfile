@@ -12,11 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-FROM ckan/ckan
+FROM mso4sc/ckan:2.7
 
 LABEL maintainer="javier.carnero@atos.net"
-
-USER root
 
 ENV DEBIAN_FRONTEND noninteractive
 
@@ -45,25 +43,3 @@ export FIWARE_ID=${FIWARE_ID}\n\
 export FIWARE_SECRET=${FIWARE_SECRET}\n\
 export CONFIG=${CONFIG}\n\
 /ckan-idm-entrypoint.sh' /ckan-entrypoint.sh
-
-## Add ckan python to path
-#RUN ln -s $CKAN_HOME/bin/python /usr/local/bin/ckan-python
-
-
-
-#########################################################
-## Install gosu
-#RUN echo "deb http://ftp.debian.org/debian jessie-backports main" >> /etc/apt/sources.list
-#RUN apt-get update
-#RUN apt-get install -y apt-utils
-#RUN apt-get install -y gosu
-#RUN chmod +s /usr/sbin/gosu
-
-#/bin/bash -c "/usr/sbin/gosu root /ckan-idm-entrypoint.sh"' /ckan-entrypoint.sh
-
-## Modify the entrypoint to wait for db ready
-#ADD ckan-wait-db.sh /
-#RUN chmod +x /ckan-wait-db.sh
-##RUN chown ckan:ckan /ckan-wait-db.sh
-#RUN sed -i '/set_environment/a\
-#/bin/bash -c "/ckan-wait-db.sh"' /ckan-entrypoint.sh
