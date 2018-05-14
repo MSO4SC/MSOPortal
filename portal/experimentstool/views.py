@@ -3,6 +3,7 @@
 import re
 import json
 import requests
+import tempfile
 import sso.utils
 
 from portal import settings
@@ -256,20 +257,22 @@ def upload_application(request):
     if not product:
         return JsonResponse({'error': 'Product not found'})
 
-    application_path = None
-    for pc in product['productSpecCharacteristic']:
-        if pc['name'] == 'BLUEPRINT_PATH':
-            application_path = pc['productSpecCharacteristicValue'][0]['value']
-            break
-    if not application_path:
-        return JsonResponse({'error': 'The product does not have a ' +
-                             '\'BLUEPRINT_PATH\' charasteristic'})
+    # TODO: check errors, if does not exist, etc.
+    blueprint_package = request.FILES['blueprint_package']
 
-    return JsonResponse(Application.create(application_path,
-                                           mso4sc_id,
-                                           product_id,
-                                           request.user,
-                                           return_dict=True))
+    # save the package temporarily
+    tmp_package_file = tempfile.NamedTemporaryFile()
+    for chunk in blueprint_package.chunks():
+        tmp_package_file.write(chunk)
+
+    response = JsonResponse(Application.create(tmp_package_file.name,
+                                               mso4sc_id,
+                                               product_id,
+                                               request.user,
+                                               return_dict=True))
+    tmp_package_file.close()
+
+    return response
 
 
 @login_required
