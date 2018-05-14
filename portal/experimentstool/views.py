@@ -99,7 +99,7 @@ def get_new_stock(request):
         #   (Reason: CORS header ‘Access-Control-Allow-Origin’ missing).
         return redirect(data)
 
-    stock_data = _get_stock(access_token, request.user.get_username())
+    stock_data = _get_stock(access_token, request.user.username)
     if 'error' in stock_data:
         return JsonResponse(stock_data, safe=False)
 
@@ -142,7 +142,7 @@ def load_owned_applications(request):
         #   (Reason: CORS header ‘Access-Control-Allow-Origin’ missing).
         return redirect(data)
 
-    stock_data = _get_stock(access_token, request.user.get_username())
+    stock_data = _get_stock(access_token, request.user.username)
     if 'error' in stock_data:
         return JsonResponse(stock_data, safe=False)
 
@@ -173,10 +173,10 @@ def load_applications(request):
         #   (Reason: CORS header ‘Access-Control-Allow-Origin’ missing).
         return redirect(data)
 
-    stock_data = _get_stock(access_token, request.user.get_username())
+    stock_data = _get_stock(access_token, request.user.username)
     if 'error' in stock_data:
         return JsonResponse(stock_data, safe=False)
-    inventory_data = _get_inventory(access_token, request.user.get_username())
+    inventory_data = _get_inventory(access_token, request.user.username)
     if 'error' in inventory_data:
         return JsonResponse(inventory_data, safe=False)
 
