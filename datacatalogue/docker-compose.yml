@@ -5,6 +5,7 @@ services:
   ckan:
     container_name: ckan
     image: mso4sc/datacatalogue:2.0
+    restart: always
     links:
       - db
       - solr
@@ -36,12 +37,14 @@ services:
   datapusher:
     container_name: datapusher
     image: clementmouchet/datapusher
+    restart: always
     ports:
       - "8800:8800"
 
   db:
     container_name: db
     image: ckan/postgresql
+    restart: always
     environment:
       - DS_RO_PASS=${DATASTORE_READONLY_PASSWORD}
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
@@ -51,11 +54,13 @@ services:
   solr:
     container_name: solr
     image: ckan/solr
+    restart: always
 
 
   redis:
     container_name: redis
     image: redis:latest
+    restart: always
     
 volumes:
     ckan_home:
