@@ -103,6 +103,8 @@ services:
             main:
                 aliases:
                     - apis.docker
+        volumes:
+            - $CONFIG_PATH/apis:/etc/default/tmf/
         environment:
             - MYSQL_ROOT_PASSWORD=$MYSQL_ROOT_PASSWORD
             - MYSQL_HOST=mysql
