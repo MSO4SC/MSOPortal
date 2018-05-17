@@ -16,4 +16,4 @@ Brings the MSO4SC marketplace through _docker-compose_, based on Fiware Business
 
 NOTE: `CONFIG_PATH` references to _conf_ folder, and `DATA_PATH` to where application data will be stored. `MYSQL_ROOT_PASSWORD` is the root password that mysql will use.
 
-Finally *run* `docker-compose up -d`, and access to the marketplace through the port 8004 in a web browser.
+Finally *run* `docker-compose up -d`. After a few minutes, access to the marketplace through the port 8004 in a web browser.

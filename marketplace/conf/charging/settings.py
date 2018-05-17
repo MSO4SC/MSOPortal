@@ -1,12 +1,12 @@
 from __future__ import unicode_literals
 
-from os import path, environ
+from os import path
 
 DEBUG = True
 TEMPLATE_DEBUG = DEBUG
 
 ADMINS = (
-    (environ['ADMIN_USER_NAME'], environ['ADMIN_EMAIL']),
+    # ('Your Name', 'your_email@example.com'),
 )
 
 MANAGERS = ADMINS
@@ -114,11 +114,11 @@ MIDDLEWARE_CLASSES = (
     'wstore.store_commons.middleware.URLMiddleware',
 )
 
-WSTOREMAILUSER = environ['SMTP_USER']
-WSTOREMAIL = environ['SMTP_MAIL_FROM']
-WSTOREMAILPASS = environ['SMTP_PASSWORD']
-SMTPSERVER = environ['SMTP_SERVER']
-SMTPPORT = environ['SMTP_PORT']
+WSTOREMAILUSER = 'email_user'
+WSTOREMAIL = 'wstore@email.com'
+WSTOREMAILPASS = 'wstore_email_passwd'
+SMTPSERVER = 'wstore_smtp_server'
+SMTPPORT = 587
 
 URL_MIDDLEWARE_CLASSES = {
     'default': (

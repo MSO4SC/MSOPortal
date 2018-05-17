@@ -2,16 +2,16 @@
 
 import re
 import json
-import requests
 import tempfile
-import sso.utils
-
-from portal import settings
+import requests
 
 # from django.core import serializers
 from django.contrib.auth.decorators import login_required, permission_required
 from django.shortcuts import render, redirect
 from django.http import JsonResponse
+
+import sso.utils
+from portal import settings
 
 from experimentstool.models import (Application,
                                     AppInstance,
@@ -100,7 +100,19 @@ def get_new_stock(request):
         #   (Reason: CORS header ‘Access-Control-Allow-Origin’ missing).
         return redirect(data)
 
-    stock_data = _get_stock(access_token, request.user.username)
+    valid, data = sso.utils.get_uid(request.user, request.get_full_path())
+    if valid:
+        uid = data
+    else:
+        # FIXME: Cross-Origin Request Blocked: The Same Origin Policy disallows
+        # reading the remote resource at https://account.lab.fiware.org/oauth2/
+        #   authorize?client_id=859680e0c8cb4c65b5d2d6fb99ef1595&redirect_uri=
+        #   http://localhost:8000/oauth/complete/fiware/&state=eXpNpKJ5jqsZoOB
+        #   cm0X1hLcmaSCNoa3E&response_type=code.
+        #   (Reason: CORS header ‘Access-Control-Allow-Origin’ missing).
+        return redirect(data)
+
+    stock_data = _get_stock(access_token, uid)
     if 'error' in stock_data:
         return JsonResponse(stock_data, safe=False)
 
@@ -143,7 +155,19 @@ def load_owned_applications(request):
         #   (Reason: CORS header ‘Access-Control-Allow-Origin’ missing).
         return redirect(data)
 
-    stock_data = _get_stock(access_token, request.user.username)
+    valid, data = sso.utils.get_uid(request.user, request.get_full_path())
+    if valid:
+        uid = data
+    else:
+        # FIXME: Cross-Origin Request Blocked: The Same Origin Policy disallows
+        # reading the remote resource at https://account.lab.fiware.org/oauth2/
+        #   authorize?client_id=859680e0c8cb4c65b5d2d6fb99ef1595&redirect_uri=
+        #   http://localhost:8000/oauth/complete/fiware/&state=eXpNpKJ5jqsZoOB
+        #   cm0X1hLcmaSCNoa3E&response_type=code.
+        #   (Reason: CORS header ‘Access-Control-Allow-Origin’ missing).
+        return redirect(data)
+
+    stock_data = _get_stock(access_token, uid)
     if 'error' in stock_data:
         return JsonResponse(stock_data, safe=False)
 
@@ -174,10 +198,22 @@ def load_applications(request):
         #   (Reason: CORS header ‘Access-Control-Allow-Origin’ missing).
         return redirect(data)
 
-    stock_data = _get_stock(access_token, request.user.username)
+    valid, data = sso.utils.get_uid(request.user, request.get_full_path())
+    if valid:
+        uid = data
+    else:
+        # FIXME: Cross-Origin Request Blocked: The Same Origin Policy disallows
+        # reading the remote resource at https://account.lab.fiware.org/oauth2/
+        #   authorize?client_id=859680e0c8cb4c65b5d2d6fb99ef1595&redirect_uri=
+        #   http://localhost:8000/oauth/complete/fiware/&state=eXpNpKJ5jqsZoOB
+        #   cm0X1hLcmaSCNoa3E&response_type=code.
+        #   (Reason: CORS header ‘Access-Control-Allow-Origin’ missing).
+        return redirect(data)
+
+    stock_data = _get_stock(access_token, uid)
     if 'error' in stock_data:
         return JsonResponse(stock_data, safe=False)
-    inventory_data = _get_inventory(access_token, request.user.username)
+    inventory_data = _get_inventory(access_token, uid)
     if 'error' in inventory_data:
         return JsonResponse(inventory_data, safe=False)
 
@@ -197,23 +233,23 @@ def load_applications(request):
     return JsonResponse(applications, safe=False)
 
 
-def _get_stock(access_token, username):
+def _get_stock(access_token, uid):
     headers = {"Authorization": "bearer " + access_token}
     url = settings.MARKETPLACE_URL + \
         "/DSProductCatalog/api/catalogManagement/v2/productSpecification" + \
         "?lifecycleStatus=Launched" + \
-        "&relatedParty.id=" + username
+        "&relatedParty.id=" + uid
 
     text_data = requests.request("GET", url, headers=headers).text
     return json.loads(text_data)
 
 
-def _get_inventory(access_token, username):
+def _get_inventory(access_token, uid):
     headers = {"Authorization": "bearer " + access_token}
     url = settings.MARKETPLACE_URL + \
         "/DSProductInventory/api/productInventory/v2/product" + \
         "?status=Active" + \
-        "&relatedParty.id=" + username
+        "&relatedParty.id=" + uid
 
     text_data = requests.request("GET", url, headers=headers).text
     return json.loads(text_data)
