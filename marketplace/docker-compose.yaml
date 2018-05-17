@@ -27,7 +27,7 @@ services:
 
     charging:
         container_name: charging_biz
-        image: conwetlab/biz-ecosystem-charging-backend:develop
+        image: mso4sc/marketplace-charging:2.0
         restart: always
         links:
             - mongo
@@ -48,12 +48,20 @@ services:
             - $CONFIG_PATH/charging:/business-ecosystem-charging-backend/src/user_settings
             - $DATA_PATH/charging/inst-plugins:/business-ecosystem-charging-backend/src/wstore/asset_manager/resource_plugins/plugins
         environment:
+          - ADMIN_USER_NAME=$ADMIN_USER_NAME
+          - ADMIN_EMAIL=$ADMIN_EMAIL
+          - SMTP_SERVER=$SMTP_SERVER
+          - SMTP_PORT=$SMTP_PORT
+          - SMTP_STARTTLS=$SMTP_STARTTLS
+          - SMTP_USER=$SMTP_USER
+          - SMTP_PASSWORD=$SMTP_PASSWORD
+          - SMTP_MAIL_FROM=$SMTP_MAIL_FROM
           - PAYPAL_CLIENT_ID=$PAYPAL_ID
           - PAYPAL_CLIENT_SECRET=$PAYPAL_SECRET
 
     proxy:
         container_name: biz
-        image: mso4sc/marketplace-proxy
+        image: mso4sc/marketplace-proxy:2.0
         restart: always
         links:
             - mongo

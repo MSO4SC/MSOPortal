@@ -10,10 +10,17 @@ config.version = {
 };
 
 // The PORT used by
-config.port = 8000;
+config.port = 8004;
 config.host = 'proxy.docker';
 
-config.extPort = 8004;
+var biz_host = (process.env.BIZ_HOST) ? process.env.BIZ_HOST : 'proxy.docker'
+
+config.proxy = {
+    enabled: true,
+    host: biz_host,
+    secured: false,
+    port: 8004
+};
 
 // Set this var to undefined if you don't want the server to listen on HTTPS
 config.https = {
@@ -32,13 +39,10 @@ config.logOutPath = '/logOut';
 config.sessionSecret = 'keyboard cat';
 config.theme = '';
 
-
-var biz_host = (process.env.BIZ_HOST) ? process.env.BIZ_HOST : 'proxy.docker'
 var idm_host = (process.env.IDM_HOST) ? process.env.IDM_HOST : 'idm.docker'
 var idm_port = (process.env.IDM_PORT) ? process.env.IDM_PORT : '3000'
 var idm_biz_id = (process.env.IDM_BIZ_ID) ? process.env.IDM_BIZ_ID : ''
 var idm_biz_secret = (process.env.IDM_BIZ_SECRET) ? process.env.IDM_BIZ_SECRET : ''
-
 
 // OAuth2 configuration
 config.oauth2 = {
@@ -132,6 +136,9 @@ config.endpoints = {
 
 // Percentage of the generated revenues that belongs to the system
 config.revenueModel = 30;
+
+// Tax rate
+config.taxRate = 20;
 
 // Billing Account owner role
 config.billingAccountOwnerRole = 'bill receiver';

@@ -4,15 +4,16 @@ Brings the MSO4SC marketplace through _docker-compose_, based on Fiware Business
 
 == How to run
 
-.*Requires*
+.Requires
 * docker >= 18, docker-compose >= 1.16
 * A working IDM instance
 * A working portal instance to which the marketplace will redirect after log in
 
+.Configuration
 * Copy _template.env_ to _.env_, and edit the created file with your configuration.
 * Set the same mysql password in variable  `MYSQL_ROOT_PASSWORD` defined in the preivious step, in the file `conf/rss/database.properties`
+* Set the host of the marketplace in `conf/apis/settings.properties`
 
 NOTE: `CONFIG_PATH` references to _conf_ folder, and `DATA_PATH` to where application data will be stored. `MYSQL_ROOT_PASSWORD` is the root password that mysql will use.
 
-* Run `docker-compose up -d`
-* Access to the marketplace through the port 8004 in a web browser.
+Finally *run* `docker-compose up -d`, and access to the marketplace through the port 8004 in a web browser.

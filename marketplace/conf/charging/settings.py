@@ -1,12 +1,12 @@
 from __future__ import unicode_literals
 
-from os import path
+from os import path, environ
 
 DEBUG = True
 TEMPLATE_DEBUG = DEBUG
 
 ADMINS = (
-    # ('Your Name', 'your_email@example.com'),
+    (environ['ADMIN_USER_NAME'], environ['ADMIN_EMAIL']),
 )
 
 MANAGERS = ADMINS
@@ -31,6 +31,43 @@ AUTH_PROFILE_MODULE = 'wstore.models.UserProfile'
 ADMIN_ROLE = 'provider'
 PROVIDER_ROLE = 'seller'
 CUSTOMER_ROLE = 'customer'
+
+CHARGE_PERIODS = {
+    'daily': 1,  # One day
+    'weekly': 7,  # One week
+    'monthly': 30,  # One month
+    'quarterly': 90,  # Three months
+    'yearly': 365,  # One year
+    'quinquennial': 1825,  # Five years
+}
+
+CURRENCY_CODES = [
+    ('EUR', 'Euro'),
+    ('AUD', 'Australia Dollar'),
+    ('BRL', 'Brazil Real'),
+    ('CAD', 'Canada Dollar'),
+    ('CHF', 'Switzerland Franc'),
+    ('CZK', 'Czech Republic Koruna'),
+    ('DKK', 'Denmark Krone'),
+    ('GBP', 'United Kingdom Pound'),
+    ('HKD', 'Hong Kong Dollar'),
+    ('HUF', 'Hungary Forint'),
+    ('ILS', 'Israel Shekel'),
+    ('JPY', 'Japan Yen'),
+    ('MXN', 'Mexico Peso'),
+    ('MYR', 'Malaysia Ringgit'),
+    ('NOK', 'Norway Krone'),
+    ('NZD', 'New Zealand Dollar'),
+    ('PHP', 'Philippines Peso'),
+    ('PLN', 'Poland Zloty'),
+    ('RUB', 'Russia Ruble'),
+    ('SEK', 'Sweden Krona'),
+    ('SGD', 'Singapore Dollar'),
+    ('THB', 'Thailand Baht'),
+    ('TRY', 'Turkey Lira'),
+    ('TWD', 'Taiwan New Dollar'),
+    ('USD', 'US Dollar'),
+]
 
 # Absolute filesystem path to the directory that will hold user-uploaded files.
 MEDIA_DIR = 'media/'
@@ -77,11 +114,11 @@ MIDDLEWARE_CLASSES = (
     'wstore.store_commons.middleware.URLMiddleware',
 )
 
-WSTOREMAILUSER = 'email_user'
-WSTOREMAIL = 'wstore@email.com'
-WSTOREMAILPASS = 'wstore_email_passwd'
-SMTPSERVER = 'wstore_smtp_server'
-SMTPPORT = 587
+WSTOREMAILUSER = environ['SMTP_USER']
+WSTOREMAIL = environ['SMTP_MAIL_FROM']
+WSTOREMAILPASS = environ['SMTP_PASSWORD']
+SMTPSERVER = environ['SMTP_SERVER']
+SMTPPORT = environ['SMTP_PORT']
 
 URL_MIDDLEWARE_CLASSES = {
     'default': (
