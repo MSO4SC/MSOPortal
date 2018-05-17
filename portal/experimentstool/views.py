@@ -297,9 +297,10 @@ def upload_application(request):
     blueprint_package = request.FILES['blueprint_package']
 
     # save the package temporarily
-    tmp_package_file = tempfile.NamedTemporaryFile()
+    tmp_package_file = tempfile.NamedTemporaryFile(delete=False)
     for chunk in blueprint_package.chunks():
         tmp_package_file.write(chunk)
+    tmp_package_file.flush()
 
     response = JsonResponse(Application.create(tmp_package_file.name,
                                                mso4sc_id,

@@ -1019,13 +1019,13 @@ $("#upload").find("button").on('click', function (event) {
     cleanNotifications();
     if (product >= 0) {
         // TODO: do something better than an alert
-        if (!deployment_inputs) {
+        if (!blueprint_package) {
             alert("Um, couldn't find the fileinput element.");
         }
-        else if (!deployment_inputs.files) {
+        else if (!blueprint_package.files) {
             alert("This browser doesn't seem to support the `files` property of file inputs.");
         }
-        else if (!deployment_inputs.files[0]) {
+        else if (!blueprint_package.files[0]) {
             alert("Please select a file before deploy");               
         }
         else {
