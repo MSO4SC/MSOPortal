@@ -4,6 +4,7 @@ Web portal of the MSO4SC project.
 
 .Components
 * *Portal*: Integrates the different services into a single web interface.
+* *IDM*: Manages the authentication & authorization server side.
 * *Experiments Tool*: Executes the applications in the MSO4SC platform.
 * *Marketplace*: Manages the applications available in MSO4SC. Built using FIWARE Business Ecosystem.
 * *Data Catalogue*: Manages the datasets available in MSO4SC. Built using CKAN.
