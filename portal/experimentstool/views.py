@@ -226,10 +226,6 @@ def load_applications(request):
 
     applications = Application.list(marketplace_ids, return_dict=True)
 
-    if 'error' not in applications or applications['error'] is None:
-        request.session['applications'] = applications['app_list']
-        request.session.modified = True
-
     return JsonResponse(applications, safe=False)
 
 
@@ -317,12 +313,10 @@ def get_application_inputs(request):
     if 'applications' not in request.session:
         return JsonResponse({'error': 'No applications loaded'})
 
-    application_index = int(request.GET.get('application_index', -1))
+    application_id = int(request.GET.get('application_id', -1))
 
-    if application_index < 0:
+    if application_id < 0:
         return JsonResponse({'error': 'Bad application id provided'})
-
-    application_id = request.session['applications'][application_index]["id"]
 
     return JsonResponse(Application.get_inputs(application_id,
                                                return_dict=True))

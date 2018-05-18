@@ -229,7 +229,7 @@ function renderApplicationData(selector_id, only_owned=false) {
                 );
                 $.each(data.app_list, function (index, application) {
                     application_selector.append(
-                        $(document.createElement('option')).attr("value", index)
+                        $(document.createElement('option')).attr("value", application.id)
                             .text(application.name)
                     )
                 });
@@ -265,7 +265,7 @@ function renderApplicationInputs(selector_id, container_id) {
         $.ajax({
             url: '/experimentstool/_get_application_inputs',
             data: {
-                'application_index': application
+                'application_id': application
             },
             dataType: 'json',
             beforeSend: function (xhr, settings) {
@@ -844,12 +844,7 @@ function renderLogData(exec_id, log_id, reset=false) {
             'exec_id': exec_id,
             'reset': reset
         },
-        beforeSend: function (xhr, settings) {
-            $.ajaxSettings.beforeSend(xhr, settings);
-            $(".loader").show();
-        },
         success: function (data) {
-            $(".loader").hide();
             if (data.error!==undefined && data.error!==null) {
                 appendNotification("Couldn't monitor the operation: "+data.error, error=true);
             } else {
@@ -882,7 +877,6 @@ function renderLogData(exec_id, log_id, reset=false) {
             }
         },
         error: function (jqXHR, status, errorThrown) {
-            $(".loader").hide();
             message = "Couldn't monitor the operation: ";
             message += jqXHR.status+": "+errorThrown+": "+jqXHR.responseText
             appendNotification(message, error=true);
