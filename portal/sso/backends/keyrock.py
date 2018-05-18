@@ -27,15 +27,12 @@ class KeyrockOAuth2(BaseOAuth2):
     EXTRA_DATA = [
         ('id', 'id'),
         ('uid', 'uid'),
-        #        ('displayName', 'id'),
-        #        ('refresh_token', 'refresh_token'),
         ('roles', 'roles'),
         ('organizations', 'organizations'),
         ('expires_in', 'expires')
     ]
 
     def get_user_id(self, details, response):
-        print("--------->USER_ID: "+str(response))
         return response['id'].replace('-', '_')
 
     def get_user_details(self, response):
@@ -69,7 +66,6 @@ class KeyrockOAuth2(BaseOAuth2):
         response = self.get_json(url)
         response['uid'] = response['id']
         response['id'] = response['displayName'].replace('-', '_')
-        print("--------->USER_DATA: "+str(response))
         return response
 
     def auth_headers(self):
