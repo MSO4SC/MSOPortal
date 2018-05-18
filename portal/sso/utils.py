@@ -30,7 +30,10 @@ def get_uid(user):
 
 def get_roles_names(user):
     social = user.social_auth.get(provider='fiware')
-    return [role['name'] for role in social.extra_data['roles']]
+    if social.extra_data['roles'] is not None:
+        return [role['name'] for role in social.extra_data['roles']]
+    else:
+        return []
 
 
 def get_social_user(user):
