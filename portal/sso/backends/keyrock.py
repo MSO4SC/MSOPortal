@@ -20,21 +20,17 @@ class KeyrockOAuth2(BaseOAuth2):
     AUTHORIZATION_URL = urljoin(
         settings.FIWARE_IDM_ENDPOINT, '/oauth2/authorize')
     ACCESS_TOKEN_URL = urljoin(settings.FIWARE_IDM_ENDPOINT, '/oauth2/token')
-    #LOGOUT_URL = urljoin(settings.FIWARE_IDM_ENDPOINT, '/auth/logout')
     ACCESS_TOKEN_METHOD = 'POST'
-    # TODO: REFRESH_TOKEN_URL =
 
     REDIRECT_STATE = False
 
     EXTRA_DATA = [
-        ('displayName', 'id'),
         ('id', 'uid'),
-        ('email', 'email'),
-        ('displayName', 'username'),
+        ('displayName', 'id'),
+        #    ('refresh_token', 'refresh_token'),
         ('roles', 'roles'),
-        ('refresh_token', 'refresh_token'),
-        ('expires_in', 'expires_in'),
-        ('organizations', 'organizations')
+        ('organizations', 'organizations'),
+        ('expires_in', 'expires')
     ]
 
     def get_user_id(self, details, response):
@@ -99,8 +95,7 @@ class KeyrockOAuth2(BaseOAuth2):
         #  'id': 'f8297ebc-4a60-4a43-9d74-cec472bbc01f',
         #  'app_azf_domain': ''}
         return {'username': response.get('displayName').replace('-', '_'),
-                'email': response.get('email') or '',
-                'roles': response.get('roles') or []}
+                'email': response.get('email') or ''}
 
     def user_data(self, access_token, *args, **kwargs):
         """Loads user data from service"""
@@ -137,16 +132,3 @@ class KeyrockOAuth2(BaseOAuth2):
         response['Authorization'] = 'Basic ' + authorization_basic
 
         return response
-
-    def auth_complete_params(self, state=None):
-        # response = super(KeyrockOAuth2, self).auth_complete_params(state)
-        # response['grant_type'] = 'authorization_code' + \
-        #     '&code=' + response['code'] + \
-        #     '&redirect_uri=' + response['redirect_uri']
-        # return response
-
-        return {
-            'grant_type': 'authorization_code',  # request auth code
-            'code': self.data.get('code', ''),  # server response code
-            'redirect_uri': self.get_redirect_uri(state)
-        }

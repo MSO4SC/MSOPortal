@@ -1,7 +1,6 @@
 """ MSO4SC views module """
 
-import time
-import sso
+import sso.utils
 
 from portal import settings
 
@@ -15,16 +14,10 @@ def index(request):
         user = request.user
         social_user = sso.utils.get_social_user(user)
 
-        # refresh token FIXME: improve (#3)
-        valid, data = sso.utils.get_token(
-            user, request.get_full_path())
-        if valid:
-            access_token = data
-        else:
-            return redirect(data)
+        access_token = sso.utils.get_token(user)
 
         # match user roles with groups
-        roles = [role['name'] for role in social_user.extra_data['roles']]
+        roles = sso.utils.get_roles_names(user)
         groups = []
         for group in user.groups.all():
             if group.name not in roles:
@@ -39,8 +32,7 @@ def index(request):
                 new_groups.append(role)
 
         # get user info
-        token_expires_in = social_user.extra_data['expires_in'] - \
-            (int(time.time()) - social_user.extra_data['auth_time'])
+        token_expires_in = sso.utils.get_expiration_time(user)
         m, s = divmod(token_expires_in, 60)
         h, m = divmod(m, 60)
         str_expires_in = str(m) + ' minutes and ' + str(s) + ' seconds.'

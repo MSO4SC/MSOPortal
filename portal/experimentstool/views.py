@@ -10,7 +10,7 @@ from django.contrib.auth.decorators import login_required, permission_required
 from django.shortcuts import render, redirect
 from django.http import JsonResponse
 
-import sso.utils
+import sso
 from portal import settings
 
 from experimentstool.models import (Application,
@@ -88,29 +88,8 @@ def delete_hpc(request):
 
 @login_required
 def get_new_stock(request):
-    valid, data = sso.utils.get_token(request.user, request.get_full_path())
-    if valid:
-        access_token = data
-    else:
-        # FIXME: Cross-Origin Request Blocked: The Same Origin Policy disallows
-        # reading the remote resource at https://account.lab.fiware.org/oauth2/
-        #   authorize?client_id=859680e0c8cb4c65b5d2d6fb99ef1595&redirect_uri=
-        #   http://localhost:8000/oauth/complete/fiware/&state=eXpNpKJ5jqsZoOB
-        #   cm0X1hLcmaSCNoa3E&response_type=code.
-        #   (Reason: CORS header ‘Access-Control-Allow-Origin’ missing).
-        return redirect(data)
-
-    valid, data = sso.utils.get_uid(request.user, request.get_full_path())
-    if valid:
-        uid = data
-    else:
-        # FIXME: Cross-Origin Request Blocked: The Same Origin Policy disallows
-        # reading the remote resource at https://account.lab.fiware.org/oauth2/
-        #   authorize?client_id=859680e0c8cb4c65b5d2d6fb99ef1595&redirect_uri=
-        #   http://localhost:8000/oauth/complete/fiware/&state=eXpNpKJ5jqsZoOB
-        #   cm0X1hLcmaSCNoa3E&response_type=code.
-        #   (Reason: CORS header ‘Access-Control-Allow-Origin’ missing).
-        return redirect(data)
+    access_token = sso.utils.get_token(request.user)
+    uid = sso.utils.get_uid(request.user)
 
     stock_data = _get_stock(access_token, uid)
     if 'error' in stock_data:
@@ -143,29 +122,8 @@ def get_new_stock(request):
 
 @login_required
 def load_owned_applications(request):
-    valid, data = sso.utils.get_token(request.user, request.get_full_path())
-    if valid:
-        access_token = data
-    else:
-        # FIXME: Cross-Origin Request Blocked: The Same Origin Policy disallows
-        # reading the remote resource at https://account.lab.fiware.org/oauth2/
-        #   authorize?client_id=859680e0c8cb4c65b5d2d6fb99ef1595&redirect_uri=
-        #   http://localhost:8000/oauth/complete/fiware/&state=eXpNpKJ5jqsZoOB
-        #   cm0X1hLcmaSCNoa3E&response_type=code.
-        #   (Reason: CORS header ‘Access-Control-Allow-Origin’ missing).
-        return redirect(data)
-
-    valid, data = sso.utils.get_uid(request.user, request.get_full_path())
-    if valid:
-        uid = data
-    else:
-        # FIXME: Cross-Origin Request Blocked: The Same Origin Policy disallows
-        # reading the remote resource at https://account.lab.fiware.org/oauth2/
-        #   authorize?client_id=859680e0c8cb4c65b5d2d6fb99ef1595&redirect_uri=
-        #   http://localhost:8000/oauth/complete/fiware/&state=eXpNpKJ5jqsZoOB
-        #   cm0X1hLcmaSCNoa3E&response_type=code.
-        #   (Reason: CORS header ‘Access-Control-Allow-Origin’ missing).
-        return redirect(data)
+    access_token = sso.utils.get_token(request.user)
+    uid = sso.utils.get_uid(request.user)
 
     stock_data = _get_stock(access_token, uid)
     if 'error' in stock_data:
@@ -177,38 +135,13 @@ def load_owned_applications(request):
 
     applications = Application.list(marketplace_ids, return_dict=True)
 
-    if 'error' not in applications or applications['error'] is None:
-        request.session['owned_apps'] = applications['app_list']
-        request.session.modified = True
-
     return JsonResponse(applications, safe=False)
 
 
 @login_required
 def load_applications(request):
-    valid, data = sso.utils.get_token(request.user, request.get_full_path())
-    if valid:
-        access_token = data
-    else:
-        # FIXME: Cross-Origin Request Blocked: The Same Origin Policy disallows
-        # reading the remote resource at https://account.lab.fiware.org/oauth2/
-        #   authorize?client_id=859680e0c8cb4c65b5d2d6fb99ef1595&redirect_uri=
-        #   http://localhost:8000/oauth/complete/fiware/&state=eXpNpKJ5jqsZoOB
-        #   cm0X1hLcmaSCNoa3E&response_type=code.
-        #   (Reason: CORS header ‘Access-Control-Allow-Origin’ missing).
-        return redirect(data)
-
-    valid, data = sso.utils.get_uid(request.user, request.get_full_path())
-    if valid:
-        uid = data
-    else:
-        # FIXME: Cross-Origin Request Blocked: The Same Origin Policy disallows
-        # reading the remote resource at https://account.lab.fiware.org/oauth2/
-        #   authorize?client_id=859680e0c8cb4c65b5d2d6fb99ef1595&redirect_uri=
-        #   http://localhost:8000/oauth/complete/fiware/&state=eXpNpKJ5jqsZoOB
-        #   cm0X1hLcmaSCNoa3E&response_type=code.
-        #   (Reason: CORS header ‘Access-Control-Allow-Origin’ missing).
-        return redirect(data)
+    access_token = sso.utils.get_token(request.user)
+    uid = sso.utils.get_uid(request.user)
 
     stock_data = _get_stock(access_token, uid)
     if 'error' in stock_data:
@@ -310,9 +243,6 @@ def upload_application(request):
 
 @login_required
 def get_application_inputs(request):
-    if 'applications' not in request.session:
-        return JsonResponse({'error': 'No applications loaded'})
-
     application_id = int(request.GET.get('application_id', -1))
 
     if application_id < 0:
@@ -325,15 +255,10 @@ def get_application_inputs(request):
 @login_required
 @permission_required('experimentstool.remove_app')
 def remove_application(request):
-    if 'owned_apps' not in request.session:
-        return JsonResponse({'error': 'No applications loaded'})
+    application_id = int(request.GET.get('application_id', -1))
 
-    application_index = int(request.GET.get('application_index', -1))
-
-    if application_index < 0:
+    if application_id < 0:
         return JsonResponse({'error': 'Bad application id provided'})
-
-    application_id = request.session['owned_apps'][application_index]["id"]
 
     return JsonResponse(Application.remove(application_id,
                                            request.user,

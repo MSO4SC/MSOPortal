@@ -1175,12 +1175,12 @@ $("#force-destroy-instance-button").on('click', function (event) {
 
 $("#remove").find("button").on('click', function (event) {
     event.preventDefault();
-    var application_index = $("#remove_application_selector").find("select").val();
+    var application_id = $("#remove_application_selector").find("select").val();
 
     $.ajax({
         url: '/experimentstool/_remove_application',
         data: {
-            'application_index': application_index
+            'application_id': application_id
         },
         dataType: 'json',
         beforeSend: function (xhr, settings) {
