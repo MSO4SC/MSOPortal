@@ -26,7 +26,7 @@ services:
             - MYSQL_DATABASE=RSS
 
     charging:
-        container_name: charging_biz
+        container_name: charging
         image: mso4sc/marketplace-charging:2.0
         restart: always
         links:
@@ -52,7 +52,7 @@ services:
           - PAYPAL_CLIENT_SECRET=$PAYPAL_SECRET
 
     proxy:
-        container_name: biz
+        container_name: proxy
         image: mso4sc/marketplace-proxy:2.0
         restart: always
         links:
@@ -81,7 +81,7 @@ services:
             - NODE_ENV=development
 
     apis:
-        container_name: apis_biz
+        container_name: apis
         image: conwetlab/biz-ecosystem-apis:develop
         restart: always
         ports:
@@ -102,7 +102,7 @@ services:
             - MYSQL_HOST=mysql
 
     rss:
-        container_name: rss_biz
+        container_name: rss
         image: conwetlab/biz-ecosystem-rss:develop
         restart: always
         ports:
