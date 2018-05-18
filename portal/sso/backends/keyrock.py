@@ -27,7 +27,7 @@ class KeyrockOAuth2(BaseOAuth2):
     EXTRA_DATA = [
         ('id', 'uid'),
         ('displayName', 'id'),
-        #    ('refresh_token', 'refresh_token'),
+        ('refresh_token', 'refresh_token'),
         ('roles', 'roles'),
         ('organizations', 'organizations'),
         ('expires_in', 'expires')

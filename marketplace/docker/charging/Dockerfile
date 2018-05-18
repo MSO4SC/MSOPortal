@@ -23,18 +23,35 @@ RUN git clone https://github.com/FIWARE-TMForum/biz-basic-plugins.git && \
     zip basic-url.zip package.json basic_url.py
 
 RUN sed -i '/service apache2 restart/a\
-echo "Trying to install basic url plugin"\n\
-touch /business-ecosystem-charging-backend/src/wstore/asset_manager/resource_plugins/plugins/__init__.py\n\
-/business-ecosystem-charging-backend/src/manage.py loadplugin /business-ecosystem-charging-backend/src/biz-basic-plugins/basic-url/basic-url.zip\n\
+echo "Checking if plugins are already installed"\n\
+/business-ecosystem-charging-backend/src/manage.py listplugins\n\
+COUNT=$(/business-ecosystem-charging-backend/src/manage.py listplugins | wc -l)\n\
 STATUS=$?\n\
-I=0\n\
-while [[ ${STATUS} -ne 0  && ${I} -lt 50 ]]; do\n\
-    echo "Could not install the plugin yet, retrying in 5 seconds..."\n\
-\n\
-    sleep 5\n\
+if [[ ${STATUS} -eq 0 && ${COUNT} -eq 0 ]]\n\
+then\n\
+    echo "Trying to install basic url plugin"\n\
     touch /business-ecosystem-charging-backend/src/wstore/asset_manager/resource_plugins/plugins/__init__.py\n\
     /business-ecosystem-charging-backend/src/manage.py loadplugin /business-ecosystem-charging-backend/src/biz-basic-plugins/basic-url/basic-url.zip\n\
     STATUS=$?\n\
-\n\
-    I=${I}+1\n\
-done' /entrypoint.sh
+    I=0\n\
+    while [[ ${STATUS} -ne 0  && ${I} -lt 50 ]]; do\n\
+        echo "Could not install the plugin yet, retrying in 5 seconds..."\n\
+        \n\
+        sleep 5\n\
+        COUNT=$(/business-ecosystem-charging-backend/src/manage.py listplugins | wc -l)\n\
+        STATUS=$?\n\
+        if [[ ${STATUS} -eq 0 && ${COUNT} -ne 0 ]]\n\
+        then\n\
+            echo "Plugins already installed"\n\
+            break\n\
+        fi\n\
+        \n\
+        touch /business-ecosystem-charging-backend/src/wstore/asset_manager/resource_plugins/plugins/__init__.py\n\
+        /business-ecosystem-charging-backend/src/manage.py loadplugin /business-ecosystem-charging-backend/src/biz-basic-plugins/basic-url/basic-url.zip\n\
+        STATUS=$?\n\
+        \n\
+        I=${I}+1\n\
+    done\n\
+else\n\
+    echo "Plugins already installed"\n\
+fi' /entrypoint.sh
