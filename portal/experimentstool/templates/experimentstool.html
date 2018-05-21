@@ -12,7 +12,7 @@
                     <li><a onclick="openExperimentsTool(event, 'upload')">Register App</a></li>
                 {% endif %}
                 {% if perms.experimentstool.remove_app %}
-                <li><a onclick="openExperimentsTool(event, 'remove')">Remove App</a></li>
+                    <li><a onclick="openExperimentsTool(event, 'remove')">Remove App</a></li>
                 {% endif %}
                 <li><a onclick="openExperimentsTool(event, 'deploy')">Create App Instance</a></li>
                 <li><a onclick="openExperimentsTool(event, 'install')">Deploy Instance</a></li>
@@ -34,10 +34,14 @@
 {% endif %}
 
 {% if perms.experimentstool.remove_app %}
+<div id="remove" class="tabcontent">
+    {% include "sections/remove.html" %}
+</div>
+{% endif %}
+
 <div id="deploy" class="tabcontent">
     {% include "sections/deploy.html" %}
 </div>
-{% endif %}
 
 <div id="install" class="tabcontent">
     {% include "sections/install.html" %}
@@ -53,10 +57,6 @@
 
 <div id="destroy" class="tabcontent">
     {% include "sections/destroy.html" %}
-</div>
-
-<div id="remove" class="tabcontent">
-    {% include "sections/remove.html" %}
 </div>
 
 <div id="settings" class="tabcontent">
@@ -219,7 +219,7 @@ function renderApplicationData(selector_id, only_owned=false) {
             $(".loader").hide();
             application_selector.empty();
             if (data.error!==undefined && data.error!==null) {
-                appendNotification("Couldn't read Application data: "+data.error, error=true);
+                appendNotification("Couldn't read applications: "+data.error, error=true);
                 application_selector.append(
                     $(document.createElement('option')).attr("value", "-1").text("Error")
                 );
