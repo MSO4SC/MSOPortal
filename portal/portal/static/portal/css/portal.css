@@ -151,6 +151,28 @@ div.note_failure {
     display: none;
 }
 
+.submenu .top-nav li.developer {
+    background: none repeat scroll 0 0 rgba(8, 102, 63, 0.8);
+    padding: 0.5rem;
+    margin: 0;
+    border-right: 1px solid white;
+}
+
+.submenu .top-nav li.developer-last {
+    background: none repeat scroll 0 0 rgba(8, 102, 63, 0.8);
+    border-right: 5px solid white;
+}
+
+.submenu .top-nav li.settings {
+    background: none repeat scroll 0 0 rgba(209, 164, 15, 0.8);
+    border-left: 4px solid white;
+}
+
+a.tablinks.active {
+    font-style: italic;
+    text-decoration: underline overline;
+}
+
 @-webkit-keyframes spin {
     0% {
         -webkit-transform: rotate(0deg);

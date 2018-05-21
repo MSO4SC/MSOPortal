@@ -9,17 +9,17 @@
     <div class="top-nav">        
             <ul>
                 {% if perms.experimentstool.register_app %}
-                    <li><a onclick="openExperimentsTool(event, 'upload')">Register App</a></li>
+                    <li class="developer"><a class="tablinks" onclick="openExperimentsTool(event, 'upload')">Register App</a></li>
                 {% endif %}
                 {% if perms.experimentstool.remove_app %}
-                    <li><a onclick="openExperimentsTool(event, 'remove')">Remove App</a></li>
+                    <li class="developer-last"><a class="tablinks" onclick="openExperimentsTool(event, 'remove')">Remove App</a></li>
                 {% endif %}
-                <li><a onclick="openExperimentsTool(event, 'deploy')">Create App Instance</a></li>
-                <li><a onclick="openExperimentsTool(event, 'install')">Deploy Instance</a></li>
-                <li><a onclick="openExperimentsTool(event, 'run')">Run Instance</a></li>
-                <li><a onclick="openExperimentsTool(event, 'uninstall')">Undeploy/Clean Up Instance</a></li>
-                <li><a onclick="openExperimentsTool(event, 'destroy')">Destroy App Instance</a></li>
-                <li><a onclick="openExperimentsTool(event, 'settings')">Settings</a></li>                
+                <li><a class="tablinks" onclick="openExperimentsTool(event, 'deploy')">Create App Instance</a></li>
+                <li><a class="tablinks" onclick="openExperimentsTool(event, 'install')">Deploy Instance</a></li>
+                <li><a class="tablinks" onclick="openExperimentsTool(event, 'run')">Run Instance</a></li>
+                <li><a class="tablinks" onclick="openExperimentsTool(event, 'uninstall')">Undeploy/Clean Up Instance</a></li>
+                <li><a class="tablinks" onclick="openExperimentsTool(event, 'destroy')">Destroy App Instance</a></li>
+                <li class="settings"><a class="tablinks" onclick="openExperimentsTool(event, 'settings')">Settings</a></li>                
             </ul>            
     </div>
 </nav>

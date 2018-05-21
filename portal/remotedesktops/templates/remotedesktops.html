@@ -8,8 +8,8 @@
     <p class="nav-text"></p> 
     <div class="top-nav">        
             <ul>
-                <li><a onclick="openRemoteDesktopsTool(event, 'desktops')">Desktops Available</a></li>
-                <li><a onclick="openRemoteDesktopsTool(event, 'settings')">Settings</a></li>
+                <li><a class="tablinks" onclick="openRemoteDesktopsTool(event, 'desktops')">Desktops Available</a></li>
+                <li class="settings"><a class="tablinks" onclick="openRemoteDesktopsTool(event, 'settings')">Settings</a></li>
             </ul>            
     </div>
 </nav>
@@ -125,7 +125,10 @@ function renderRDIData(container_id, select=true, clear_notifications=true) {
                 });
             } else {
                 if (select) {
-                    pass
+                    rdi_container.empty();
+                    rdi_container.append(
+                        $(document.createElement('option')).attr("value", "-1").text("No remote desktop infrastructures found")
+                    );
                 } else {
                     rdi_container.append(
                         $(document.createElement('div')).attr("id", "no_rdi_list").text("No remote desktop infrastructures found")
