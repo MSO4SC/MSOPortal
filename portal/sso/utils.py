@@ -29,11 +29,19 @@ def get_uid(user):
 
 
 def get_roles_names(user):
+    """ Returns the user roles, in the app and in the organizations """
+    roles_dict = {}
     social = user.social_auth.get(provider='fiware')
     if social.extra_data['roles'] is not None:
-        return [role['name'] for role in social.extra_data['roles']]
-    else:
-        return []
+        for role in social.extra_data['roles']:
+            roles_dict[role['name']] = True
+
+    for organization in social.extra_data['organizations']:
+        if organization['roles'] is not None:
+            for role in organization['roles']:
+                roles_dict[role['name']] = True
+
+    return list(roles_dict.keys())
 
 
 def get_social_user(user):
