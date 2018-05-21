@@ -27,7 +27,10 @@ def index(request):
         new_groups = groups
         for role in roles:
             if role not in groups:
-                group = Group.objects.get(name=role)
+                try:
+                    group = Group.objects.get(name=role)
+                except django.contrib.auth.models.DoesNotExist:
+                    print('WARN: role '+role+' does not exists as a group.')
                 user.groups.add(group)
                 new_groups.append(role)
 
