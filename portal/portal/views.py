@@ -29,10 +29,10 @@ def index(request):
             if role not in groups:
                 try:
                     group = Group.objects.get(name=role)
+                    user.groups.add(group)
+                    new_groups.append(role)
                 except Group.DoesNotExist:
                     print('WARN: role '+role+' does not exists as a group.')
-                user.groups.add(group)
-                new_groups.append(role)
 
         # get user info
         token_expires_in = sso.utils.get_expiration_time(user)
