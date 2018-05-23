@@ -36,10 +36,11 @@ def get_roles_names(user):
         for role in social.extra_data['roles']:
             roles_dict[role['name']] = True
 
-    for organization in social.extra_data['organizations']:
-        if organization['roles'] is not None:
-            for role in organization['roles']:
-                roles_dict[role['name']] = True
+    if social.extra_data['organizations'] is not None:
+        for organization in social.extra_data['organizations']:
+            if organization['roles'] is not None:
+                for role in organization['roles']:
+                    roles_dict[role['name']] = True
 
     return list(roles_dict.keys())
 
