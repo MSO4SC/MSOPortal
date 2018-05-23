@@ -316,11 +316,11 @@ class Application(models.Model):
     def _upload_blueprint(path, blueprint_id):
         error = None
         blueprint = None
-        is_url = bool(urlparse(path).scheme)
+        is_archive = bool(urlparse(path).scheme) or path.endswith(".tar.gz")
 
         client = _get_client()
         try:
-            if is_url:
+            if is_archive:
                 blueprint = client.blueprints.publish_archive(
                     path, blueprint_id)
             else:
