@@ -1,17 +1,40 @@
 """ Common functions module """
 
 import time
-# from django.contrib.auth import login, authenticate
-# from django.contrib import messages
-# from django.views.decorators.clickjacking import xframe_options_exempt
+
+from django.shortcuts import redirect
+from django.contrib.auth.decorators import login_required
+from django.http import HttpResponsePermanentRedirect
 
 from social_django.models import UserSocialAuth
 from social_django.utils import load_strategy
 
 
-def get_token(user):
-    social = user.social_auth.get(provider='fiware')
-    return social.get_access_token(load_strategy())
+def token_required(view):
+    @login_required
+    def wrap(request, *args, **kwargs):
+        response = get_token(request)
+
+        if token_need_to_redirect(response):
+            return response
+
+        return view(request, token=response, *args, **kwargs)
+
+    return wrap
+
+
+def get_token(request):
+    user = request.user
+    from_url = request.get_full_path()
+    try:
+        social = user.social_auth.get(provider='fiware')
+        return social.get_access_token(load_strategy())
+    except Exception:
+        return redirect('/oauth/login/fiware?next=' + from_url, permanent=True)
+
+
+def token_need_to_redirect(response):
+    return isinstance(response, HttpResponsePermanentRedirect)
 
 
 def get_expiration_time(user):

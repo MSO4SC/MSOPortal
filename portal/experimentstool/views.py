@@ -5,12 +5,12 @@ import json
 import tempfile
 import requests
 
-# from django.core import serializers
 from django.contrib.auth.decorators import login_required, permission_required
-from django.shortcuts import render, redirect
+from django.shortcuts import render
 from django.http import JsonResponse
 
 import sso
+from sso.utils import token_required
 from portal import settings
 
 from experimentstool.models import (Application,
@@ -86,9 +86,9 @@ def delete_hpc(request):
                                  return_dict=True))
 
 
-@login_required
-def get_new_stock(request):
-    access_token = sso.utils.get_token(request.user)
+@token_required
+def get_new_stock(request, *args, **kwargs):
+    access_token = kwargs['token']
     uid = sso.utils.get_uid(request.user)
 
     stock_data = _get_stock(access_token, uid)
@@ -120,9 +120,9 @@ def get_new_stock(request):
     return JsonResponse(data, safe=False)
 
 
-@login_required
-def load_owned_applications(request):
-    access_token = sso.utils.get_token(request.user)
+@token_required
+def load_owned_applications(request, *args, **kwargs):
+    access_token = kwargs['token']
     uid = sso.utils.get_uid(request.user)
 
     stock_data = _get_stock(access_token, uid)
@@ -138,9 +138,9 @@ def load_owned_applications(request):
     return JsonResponse(applications, safe=False)
 
 
-@login_required
-def load_applications(request):
-    access_token = sso.utils.get_token(request.user)
+@token_required
+def load_applications(request, *args, **kwargs):
+    access_token = kwargs['token']
     uid = sso.utils.get_uid(request.user)
 
     stock_data = _get_stock(access_token, uid)
@@ -226,7 +226,8 @@ def upload_application(request):
     blueprint_package = request.FILES['blueprint_package']
 
     # save the package temporarily
-    tmp_package_file = tempfile.NamedTemporaryFile(suffix=".tar.gz", delete=False)
+    tmp_package_file = tempfile.NamedTemporaryFile(
+        suffix=".tar.gz", delete=False)
     for chunk in blueprint_package.chunks():
         tmp_package_file.write(chunk)
     tmp_package_file.flush()
