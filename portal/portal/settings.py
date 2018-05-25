@@ -26,11 +26,11 @@ SECRET_KEY = config('SECRET_KEY')
 
 # SECURITY WARNING: don't run with debug turned on in production!
 # DEBUG = config('DEBUG', default=False, cast=bool)
-DEBUG = True
+DEBUG = config('DEBUG')
 
 ALLOWED_HOSTS = config('ALLOWED_HOSTS', cast=Csv())
 INTERNAL_IPS = (
-    '127.0.0.1','localhost'
+    '127.0.0.1', 'localhost'
 )
 
 # Application definition
@@ -81,6 +81,7 @@ TEMPLATES = [
 
                 'social_django.context_processors.backends',
                 'social_django.context_processors.login_redirect',
+                "portal.context_processors.custom_vars",
             ],
         },
     },
