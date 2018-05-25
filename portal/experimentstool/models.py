@@ -214,11 +214,11 @@ class Application(models.Model):
         return app
 
     @classmethod
-    def get(cls, pk, owner, return_dict=False):
+    def get(cls, pk, owner=None, return_dict=False):
         error = None
         app = cls._get(pk)
 
-        if app is not None and owner != app.owner:
+        if owner is not None and app is not None and owner != app.owner:
             app = None
             error = 'Application does not belong to user'
 
@@ -434,7 +434,7 @@ class AppInstance(models.Model):
         error = None
         instance = None
 
-        app, error = Application.get(app_pk, owner)
+        app, error = Application.get(app_pk)
         if error is None:
             if app is None:
                 error = "Can't create instance because app doesn't exists"
