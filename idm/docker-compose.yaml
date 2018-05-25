@@ -20,7 +20,7 @@ services:
         depends_on:
             - mysql
         container_name: idm
-        image: mso4sc/idm
+        image: mso4sc/idm:2.0
         restart: always
         ports:
             - "3000:3000"
