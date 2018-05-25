@@ -173,6 +173,11 @@ a.tablinks.active {
     text-decoration: underline overline;
 }
 
+a.disabled {
+    pointer-events: none !important;
+    color: gray !important;
+}
+
 @-webkit-keyframes spin {
     0% {
         -webkit-transform: rotate(0deg);

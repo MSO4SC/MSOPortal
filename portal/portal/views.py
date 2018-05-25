@@ -1,12 +1,12 @@
 """ MSO4SC views module """
 
-import sso.utils
-
-from portal import settings
-
 from django.contrib.auth.decorators import login_required
 from django.shortcuts import render, redirect
 from django.contrib.auth.models import Group
+
+import sso.utils
+
+from portal import settings
 
 
 def index(request):
