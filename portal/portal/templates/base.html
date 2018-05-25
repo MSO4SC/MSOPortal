@@ -42,7 +42,7 @@
                             <li><a href="{% url 'home' %}">Home</a></li>
                             <li><a href="{% url 'remotedesktops' %}">Visualization</a></li>
                             <li><a href="{% url 'experimentstool' %}">Experiments</a> </li>
-                            {% if not DEBUG %}
+                            {% if not DEBUG == 'True' %}
                                 <li><a href="{% url 'datacatalogue_logIn' %}">Data Catalogue</a></li>
                                 <li><a href="{% url 'marketplace_logIn' %}">Marketplace</a></li>
                             {% else %}

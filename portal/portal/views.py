@@ -21,6 +21,7 @@ def index(request):
 
         # match user roles with groups
         roles = sso.utils.get_roles_names(user)
+        roles.append('User')  # add User role by default
         groups = []
         for group in user.groups.all():
             if group.name not in roles:
