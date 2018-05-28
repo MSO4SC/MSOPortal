@@ -1,5 +1,3 @@
-import sso
-
 from django.contrib.auth.decorators import login_required
 from django.shortcuts import render, redirect
 from django.contrib.auth.forms import \
@@ -11,6 +9,7 @@ from django.contrib import messages
 
 from django.conf import settings as global_settings
 
+import sso
 
 def signup(request):
     if request.method == 'POST':

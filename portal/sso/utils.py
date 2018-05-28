@@ -1,6 +1,7 @@
 """ Common functions module """
 
 import time
+import urllib
 
 from django.shortcuts import redirect
 from django.contrib.auth.decorators import login_required
@@ -30,6 +31,7 @@ def get_token(request):
         social = user.social_auth.get(provider='fiware')
         return social.get_access_token(load_strategy())
     except Exception:
+        urllib.request.urlopen('/logout/')
         return redirect('/oauth/login/fiware?next=' + from_url, permanent=True)
 
 
