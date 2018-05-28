@@ -1,5 +1,7 @@
 """ MSO4SC views module """
 
+import logging
+
 from django.contrib.auth.decorators import login_required
 from django.shortcuts import render, redirect
 from django.contrib.auth.models import Group
@@ -7,6 +9,10 @@ from django.contrib.auth.models import Group
 import sso.utils
 
 from portal import settings
+
+
+# Get an instance of a logger
+logger = logging.getLogger(__name__)
 
 
 def index(request):
@@ -36,7 +42,7 @@ def index(request):
                     user.groups.add(group)
                     new_groups.append(role)
                 except Group.DoesNotExist:
-                    print('WARN: role '+role+' does not exists as a group.')
+                    logger.warn('Role '+role+' does not exists as a group.')
 
         # get user info
         token_expires_in = sso.utils.get_expiration_time(user)

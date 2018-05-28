@@ -1,14 +1,19 @@
 """ Common functions module """
 
 import time
-import urllib
+import logging
 
 from django.shortcuts import redirect
 from django.contrib.auth.decorators import login_required
 from django.http import HttpResponsePermanentRedirect
+from django.contrib.auth import logout
 
 from social_django.models import UserSocialAuth
 from social_django.utils import load_strategy
+
+
+# Get an instance of a logger
+logger = logging.getLogger(__name__)
 
 
 def token_required(view):
@@ -30,8 +35,9 @@ def get_token(request):
     try:
         social = user.social_auth.get(provider='fiware')
         return social.get_access_token(load_strategy())
-    except Exception:
-        urllib.request.urlopen('/logout/')
+    except Exception as excp:
+        logger.warn("Couldn't get token: "+str(excp))
+        logout(request)
         return redirect('/oauth/login/fiware?next=' + from_url, permanent=True)
 
 
