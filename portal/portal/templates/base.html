@@ -40,15 +40,15 @@
                         <p class="usuario"><i class="icon-user"></i>You are signed in as <strong>{{ user.username }}</strong></p>
                         <ul class="chevron">
                             <li><a href="{% url 'home' %}">Home</a></li>
-                            <li><a href="{% url 'remotedesktops' %}">Visualization</a></li>
-                            <li><a href="{% url 'experimentstool' %}">Experiments</a> </li>
                             {% if not DEBUG == 'True' %}
-                                <li><a href="{% url 'datacatalogue_logIn' %}">Data Catalogue</a></li>
                                 <li><a href="{% url 'marketplace_logIn' %}">Marketplace</a></li>
+                                <li><a href="{% url 'datacatalogue_logIn' %}">Data Catalogue</a></li>
                             {% else %}
-                                <li><a href="#" class="disabled">Data Catalogue</a></li>
                                 <li><a href="#" class="disabled">Marketplace</a></li>
+                                <li><a href="#" class="disabled">Data Catalogue</a></li>
                             {% endif %}
+                            <li><a href="{% url 'experimentstool' %}">Experiments</a></li>
+                            <li><a href="{% url 'remotedesktops' %}">Visualization</a></li>
                             <!--<li><a href="{% url 'settings' %}">settings</a></li>-->
                             <!--<li><a href="{% url 'password' %}">change password</a></li>-->
                             <li><a href="{% url 'logout' %}">Logout</a></li>               
