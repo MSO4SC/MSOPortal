@@ -27,7 +27,7 @@ services:
 
     charging:
         container_name: charging
-        image: mso4sc/marketplace-charging:2.0
+        image: mso4sc/marketplace-charging
         restart: always
         links:
             - mongo
@@ -53,7 +53,7 @@ services:
 
     proxy:
         container_name: proxy
-        image: mso4sc/marketplace-proxy:2.0
+        image: mso4sc/marketplace-proxy
         restart: always
         links:
             - mongo
