@@ -10,7 +10,7 @@ config.version = {
 };
 
 // The PORT used by
-config.port = 8004;
+config.port = 80;
 config.host = 'proxy.docker';
 
 var biz_host = (process.env.BIZ_HOST) ? process.env.BIZ_HOST : 'proxy.docker'
@@ -19,7 +19,7 @@ config.proxy = {
     enabled: true,
     host: biz_host,
     secured: false,
-    port: 8004
+    port: 80
 };
 
 // Set this var to undefined if you don't want the server to listen on HTTPS
@@ -39,14 +39,13 @@ config.logOutPath = '/logOut';
 config.sessionSecret = 'keyboard cat';
 config.theme = '';
 
-var idm_host = (process.env.IDM_HOST) ? process.env.IDM_HOST : 'idm.docker'
-var idm_port = (process.env.IDM_PORT) ? process.env.IDM_PORT : '3000'
+var idm_entrypoint = (process.env.IDM_ENTRYPOINT) ? process.env.IDM_ENTRYPOINT : 'http://idm.docker:3000'
 var idm_biz_id = (process.env.IDM_BIZ_ID) ? process.env.IDM_BIZ_ID : ''
 var idm_biz_secret = (process.env.IDM_BIZ_SECRET) ? process.env.IDM_BIZ_SECRET : ''
 
 // OAuth2 configuration
 config.oauth2 = {
-    'server': 'http://'+idm_host+':'+idm_port+'/',
+    'server': idm_entrypoint,
     'clientID': idm_biz_id,
     'clientSecret': idm_biz_secret,
     'callbackURL': 'http://'+biz_host+':8004/auth/fiware/callback',

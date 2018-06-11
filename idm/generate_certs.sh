@@ -19,6 +19,12 @@ if [ "$#" -lt 2 ]; then
     exit
 fi
 
+apt-get update
+apt-get install -y software-properties-common
+add-apt-repository -y ppa:certbot/certbot
+apt-get update
+apt-get install -y certbot 
+
 COMMAND="certbot certonly --standalone --agree-tos -m $1"
 #COMMAND="certbot certonly --webroot -w ./certs --agree-tos -m $1"
 

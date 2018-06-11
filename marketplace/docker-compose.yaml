@@ -61,7 +61,7 @@ services:
             - mongo
             - apis
         ports:
-            - 8004:8004
+            - 80:80
         networks:
             main:
                 aliases:
@@ -74,8 +74,7 @@ services:
         environment:
             - PORTAL_HOST=$PORTAL_HOST
             - BIZ_HOST=$BIZ_HOST
-            - IDM_HOST=$IDM_HOST
-            - IDM_PORT=$IDM_PORT
+            - IDM_ENTRYPOINT=$IDM_ENTRYPOINT
             - IDM_BIZ_ID=$IDM_BIZ_ID
             - IDM_BIZ_SECRET=$IDM_BIZ_SECRET
             - NODE_ENV=development
