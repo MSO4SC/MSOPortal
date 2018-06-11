@@ -8,9 +8,9 @@ config.port = idm_port
 
 // HTTPS enable
 config.https = {
-    enabled: false,
-    cert_file: 'certs/idm-2018-cert.pem',
-    key_file: 'certs/idm-2018-key.pem',
+    enabled: true,
+    cert_file: '/certs/fullchain.pem',
+    key_file: '/certs/privkey.pem',
     port: 443
 };
 

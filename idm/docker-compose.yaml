@@ -38,6 +38,8 @@ services:
             - MYSQL_ROOT_PASSWORD=$MYSQL_ROOT_PASSWORD
         volumes:
             - $IDM_CONFIG:/opt/fiware-idm/config.js
+            - /etc/letsencrypt/live/$IDM_HOST/fullchain.pem:/certs/fullchain.pem
+            - /etc/letsencrypt/live/$IDM_HOST/privkey.pem:/certs/privkey.pem
 
         networks:
             network:
