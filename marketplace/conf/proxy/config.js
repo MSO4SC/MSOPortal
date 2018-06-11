@@ -48,7 +48,7 @@ config.oauth2 = {
     'server': idm_entrypoint,
     'clientID': idm_biz_id,
     'clientSecret': idm_biz_secret,
-    'callbackURL': 'http://'+biz_host+':8004/auth/fiware/callback',
+    'callbackURL': 'http://'+biz_host+'/auth/fiware/callback',
     'roles': {
         'admin': 'provider',
         'customer': 'customer',
