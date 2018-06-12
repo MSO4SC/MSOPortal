@@ -192,7 +192,8 @@ def _get_productid_from_specification(data):
 
 def _get_productid_from_offering(data, access_token):
     headers = {"Authorization": "bearer " + access_token}
-    url = urlparse(data["productOffering"]['href']).path
+    url = settings.MARKETPLACE_URL + \
+        urlparse(data["productOffering"]['href']).path
 
     text_data = requests.request("GET", url, headers=headers).text
     json_data = json.loads(text_data)
