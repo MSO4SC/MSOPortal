@@ -669,9 +669,10 @@ class WorkflowExecution(models.Model):
             return {'execution': _to_dict(execution), 'error': error}
 
     def __str__(self):
-        return "Instance {0}:{1} from {2}".format(
-            self.app,
-            self.instance_id,
+        return "Workflow execution {0}:{1} [{2}] from {3}".format(
+            self.workflow,
+            self.app_instance.name,
+            self.id_code,
             self.owner.username)
 
     @staticmethod
