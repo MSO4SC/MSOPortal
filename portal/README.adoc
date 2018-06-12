@@ -16,7 +16,7 @@ Frontend of the MSO4SC project.
 
 == Usage
 
-The portal uses keyrock IDM to authenticate and authorize users. Ask the portal manager to create one for you if you don't have one yet.
+The portal uses keyrock IDM to authenticate and authorize users. You will need to create an account in the IDM first.
 
 === Data Catalogue
 
@@ -45,7 +45,6 @@ WARNING: After creation of a catalogue, product or offering, *don't forget to cl
 In the same way, click on `My stock -> Product Specifications` and follow the steps on the screen to create a new product. Some clarifications about these steps:
 
 * Asset type: The product (application) is always digital. 
-* Characteristics: On MSO4SC, products *must* have a characteristic named `BLUEPRINT_PATH` where in its default value must contain the url of where the application package is stored, or the GitHub repository where the blueprint and files are available (in the format [user|organization]/[repository]. To know more about it check <<Packaging an application>>
 * Terms & Conditions: In here you can add an small text with the license of your application, but the description text *cannot be large or the product creation will fail*, so just an small notice is recommend.
 
 NOTE: As the owner of a product, it is not necessary to create an offering in order to start using it in the <<Experiments Tool>>. However it is mandatory if the owner wants to share its application with the other users of the portal, giving them the possibility to acquire it (by payment or for free).
@@ -58,21 +57,22 @@ WARNING: Marketplace payment functionalities are not yet fully available. Theref
 
 To start using a new application, first go to the marketplace and navigate through the offerings available. After purchasing the desired one, the owner of the offering will receive a notification in the marketplace to accept or deny the purchase. If accepted, the new product will appear in the user _stock_, as well as in the <<Experinments Tool>>.
 
-==== Packaging an application
-
-To package an application, two options are available at this time:
-
-* *GitHub repository*: Just creating a public repository in github with the blueprint in the root folder is enough for the orchestrator to retrieve the application files. Of course all files used by the blueprint need to be present on the repository as well.
-* *tar.gz file*: Create a tar.gz file (with env variable COPYFILE_DISABLE=true) of your application folder containing all your application files and blueprint in the root folder. Then put the compressed file in a url accesible by the orchestrator. An script that automates it a little bit can be found at MSO4SC/resources/blueprint-examples in GitHub.
 
 === Experiments Tool
 
 This service is in charge of managing the execution workflow of the MSO4SC applications. It is divided in different sections:
 
 * _Settings_: In this view the user is able to see the HPCs he/she has configured, as well as add new ones or delete them. This configuration will be used later when creating a new application instance.
-* _Register/Remove App_: Those sections are meant to registrer/unregister an application in the orchestrator. They are "admin" operations an probably they will be automated and removed from the interface in future versions. On them, you can select a product from the marketplace and register the application in the platform with a concrete name, or undo the registration respectively.
+* _Register/Remove App_: Those sections are meant to registrer/unregister an application in the orchestrator. They are "developer" operations. On them, you can select a product from the marketplace and register the application in the platform with a concrete name, or undo the registration respectively. To upload an application, you will have to have it packaged first: <<Packaging an application>>.
 * _Create/Destroy App Instance_: In here you can create a new _instance_ of an application, that is, an application with a concrete configuration attached. Just select a name, an application, and then the specific inputs. HPC infrastructures can be selected from a combo box, as well as datasets (one file per input). An HPC input starts with the prefix `mso4sc_hpc_`, while a dataset input starts with `mso4sc_dataset_`. List inputs must be written as comma separated list of elements, while dictionary inputs must be written in JSON using `{}`. In the same way, the destroy operation undo the creation step. The logs of the operations can be seen at the screen, as well as a grey/blue/green/light indicating if the operation is not running, running, successful or failed respectively.
 * _Run Instance_: Similarly to Create/Destroy operations, in this step is when the application is actually executed, presenting the logs in the same way as before.
+
+==== Packaging an application
+
+To package an application, two options are available at this time:
+
+* *GitHub repository*: Just creating a public repository in github with the blueprint in the root folder is enough for the orchestrator to retrieve the application files. Of course all files used by the blueprint need to be present on the repository as well.
+* *tar.gz file*: Create a tar.gz file (with env variable COPYFILE_DISABLE=true) of your application folder containing all your application files and blueprint in the root folder. Then put the compressed file in a url accesible by the orchestrator. An script that automates it a little bit can be found at MSO4SC/resources/blueprint-examples in GitHub.
 
 === Visualization / Pre / Post Tool
 
@@ -93,11 +93,12 @@ Create command: /opt/cesga/vis/bin/getdesktop
 
 * Copy `portal/example_settings.ini` to `portal/settings.ini` and fill in the properties.
 * Create a superuser: `python3 manage.py createsuperuser`
+* Generate the database: `python3 manage.py makemigrations && python3 manage.py migrate`
 * log in with the created user at `/admin` in the browser, and in `Groups` menu create the following groups with the following permissions:
 ** _Developer_: all permissions from `experimenttool` and `remotedesktops`.
 ** _User_: same as above, without `Can add/change/delete application`, `Can add/change/delete orchestrator`, `Can register/remove new app in the orchestrator`.
 
-== Dev Deployment
+== Development Deployment
 
 === Linux
 
