@@ -5,6 +5,8 @@ import json
 import tempfile
 import requests
 
+from urllib.parse import urlparse
+
 from django.contrib.auth.decorators import login_required, permission_required
 from django.shortcuts import render
 from django.http import JsonResponse
@@ -190,7 +192,7 @@ def _get_productid_from_specification(data):
 
 def _get_productid_from_offering(data, access_token):
     headers = {"Authorization": "bearer " + access_token}
-    url = data["productOffering"]['href']
+    url = urlparse(data["productOffering"]['href']).path
 
     text_data = requests.request("GET", url, headers=headers).text
     json_data = json.loads(text_data)
