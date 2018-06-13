@@ -40,7 +40,7 @@
                         <p class="usuario"><i class="icon-user"></i>You are signed in as <strong>{{ user.username }}</strong></p>
                         <ul class="chevron">
                             <li><a href="{% url 'home' %}">Home</a></li>
-                            {% if not DEBUG == 'True' %}
+                            {% if not DEBUG %}
                                 <li><a href="{% url 'marketplace_logIn' %}">Marketplace</a></li>
                                 <li><a href="{% url 'datacatalogue_logIn' %}">Data Catalogue</a></li>
                             {% else %}

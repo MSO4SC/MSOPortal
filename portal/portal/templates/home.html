@@ -2,7 +2,7 @@
 <h2 style="text-align: center;">Welcome to the frontend of the MSO4SC platform!</h2>
 <p style="font-size: 1.2em; text-align:center;">From this site you can access all the services provided by us.</p>
 <br>
-{% if DEBUG == 'True' %}
+{% if DEBUG %}
 <div>
     <p>Hello {{ user.username }}!</p>
     <p>E-Mail: {{ user.email }}</p>
