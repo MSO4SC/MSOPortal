@@ -1,6 +1,6 @@
 #!/bin/bash
 set -e
 
-uwsgi --socket portal.sock --module portal.wsgi --chmod-socket=664
+systemctl restart nginx
 
-/etc/init.d/nginx restart
+uwsgi --socket portal.sock --module portal.wsgi --chmod-socket=664

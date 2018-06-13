@@ -1,7 +1,7 @@
 #!/bin/bash
 set -e
 
-echo "This script is intended to be run on Ubuntu >= 16.04, but adaptation to other distributions should be easy."
+echo "Please be sure that DEBUG=False at portal/settings.ini"
 
 if [ "$#" -ne 1 ]; then
     echo "Usage: "$0" [python-packages-dir]"
@@ -11,11 +11,16 @@ fi
 
 ./setup.sh $1
 
+apt-get update
+apt-get install -y selinux-utils
+
+apt-get install -y libpcre3 libpcre3-dev
 pip3 install uwsgi
 
-mkdir -p /etc/nginx/sites-available
-ln -s $PWD/nginx.conf /etc/nginx/sites-available/portal_nginx.conf
-
 apt-get install -y nginx
+sed -i 's/user www-data/user root/g' /etc/nginx/nginx.conf
+
+ln -s $PWD/nginx.conf /etc/nginx/sites-available/portal_nginx.conf
+ln -s /etc/nginx/sites-available/portal_nginx.conf /etc/nginx/sites-enabled/portal_nginx.conf
 
 python3 manage.py collectstatic
