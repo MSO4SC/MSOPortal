@@ -16,4 +16,6 @@ pip3 install uwsgi
 mkdir -p /etc/nginx/sites-available
 ln -s $PWD/nginx.conf /etc/nginx/sites-available/portal_nginx.conf
 
+apt-get install -y nginx
+
 python3 manage.py collectstatic
