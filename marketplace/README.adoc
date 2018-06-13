@@ -11,8 +11,14 @@ Brings the MSO4SC marketplace through _docker-compose_, based on Fiware Business
 
 .Configuration
 * Copy _template.env_ to _.env_, and edit the created file with your configuration.
-* Set the same mysql password in variable  `MYSQL_ROOT_PASSWORD` defined in the preivious step, in the file `conf/rss/database.properties`
-* Set the host of the marketplace in `conf/apis/settings.properties`
+* Set the same mysql password in variable  `MYSQL_ROOT_PASSWORD` defined in the preivious step, in the file _conf/rss/database.properties_
+* Set the host of the marketplace in _conf/apis/settings.properties_
+
+.Optional configuration
+* Fill in the SMTP email options at `conf/charging/settings.py` to enable email notification to product owners when a purchase is made. Entries from _WSTOREMAILUSER_ to _SMTPPORT_.
+* Change the system to production mode (better performance):
+** In _.env_, set `COLLECT=True` and `NODE_ENV=production`
+** In _conf/charging/settings.py_, set `DEBUG=False`
 
 NOTE: `CONFIG_PATH` references to _conf_ folder, and `DATA_PATH` to where application data will be stored. `MYSQL_ROOT_PASSWORD` is the root password that mysql will use.
 

@@ -77,7 +77,8 @@ services:
             - IDM_ENTRYPOINT=$IDM_ENTRYPOINT
             - IDM_BIZ_ID=$IDM_BIZ_ID
             - IDM_BIZ_SECRET=$IDM_BIZ_SECRET
-            - NODE_ENV=development
+            - NODE_ENV=$NODE_ENV
+            - COLLECT=$COLLECT
 
     apis:
         container_name: apis
