@@ -192,7 +192,7 @@ function renderStockData(selector_id) {
         error: function (jqXHR, status, errorThrown) {
             $(".loader").hide();
             message = "Couldn't get stock list: ";
-            message += jqXHR.status+": "+errorThrown+": "+jqXHR.responseText
+            message += jqXHR.status+": "+errorThrown
             appendNotification(message, error=true);
         }
     });
@@ -248,7 +248,7 @@ function renderApplicationData(selector_id, only_owned=false) {
         error: function (jqXHR, status, errorThrown) {
             $(".loader").hide();
             message = "Couldn't get applications list: ";
-            message += jqXHR.status+": "+errorThrown+": "+jqXHR.responseText
+            message += jqXHR.status+": "+errorThrown
             appendNotification(message, error=true);
         }
     });
@@ -359,7 +359,7 @@ function renderApplicationInputs(selector_id, container_id) {
             error: function (jqXHR, status, errorThrown) {
                 $(".loader").hide();
                 message = "Couldn't read the inputs: ";
-                message += jqXHR.status+": "+errorThrown+": "+jqXHR.responseText
+                message += jqXHR.status+": "+errorThrown
                 appendNotification(message, error=true);
             }
         });
@@ -493,7 +493,7 @@ function renderKeyData(container_id) {
         error: function (jqXHR, status, errorThrown) {
             $(".loader").hide();
             message = "Couldn't get ckan key: ";
-            message += jqXHR.status+": "+errorThrown+": "+jqXHR.responseText
+            message += jqXHR.status+": "+errorThrown
             appendNotification(message, error=true);
         }
     });
@@ -600,7 +600,7 @@ function renderHPCData(container_id, select=true, clear_notifications=true) {
         error: function (jqXHR, status, errorThrown) {
             $(".loader").hide();
             message = "Couldn't get hpc list: ";
-            message += jqXHR.status+": "+errorThrown+": "+jqXHR.responseText
+            message += jqXHR.status+": "+errorThrown
             appendNotification(message, error=true);
         }
     });
@@ -631,7 +631,7 @@ function setHPCEditButtonsHandler(button_id, pk, refresh_function) {
             error: function (jqXHR, status, errorThrown) {
                 $(".loader").hide();
                 message = "Couldn't remove the hpc: ";
-                message += jqXHR.status+": "+errorThrown+": "+jqXHR.responseText
+                message += jqXHR.status+": "+errorThrown
                 appendNotification(message, error=true);
             },
             complete: refresh_function
@@ -668,7 +668,7 @@ function renderDatasetsData(selector_id) {
         error: function (jqXHR, status, errorThrown) {
             $(".loader").hide();
             message = "Couldn't get datasets list: ";
-            message += jqXHR.status+": "+errorThrown+": "+jqXHR.responseText
+            message += jqXHR.status+": "+errorThrown
             appendNotification(message, error=true);
         }
     });
@@ -722,7 +722,7 @@ function renderDatasetChoices(selector_id, container_id, group_name){
             error: function (jqXHR, status, errorThrown) {
                 $(".loader").hide();
                 message = "Couldn't read the dataset info: ";
-                message += jqXHR.status+": "+errorThrown+": "+jqXHR.responseText
+                message += jqXHR.status+": "+errorThrown
                 appendNotification(message, error=true);
             }
         });
@@ -777,7 +777,7 @@ function renderDeploymentData(selector_id, workflow, execution_selector_id, log_
         error: function (jqXHR, status, errorThrown) {
             $(".loader").hide();
             message = "Couldn't get instances list: ";
-            message += jqXHR.status+": "+errorThrown+": "+jqXHR.responseText
+            message += jqXHR.status+": "+errorThrown
             appendNotification(message, error=true);
         }
     });
@@ -843,7 +843,7 @@ function renderExecutionData(instance, workflow, execution_selector_id, log_id) 
         error: function (jqXHR, status, errorThrown) {
             $(".loader").hide();
             message = "Couldn't get executions list: ";
-            message += jqXHR.status+": "+errorThrown+": "+jqXHR.responseText
+            message += jqXHR.status+": "+errorThrown
             appendNotification(message, error=true);
         }
     });
@@ -896,7 +896,7 @@ function renderLogData(exec_id, log_id, reset=false) {
         },
         error: function (jqXHR, status, errorThrown) {
             message = "Couldn't monitor the operation: ";
-            message += jqXHR.status+": "+errorThrown+": "+jqXHR.responseText
+            message += jqXHR.status+": "+errorThrown
             appendNotification(message, error=true);
         }
     });
@@ -946,7 +946,7 @@ function executeDeployment(selector_id, workflow, execution_selector_id, log_id 
         error: function (jqXHR, status, errorThrown) {
             $(".loader").hide();
             message = "Couldn't execute the operation: ";
-            message += jqXHR.status+": "+errorThrown+": "+jqXHR.responseText
+            message += jqXHR.status+": "+errorThrown
             appendNotification(message, error=true);
         }
     });
@@ -996,7 +996,7 @@ $("#ckan_key_form").find("button").on('click', function (event) {
         error: function (jqXHR, status, errorThrown) {
             $(".loader").hide();
             message = "Couldn't update the key: ";
-            message += jqXHR.status+": "+errorThrown+": "+jqXHR.responseText
+            message += jqXHR.status+": "+errorThrown
             appendNotification(message, error=true);
         }
     });
@@ -1038,7 +1038,7 @@ $("#add_hpc").find("button").on('click', function (event) {
             error: function (jqXHR, status, errorThrown) {
                 $(".loader").hide();
                 message = "Couldn't add the hpc: ";
-                message += jqXHR.status+": "+errorThrown+": "+jqXHR.responseText
+                message += jqXHR.status+": "+errorThrown
                 appendNotification(message, error=true);
             },
             complete: function() {
@@ -1101,7 +1101,7 @@ $("#upload").find("button").on('click', function (event) {
                 error: function (jqXHR, status, errorThrown) {
                     $(".loader").hide();
                     message = "Couldn't register the app: ";
-                    message += jqXHR.status+": "+errorThrown+": "+jqXHR.responseText
+                    message += jqXHR.status+": "+errorThrown
                     appendNotification(message, error=true);
                 }
             });
@@ -1172,7 +1172,7 @@ $("#deploy_form").find("button").on('click', function (event) {
         error: function (jqXHR, status, errorThrown) {
             $(".loader").hide();
             message = "Couldn't create the instance: ";
-            message += jqXHR.status+": "+errorThrown+": "+jqXHR.responseText
+            message += jqXHR.status+": "+errorThrown
             appendNotification(message, error=true);
         }
     });
@@ -1249,7 +1249,7 @@ $("#remove").find("button").on('click', function (event) {
         error: function (jqXHR, status, errorThrown) {
             $(".loader").hide();
             message = "Couldn't remove the app: ";
-            message += jqXHR.status+": "+errorThrown+": "+jqXHR.responseText
+            message += jqXHR.status+": "+errorThrown
             appendNotification(message, error=true);
         }
     });
