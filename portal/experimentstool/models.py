@@ -53,6 +53,72 @@ class Orchestrator(models.Model):
         )
 
 
+class DataCatalogueKey(models.Model):
+    code = models.CharField(max_length=50)
+
+    owner = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+    )
+
+    @classmethod
+    def get(cls, owner, return_dict=False):
+        """ If returning a dict, password is removed """
+        key = None
+        try:
+            key = cls.objects.get(owner=owner)
+        except cls.DoesNotExist:
+            pass
+
+        if not return_dict:
+            return key
+        else:
+            if key is not None:
+                key = _to_dict(key)
+            return {'key': key}
+
+    @classmethod
+    def create(cls,
+               code,
+               owner,
+               return_dict=False):
+        error = None
+        key = None
+        try:
+            key = cls.objects.create(code=code, owner=owner)
+        except Exception as err:
+            logger.exception(err)
+            error = str(err)
+
+        if not return_dict:
+            return (key, error)
+        else:
+            return {'key': _to_dict(key), 'error': error}
+
+    def update(self,
+               code):
+        self.code = code
+        self.save()
+
+    @classmethod
+    def remove(cls, owner, return_dict=False):
+        error = None
+        key = cls.get(owner)
+
+        if key is not None:
+            key.delete()
+        else:
+            error = "Can't delete key because it doesn't exists"
+
+        if not return_dict:
+            return (key, error)
+        else:
+            return {'key': _to_dict(key), 'error': error}
+
+    def __str__(self):
+        return "Key from {0}".format(self.owner.username)
+
+
 class HPCInfrastructure(models.Model):
     name = models.CharField(max_length=50)
 
@@ -155,7 +221,6 @@ class HPCInfrastructure(models.Model):
 
     @classmethod
     def remove(cls, pk, owner, return_dict=False):
-        # TODO: remove passwords from response
         hpc, error = cls.get(pk, owner)
 
         if error is None:
@@ -167,7 +232,10 @@ class HPCInfrastructure(models.Model):
         if not return_dict:
             return (hpc, error)
         else:
-            return {'hpc': _to_dict(hpc), 'error': error}
+            if hpc is not None:
+                hpc = _to_dict(hpc)
+                hpc.pop('password')
+            return {'hpc': hpc, 'error': error}
 
     def __str__(self):
         return "{0}: HPC at {1} from {2}({3})".format(
@@ -176,16 +244,16 @@ class HPCInfrastructure(models.Model):
             self.owner.username,
             self.user)
 
-    def to_dict(self):
-        return {
-            'credentials': {
-                'host': self.host,
-                'user': self.user,
-                'password': self.password,
-            },
-            'country_tz': self.time_zone,
-            'workload_manager': self.manager
-        }
+    # def to_dict(self):
+    #     return {
+    #         'credentials': {
+    #             'host': self.host,
+    #             'user': self.user,
+    #             'password': self.password,
+    #         },
+    #         'country_tz': self.time_zone,
+    #         'workload_manager': self.manager
+    #     }
 
 
 def _get_client():

@@ -38,4 +38,8 @@ urlpatterns = [
         views.add_hpc, name='_add_hpc'),
     url(r'^_delete_hpc$',
         views.delete_hpc, name='_delete_hpc'),
+    url(r'^_get_ckan_key$',
+        views.get_ckan_key, name="_get_ckan_key"),
+    url(r'^_update_ckan_key$',
+        views.update_ckan_key, name="_update_ckan_key"),
 ]

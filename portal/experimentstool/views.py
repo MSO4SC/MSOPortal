@@ -18,7 +18,8 @@ from portal import settings
 from experimentstool.models import (Application,
                                     AppInstance,
                                     WorkflowExecution,
-                                    HPCInfrastructure)
+                                    HPCInfrastructure,
+                                    DataCatalogueKey)
 
 
 @login_required
@@ -29,6 +30,41 @@ def experimentstool(request):
     }
 
     return render(request, 'experimentstool.html', context)
+
+
+@login_required
+def get_ckan_key(request):
+    return JsonResponse(
+        DataCatalogueKey.get(request.user, return_dict=True),
+        safe=False)
+
+
+@login_required
+def update_ckan_key(request):
+    code = request.POST.get('ckan_key', None)
+    if code is None:
+        return JsonResponse({'error': "No key provided"})
+
+    key = DataCatalogueKey.get(request.user)
+
+    if code == '' and key is not None:
+        return JsonResponse(
+            DataCatalogueKey.remove(request.user,
+                                    return_dict=True),
+            safe=False)
+
+    if key is None:
+        return JsonResponse(
+            DataCatalogueKey.create(code,
+                                    request.user,
+                                    return_dict=True),
+            safe=False)
+    else:
+        DataCatalogueKey.objects.filter()
+        key.update(code=code)
+        return JsonResponse(
+            {'key': code, 'error': None}
+        )
 
 
 @login_required

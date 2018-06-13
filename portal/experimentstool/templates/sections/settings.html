@@ -1,9 +1,22 @@
 <form class="customform">
     {% csrf_token %}
+    <h2>Data Catalogue key:</h2>
+    <div class="1-12" id="ckan_key_form">
+        <div>
+            <label for="ckan_key">Key:</label>
+            <input type='text' maxlength="50" id="ckan_key" />
+        </div>
+        <div class="l-1 left">
+            <button>Update</button>
+        </div> 
+    </div>
+    <hr>
+    <h2>Computing Infrastructures:</h2>
     <div class="s-12 m-12 l-12">    
         <div class="l-8" id="infrastructure_list">
         </div>
-    </div>    
+    </div>
+    <h3>Add a new one:</h3>
     <div class="s-12 m-12 l-12"> 
         <div class="l-8" id="add_hpc">
             <div>

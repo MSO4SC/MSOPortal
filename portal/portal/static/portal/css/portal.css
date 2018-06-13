@@ -100,12 +100,26 @@ div.tab button.active {
 
 /********************************************************/
 
+#ckan_key_form label {
+    display: inline-block;
+}
+
+#ckan_key_form input {
+    width: 500px;
+}
+
 div.hpc_settings_block {
     padding: 5px;
+    border-bottom: 1px solid;
 }
 
 span.hpc_label {
     font-style: italic;
+    display: inline-block;
+    width: 100px;
+    padding-right: 10px;
+    text-align: right;
+    color: #152732;
 }
 
 span.hpc_label_name {

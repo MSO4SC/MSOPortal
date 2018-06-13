@@ -150,6 +150,7 @@ function openExperimentsTool(evt, toolName) {
             renderApplicationData("#remove_application_selector", only_owned=true);
             break;
         case "settings":
+            renderKeyData("#ckan_key_form");
             renderHPCData("#infrastructure_list", select=false);
             break;
     }
@@ -482,6 +483,23 @@ function inputToForm(input) {
     }
 }
 
+function renderKeyData(container_id) {
+    var key_input = $(container_id).find("input");
+    $.ajax({
+        url: '/experimentstool/_get_ckan_key',
+        success: function (data) {
+            key_input.val(data.key.code);
+        },
+        error: function (jqXHR, status, errorThrown) {
+            $(".loader").hide();
+            message = "Couldn't get ckan key: ";
+            message += jqXHR.status+": "+errorThrown+": "+jqXHR.responseText
+            appendNotification(message, error=true);
+        }
+    });
+
+}
+
 function renderHPCData(container_id, select=true, clear_notifications=true) {
     var hpc_container = $(container_id);
     if (select) {
@@ -522,7 +540,7 @@ function renderHPCData(container_id, select=true, clear_notifications=true) {
                                     attr("class", "margin hpc_settings_block").
                                     append(
                                         $(document.createElement('div')).
-                                            attr("class", "s-12 m-6 l-6").
+                                            attr("class", "s-12 m-6 l-8").
                                             append(
                                                 $(document.createElement('div')).
                                                     attr("class", "l-9 left").
@@ -950,6 +968,39 @@ function appendNotification(message, error = false) {
         }).text(message)
     )
 }
+
+$("#ckan_key_form").find("button").on('click', function (event) {
+    event.preventDefault();
+    var ckan_key = $("#ckan_key").val();
+
+    cleanNotifications();
+    $.ajax({
+        url: '/experimentstool/_update_ckan_key',
+        type: "POST",
+        data: {
+            'ckan_key': ckan_key,
+        },
+        dataType: 'json',
+        beforeSend: function (xhr, settings) {
+            $.ajaxSettings.beforeSend(xhr, settings);
+            $(".loader").show();
+        },
+        success: function (data) {
+            $(".loader").hide();
+            if (data.error!==undefined && data.error!==null) {
+                appendNotification("Couldn't update the key: "+data.error, error=true);
+            } else {
+                appendNotification("Key updated.");
+            }
+        },
+        error: function (jqXHR, status, errorThrown) {
+            $(".loader").hide();
+            message = "Couldn't update the key: ";
+            message += jqXHR.status+": "+errorThrown+": "+jqXHR.responseText
+            appendNotification(message, error=true);
+        }
+    });
+});
 
 $("#add_hpc").find("button").on('click', function (event) {
     event.preventDefault();
