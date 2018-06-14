@@ -16,5 +16,4 @@
  
 #python3.6
 apt-get -y install python3 python3-pip
-pip3 install --upgrade pip
-pip3 install virtualenv ipython
+pip3 install --upgrade pip==9.0.3
