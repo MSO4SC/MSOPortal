@@ -488,10 +488,18 @@ function renderKeyData(container_id) {
     $.ajax({
         url: '/experimentstool/_get_ckan_key',
         success: function (data) {
-            key_input.val(data.key.code);
+            var code = data.key.code
+            var blind_code = ""
+            for (var i=0; i < code.length; i++) {
+                if (i < 4) {
+                    blind_code += code.charAt(i);
+                } else {
+                    blind_code += '*';
+                }
+            }
+            key_input.val(blind_code);
         },
         error: function (jqXHR, status, errorThrown) {
-            $(".loader").hide();
             message = "Couldn't get ckan key: ";
             message += jqXHR.status+": "+errorThrown
             appendNotification(message, error=true);
@@ -651,18 +659,23 @@ function renderDatasetsData(selector_id) {
             $.ajaxSettings.beforeSend(xhr, settings);
             $(".loader").show();
         },
-        success: function (datasets) {
+        success: function (data) {
             $(".loader").hide();
-            dataset_selector.empty();
-            dataset_selector.append(
-                $(document.createElement('option')).attr("value", "-1").text("None")
-            );
-            if (datasets.length > 0) {
-                $.each(datasets, function (index, dataset) {
-                    dataset_selector.append(
-                        $(document.createElement('option')).attr("value", index).text(dataset)
-                    )
-                });
+            if (data.error!==undefined && data.error!==null) {
+                appendNotification("Couldn't get datasets: "+data.error, error=true);
+            } else {
+                datasets = data.names;
+                dataset_selector.empty();
+                dataset_selector.append(
+                    $(document.createElement('option')).attr("value", "-1").text("None")
+                );
+                if (datasets.length > 0) {
+                    $.each(datasets, function (index, dataset) {
+                        dataset_selector.append(
+                            $(document.createElement('option')).attr("value", index).text(dataset)
+                        )
+                    });
+                }
             }
         },
         error: function (jqXHR, status, errorThrown) {

@@ -308,17 +308,58 @@ def remove_application(request):
 @login_required
 def get_datasets(request):
     url = settings.DATACATALOGUE_URL + \
-        "/api/3/action/package_list"
+        "/api/3/action/package_search"
 
-    text_data = requests.request("GET", url).text
-    json_data = json.loads(text_data)
-    if not json_data["success"]:
-        return JsonResponse([], safe=False)  # TODO(emepetres) manage errors
+    key = DataCatalogueKey.get(request.user)
 
-    request.session['datasets'] = json_data["result"]
+    names = []
+    datasets = []
+    left = True
+    offset = 0
+    error = None
+    while error is None and left:
+        names_chunk, datasets_chunk, left, error = \
+            _get_datasets(url, key, offset)
+        names += names_chunk
+        datasets += datasets_chunk
+        offset += len(names_chunk)
+
+    request.session['datasets'] = datasets
     request.session.modified = True
 
-    return JsonResponse(json_data["result"], safe=False)
+    return JsonResponse({'names': names, 'error': error})
+
+
+def _get_datasets(url, key, offset):
+    datasets = []
+    names = []
+    left = False
+    error = None
+
+    url += "?start="+str(offset)
+
+    headers = {}
+    if key is not None:
+        headers = {'Authorization': key.code}
+        url += "&include_private=True"
+
+    text_data = requests.request("GET", url, headers=headers).text
+    json_data = json.loads(text_data)
+    if 'success' not in json_data or not bool(json_data["success"]):
+        error = "Could not get datasets: "+text_data
+
+    if error is None:
+        if "result" in json_data and "results" in json_data["result"]:
+            datasets = json_data["result"]["results"]
+            for dataset in json_data["result"]["results"]:
+                names.append(dataset["name"])
+        else:
+            error = "Could not get datasets: No results"
+
+    if error is None:
+        left = (int(json_data["result"]["count"]) - offset + len(names)) > 0
+
+    return (names, datasets, left, error)
 
 
 @login_required
@@ -332,17 +373,7 @@ def get_dataset_info(request):
     if dataset_index >= len(datasets) or dataset_index < 0:
         return JsonResponse({'error': 'Bad dataset index provided'})
 
-    dataset = datasets[dataset_index]
-
-    url = settings.DATACATALOGUE_URL + \
-        "/api/rest/dataset/" + dataset
-
-    text_data = requests.request("GET", url).text
-    if text_data == "Not found":
-        return JsonResponse(None)  # TODO(emepetres) manage errors
-
-    json_data = json.loads(text_data)
-    return JsonResponse(json_data, safe=False)
+    return JsonResponse(datasets[dataset_index], safe=False)
 
 
 @login_required
@@ -395,7 +426,7 @@ def create_deployment(request):
                 # the dataset input has no configuration
                 tosca_inputs[_input] = ""
                 continue
-            dataset = _get_dataset(datasets[dataset_index])
+            dataset = datasets[dataset_index]
             if 'error' in dataset:
                 return JsonResponse(dataset)
 
@@ -520,26 +551,3 @@ def destroy_deployment(request):
             request.session.pop('uninstall_execution')
         request.session.modified = True
     return JsonResponse(response)
-
-
-def _get_dataset(dataset_name):
-    url = settings.DATACATALOGUE_URL + \
-        "/api/3/action/package_search?q=" + \
-        dataset_name
-
-    text_data = requests.request("GET", url).text
-    json_data = json.loads(text_data)
-    if not json_data["success"]:
-        return {'error': json_data['result']}
-
-    response = json_data["result"]
-    if response["count"] <= 0:
-        return {'error': "No data found"}
-    # elif response["count"] == 1:
-    #    return response["results"][0]
-    else:
-        for dataset in response["results"]:
-            if dataset["name"] == dataset_name:
-                return dataset
-
-    return {'error': "No dataset match"}

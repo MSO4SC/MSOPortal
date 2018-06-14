@@ -244,16 +244,16 @@ class HPCInfrastructure(models.Model):
             self.owner.username,
             self.user)
 
-    # def to_dict(self):
-    #     return {
-    #         'credentials': {
-    #             'host': self.host,
-    #             'user': self.user,
-    #             'password': self.password,
-    #         },
-    #         'country_tz': self.time_zone,
-    #         'workload_manager': self.manager
-    #     }
+    def to_dict(self):
+        return {
+            'credentials': {
+                'host': self.host,
+                'user': self.user,
+                'password': self.password,
+            },
+            'country_tz': self.time_zone,
+            'workload_manager': self.manager
+        }
 
 
 def _get_client():
