@@ -1093,6 +1093,9 @@ $("#upload").find("button").on('click', function (event) {
                     message = "Couldn't register the app: ";
                     message += jqXHR.status+": "+errorThrown
                     appendNotification(message, error=true);
+                },
+                complete: function() {
+                    renderStockData("#product_selector");
                 }
             });
         }
@@ -1166,6 +1169,9 @@ $("#deploy_form").find("button").on('click', function (event) {
             message = "Couldn't create the instance: ";
             message += jqXHR.status+": "+errorThrown
             appendNotification(message, error=true);
+        },
+        complete: function() {
+            $("#application_inputs").empty()
         }
     });
 });
@@ -1228,6 +1234,7 @@ $("#destroy-instance-button").on('click', function (event) {
     event.preventDefault();
     executeDeployment("#destroy_deployment_selector",
                       "destroy");
+    renderDeploymentData("#destroy_deployment_selector");
 });
 
 $("#force-destroy-instance-button").on('click', function (event) {
@@ -1266,6 +1273,9 @@ $("#remove").find("button").on('click', function (event) {
             message = "Couldn't remove the app: ";
             message += jqXHR.status+": "+errorThrown
             appendNotification(message, error=true);
+        },
+        complete: function() {
+            renderApplicationData("#remove_application_selector", only_owned=true);
         }
     });
 });
