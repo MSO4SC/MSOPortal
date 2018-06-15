@@ -93,6 +93,10 @@ $.ajaxSetup({
     }
 });
 
+function redirect(url) {
+    window.location(url);
+}
+
 $log_timeout = null;
 function openExperimentsTool(evt, toolName) {
     // Declare all variables
@@ -172,7 +176,9 @@ function renderStockData(selector_id) {
         },
         success: function (products) {
             $(".loader").hide();
-            if (products.length > 0) {
+            if (products.redirect!==undefined && products.redirect!==null) {
+                redirect(data.redirect);
+            } else if (products.length > 0) {
                 $.each(products, function (index, product) {
                     product_selector.append(
                         $(document.createElement('option'))
@@ -218,7 +224,9 @@ function renderApplicationData(selector_id, only_owned=false) {
         success: function (data) {
             $(".loader").hide();
             application_selector.empty();
-            if (data.error!==undefined && data.error!==null) {
+            if (data.redirect!==undefined && data.redirect!==null) {
+                redirect(data.redirect);
+            } else if (data.error!==undefined && data.error!==null) {
                 appendNotification("Couldn't read applications: "+data.error, error=true);
                 application_selector.append(
                     $(document.createElement('option')).attr("value", "-1").text("Error")
@@ -274,7 +282,9 @@ function renderApplicationInputs(selector_id, container_id) {
             },
             success: function (data) {
                 $(".loader").hide();
-                if (data.error!==undefined && data.error!==null) {
+                if (data.redirect!==undefined && data.redirect!==null) {
+                    redirect(data.redirect);
+                } else if (data.error!==undefined && data.error!==null) {
                     appendNotification("Couldn't read the inputs: "+data.error, error=true);
                 } else if (data.inputs.length > 0) {
                     data.inputs.sort(function(a, b){
@@ -501,7 +511,9 @@ function renderHPCData(container_id, select=true, clear_notifications=true) {
         },
         success: function (data) {
             $(".loader").hide();
-            if (data.error!==undefined && data.error!==null) {
+            if (data.redirect!==undefined && data.redirect!==null) {
+                redirect(data.redirect);
+            } else if (data.error!==undefined && data.error!==null) {
                 message = "Couldn't get hpc list: "+data.error;
                 appendNotification(message, error=true);
             } else {
@@ -604,7 +616,9 @@ function setHPCEditButtonsHandler(button_id, pk, refresh_function) {
             },
             success: function (data) {
                 $(".loader").hide();
-                if (data.error!==undefined && data.error!==null) {
+                if (data.redirect!==undefined && data.redirect!==null) {
+                    redirect(data.redirect);
+                } else if (data.error!==undefined && data.error!==null) {
                     appendNotification("Couldn't delete the hpc: "+data.error, error=true);
                 } else {
                     appendNotification("HPC "+data.hpc.name+" removed.");
@@ -675,7 +689,9 @@ function renderDatasetChoices(selector_id, container_id, group_name){
             },
             success: function (data) {
                 $(".loader").hide();
-                if (data.error!==undefined) {
+                if (data.redirect!==undefined && data.redirect!==null) {
+                    redirect(data.redirect);
+                } else if (data.error!==undefined) {
                     appendNotification("Couldn't read the dataset info: "+data.error, error=true);
                 } else if (data.num_resources > 0) {
                     $(data.resources).each(function (index, resource) {
@@ -732,7 +748,9 @@ function renderDeploymentData(selector_id, workflow, execution_selector_id, log_
         },
         success: function (data) {
             $(".loader").hide();
-            if (data.error!==undefined && data.error!==null) {
+            if (data.redirect!==undefined && data.redirect!==null) {
+                redirect(data.redirect);
+            } else if (data.error!==undefined && data.error!==null) {
                 appendNotification("Couldn't read the instances: "+data.error, error=true);
             } else {
                 deployment_selector.empty();
@@ -797,7 +815,9 @@ function _renderExecutionData(instance, workflow, execution_selector_id, log_id)
         },
         success: function (data) {
             $(".loader").hide();
-            if (data.error!==undefined && data.error!==null) {
+            if (data.redirect!==undefined && data.redirect!==null) {
+                redirect(data.redirect);
+            } else if (data.error!==undefined && data.error!==null) {
                 appendNotification("Couldn't read the instances: "+data.error, error=true);
             } else {
                 execution_selector.empty();
@@ -858,7 +878,9 @@ function renderLogData(exec_id, log_id, reset=false) {
             'reset': reset
         },
         success: function (data) {
-            if (data.error!==undefined && data.error!==null) {
+            if (data.redirect!==undefined && data.redirect!==null) {
+                redirect(data.redirect);
+            } else if (data.error!==undefined && data.error!==null) {
                 appendNotification("Couldn't monitor the operation: "+data.error, error=true);
             } else {
                 if (data.events !== undefined && data.events.logs !== undefined) {
@@ -921,7 +943,9 @@ function executeDeployment(selector_id, workflow, execution_selector_id, log_id 
         },
         success: function (data) {
             $(".loader").hide();
-            if (data.error!==undefined && data.error!==null) {
+            if (data.redirect!==undefined && data.redirect!==null) {
+                redirect(data.redirect);
+            } else if (data.error!==undefined && data.error!==null) {
                 appendNotification("Execution error: "+data.error, error=true);
             } else {
                 if (execution_selector_id && log_id) {
@@ -991,7 +1015,9 @@ $("#add_hpc").find("button").on('click', function (event) {
             },
             success: function (data) {
                 $(".loader").hide();
-                if (data.error!==undefined && data.error!==null) {
+                if (data.redirect!==undefined && data.redirect!==null) {
+                    redirect(data.redirect);
+                } else if (data.error!==undefined && data.error!==null) {
                     appendNotification("Couldn't add the HPC: "+data.error, error=true);
                 } else {
                     appendNotification("HPC "+data.hpc.name+" added.");
@@ -1054,7 +1080,9 @@ $("#upload").find("button").on('click', function (event) {
                 },
                 success: function (data) {
                     $(".loader").hide();
-                    if (data.error!==undefined && data.error!==null) {
+                    if (data.redirect!==undefined && data.redirect!==null) {
+                        redirect(data.redirect);
+                    } else if (data.error!==undefined && data.error!==null) {
                         appendNotification("Couldn't register the app: "+data.error, error=true);
                     } else {
                         appendNotification("App "+data.app.name+" registered.");
@@ -1125,7 +1153,9 @@ $("#deploy_form").find("button").on('click', function (event) {
         },
         success: function (data) {
             $(".loader").hide();
-            if (data.error!==undefined && data.error!==null) {
+            if (data.redirect!==undefined && data.redirect!==null) {
+                redirect(data.redirect);
+            } else if (data.error!==undefined && data.error!==null) {
                 appendNotification("Couldn't create the instance: "+data.error, error=true);
             } else {
                 appendNotification("App instance "+data.instance.name+" created.");
@@ -1223,7 +1253,9 @@ $("#remove").find("button").on('click', function (event) {
         },
         success: function (data) {
             $(".loader").hide();
-            if (data.error!==undefined && data.error!==null) {
+            if (data.redirect!==undefined && data.redirect!==null) {
+                redirect(data.redirect);
+            } else if (data.error!==undefined && data.error!==null) {
                 appendNotification("Couldn't remove the app: "+data.error, error=true);
             } else {
                 appendNotification("App "+data.app.name+" removed.");

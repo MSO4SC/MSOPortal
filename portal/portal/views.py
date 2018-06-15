@@ -17,10 +17,9 @@ logger = logging.getLogger(__name__)
 
 def index(request):
     if request.user.is_authenticated:
-        response = sso.utils.get_token(request)
-        if sso.utils.token_need_to_redirect(response):
-            return response
-        access_token = response
+        access_token = sso.utils.get_token(request)
+        if not access_token:
+            return redirect('/oauth/login/fiware?next=/', permanent=True)
 
         user = request.user
         social_user = sso.utils.get_social_user(user)

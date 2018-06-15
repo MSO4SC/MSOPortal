@@ -91,6 +91,8 @@ def delete_hpc(request):
 @token_required
 def get_new_stock(request, *args, **kwargs):
     access_token = kwargs['token']
+    if not access_token:
+        return JsonResponse({'redirect': kwargs['url']+'/experimentstool/'})
     uid = sso.utils.get_uid(request.user)
 
     stock_data = _get_stock(access_token, uid)
@@ -125,6 +127,8 @@ def get_new_stock(request, *args, **kwargs):
 @token_required
 def load_owned_applications(request, *args, **kwargs):
     access_token = kwargs['token']
+    if not access_token:
+        return JsonResponse({'redirect': kwargs['url']+'/experimentstool/'})
     uid = sso.utils.get_uid(request.user)
 
     stock_data = _get_stock(access_token, uid)
@@ -143,6 +147,8 @@ def load_owned_applications(request, *args, **kwargs):
 @token_required
 def load_applications(request, *args, **kwargs):
     access_token = kwargs['token']
+    if not access_token:
+        return JsonResponse({'redirect': kwargs['url']+'/experimentstool/'})
     uid = sso.utils.get_uid(request.user)
 
     stock_data = _get_stock(access_token, uid)
