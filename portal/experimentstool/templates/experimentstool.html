@@ -716,6 +716,7 @@ function renderDeploymentData(selector_id, workflow, execution_selector_id, log_
     var execution_selector = $(execution_selector_id).find("select")
     deployment_selector.empty();
     execution_selector.empty();
+    resetLogBox(log_id);
     deployment_selector.append(
         $(document.createElement('option')).attr("value", "-1").text("Loading..")
     );
@@ -741,10 +742,10 @@ function renderDeploymentData(selector_id, workflow, execution_selector_id, log_
                             $(document.createElement('option')).attr("value", deployment.id).text(deployment.name)
                         )
                     });
-                    renderExecutionData(deployment_selector.val(),
-                                        workflow,
-                                        execution_selector_id,
-                                        log_id);
+                    _renderExecutionData(deployment_selector.val(),
+                                         workflow,
+                                         execution_selector_id,
+                                         log_id);
                 } else {
                     deployment_selector.append(
                         $(document.createElement('option')).attr("value", "-1").text("No instances found")
@@ -765,13 +766,25 @@ function renderDeploymentData(selector_id, workflow, execution_selector_id, log_
     });
 }
 
-function renderExecutionData(instance, workflow, execution_selector_id, log_id) {
+function resetLogBox(log_id) {
+    $(log_id+"_light").attr("src", "/static/experimentstool/img/light_grey.png");
+    $(log_id).find("textarea").val('');
+}
+
+function renderExecutionData(selector_id, workflow, execution_selector_id, log_id) {
+    var deployment_selector = $(selector_id).find("select")
+    _renderExecutionData(deployment_selector.val(),
+                         workflow,
+                         execution_selector_id,
+                         log_id)
+}
+function _renderExecutionData(instance, workflow, execution_selector_id, log_id) {
     var execution_selector = $(execution_selector_id).find("select")
     execution_selector.empty();
     execution_selector.append(
         $(document.createElement('option')).attr("value", "-1").text("Loading..")
     );
-
+    resetLogBox(log_id);
     $.ajax({
         url: '/experimentstool/_get_executions',
         data: {
@@ -1125,6 +1138,27 @@ $("#deploy_form").find("button").on('click', function (event) {
             appendNotification(message, error=true);
         }
     });
+});
+
+$("#install_deployment_selector").find("select").on('change', function () {
+    renderExecutionData("#install_deployment_selector",
+                        "install",
+                        "#install_execution_selector",
+                        "#install_deployment_log");
+});
+
+$("#run_deployment_selector").find("select").on('change', function () {
+    renderExecutionData("#run_deployment_selector",
+                        "run_jobs",
+                        "#run_execution_selector",
+                        "#run_deployment_log");
+});
+
+$("#uninstall_deployment_selector").find("select").on('change', function () {
+    renderExecutionData("#uninstall_deployment_selector",
+                        "uninstall",
+                        "#uninstall_execution_selector",
+                        "#uninstall_deployment_log");
 });
 
 $("#install").find("button").on('click', function (event) {
