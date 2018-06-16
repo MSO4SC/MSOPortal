@@ -97,6 +97,34 @@ function redirect(url) {
     window.location.replace(url);
 }
 
+function cleanNotifications() {
+    $("#experiments_notification_container").empty();
+}
+
+function appendNotification(message, error = false) {
+    var _title = "Success"
+    var _class = "dialog_success";
+    if (error) {
+        _title = "Error"
+        _class = "dialog_failure";
+    }
+
+    message_box = $(document.createElement('div')).text(message)
+
+    $("#experiments_notification_container").append(message_box)
+
+    message_box.dialog({
+        title: _title,
+        dialogClass: _class,
+        height: 100,
+        position: {
+          my: "center",
+          at: "center"
+        },
+        clickOutside: true
+    })
+}
+
 $log_timeout = null;
 function openExperimentsTool(evt, toolName) {
     // Declare all variables
@@ -177,7 +205,7 @@ function renderStockData(selector_id) {
         success: function (products) {
             $(".loader").hide();
             if (products.redirect!==undefined && products.redirect!==null) {
-                redirect(data.redirect);
+                redirect(products.redirect);
             } else if (products.length > 0) {
                 $.each(products, function (index, product) {
                     product_selector.append(
@@ -970,23 +998,6 @@ function executeDeployment(selector_id, workflow, execution_selector_id, log_id 
         }
     });
 };
-
-function cleanNotifications() {
-    $("#experiments_notification_container").empty();
-}
-
-function appendNotification(message, error = false) {
-    note_class = "note note_success";
-    if (error) {
-        note_class = "note note_failure";
-    }
-
-    $("#experiments_notification_container").append(
-        $(document.createElement('div')).attr({
-            class: note_class
-        }).text(message)
-    )
-}
 
 $("#add_hpc").find("button").on('click', function (event) {
     event.preventDefault();

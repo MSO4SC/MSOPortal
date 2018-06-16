@@ -100,6 +100,14 @@ div.tab button.active {
 
 /********************************************************/
 
+.dialog_success>.ui-dialog-titlebar {
+    background-color: #bcffb6;
+}
+
+.dialog_failure>.ui-dialog-titlebar {
+    background-color: #ffa7a4;
+}
+
 div.hpc_settings_block {
     padding: 5px;
 }
@@ -114,21 +122,6 @@ span.hpc_label_name {
 
 div#experiments_notification_container {
     clear: both;
-}
-
-div.note {
-    margin: 2px;
-    text-align: center;
-    border-style: solid;
-    border-radius: 5px;
-}
-
-div.note_success {
-    border-color: green;
-}
-
-div.note_failure {
-    border-color: red;
 }
 
 .light_status {

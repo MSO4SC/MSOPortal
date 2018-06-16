@@ -158,7 +158,6 @@ function renderRDIEditButtons(button_id, pk, refresh_function) {
                 if (data.error!==undefined) {
                     appendNotification("Couldn't delete the remote desktop infrastructure: "+data.error, error=true);
                 } else {
-                    console.log(data)
                     appendNotification("Remote desktop infrastructure "+data.rdi.name+" removed.");
                 }
             },
@@ -177,16 +176,27 @@ function cleanNotifications() {
 }
 
 function appendNotification(message, error = false) {
-    note_class = "note note_success";
+    var _title = "Success"
+    var _class = "dialog_success";
     if (error) {
-        note_class = "note note_failure";
+        _title = "Error"
+        _class = "dialog_failure";
     }
 
-    $("#remotedesktops_notification_container").append(
-        $(document.createElement('div')).attr({
-            class: note_class
-        }).text(message)
-    )
+    message_box = $(document.createElement('div')).text(message)
+
+    $("#experiments_notification_container").append(message_box)
+
+    message_box.dialog({
+        title: _title,
+        dialogClass: _class,
+        height: 100,
+        position: {
+          my: "center",
+          at: "center"
+        },
+        clickOutside: true
+    })
 }
 
 $("#add_rdi").find("button").on('click', function (event) {
