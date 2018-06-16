@@ -30,6 +30,63 @@
 
 {% block javascript %}
 <script>
+
+function getCookie(name) {
+    var cookieValue = null;
+    if (document.cookie && document.cookie != '') {
+        var cookies = document.cookie.split(';');
+        for (var i = 0; i < cookies.length; i++) {
+            var cookie = jQuery.trim(cookies[i]);
+            // Does this cookie string begin with the name we want?
+            if (cookie.substring(0, name.length + 1) == (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+}
+
+$.ajaxSetup({
+    beforeSend: function(xhr, settings) {
+        if (!(/^http:.*/.test(settings.url) || /^https:.*/.test(settings.url))) {
+            // Only send the token to relative URLs i.e. locally.
+            xhr.setRequestHeader("X-CSRFToken", getCookie('csrftoken'));
+        }
+    }
+});
+
+function redirect(url) {
+    window.location.replace(url);
+}
+
+function cleanNotifications() {
+    $("#experiments_notification_container").empty();
+}
+
+function appendNotification(message, error = false) {
+    var _title = "Success"
+    var _class = "dialog_success";
+    if (error) {
+        _title = "Error"
+        _class = "dialog_failure";
+    }
+
+    message_box = $(document.createElement('div')).text(message)
+
+    $("#experiments_notification_container").append(message_box)
+
+    message_box.dialog({
+        title: _title,
+        dialogClass: _class,
+        position: {
+            my: "center",
+            at: "center"
+        },
+        clickOutside: true
+    })
+}
+
 $log_timeout = null;
 function openRemoteDesktopsTool(evt, toolName) {
     // Declare all variables
@@ -58,6 +115,7 @@ function openRemoteDesktopsTool(evt, toolName) {
     switch(toolName) {
         case "desktops":
             renderRDIData("#rdi_selector");
+            $("#rd_list").empty();
             break;
         case "settings":
             renderRDIData("#infrastructure_list", select=false);
@@ -85,66 +143,118 @@ function renderRDIData(container_id, select=true, clear_notifications=true) {
 
     $.ajax({
         url: '/visualization/_get_rdi_list',
-        success: function (response) {
-            var rdi_list = response;
-            if (rdi_list.length > 0) {
-                if (select) {
-                    rdi_container.empty();
-                    rdi_container.append(
-                        $(document.createElement('option')).attr("value", "-1").text("None")
-                    );
-                }
-                var rdi_list =$.parseJSON(response);
-                $.each(rdi_list, function (index, rdi) {
+        beforeSend: function (xhr, settings) {
+            $.ajaxSettings.beforeSend(xhr, settings);
+            $(".loader").show();
+        },
+        success: function (data) {
+            $(".loader").hide();
+            if (data.redirect!==undefined && data.redirect!==null) {
+                redirect(data.redirect);
+            } else if (data.error!==undefined && data.error!==null) {
+                message = "Couldn't get rdi list: "+data.error;
+                appendNotification(message, error=true);
+            } else {
+                var rdi_list = data.rdi_list;
+                if (rdi_list.length > 0) {
                     if (select) {
+                        rdi_container.empty();
                         rdi_container.append(
                             $(document.createElement('option'))
-                                .attr("value", rdi.pk)
-                                .text(rdi.fields.name)
-                        )
-                    } else {
-                        rdi_container.append(
-                            $(document.createElement('div')).
-                                attr("id", "rdi_"+rdi.pk).
-                                text(rdi.fields.name).append(
-                                    $(document.createElement('button')).
-                                        attr("id", "del_rdi_"+rdi.pk).
-                                        text('Delete')
-                                )
-                        );
-                        renderRDIEditButtons(
-                            "#del_rdi_"+rdi.pk,
-                            rdi.pk,
-                            refresh_function = function() {
-                                renderRDIData(container_id,
-                                                 select=false,
-                                                 clear_notifications=false); 
-                            }
+                                .attr("value", "-1")
+                                .text("None")
                         );
                     }
-                });
-            } else {
-                if (select) {
-                    rdi_container.empty();
-                    rdi_container.append(
-                        $(document.createElement('option')).attr("value", "-1").text("No remote desktop infrastructures found")
-                    );
+                    $.each(rdi_list, function (index, rdi) {
+                        if (select) {
+                            rdi_container.append(
+                                $(document.createElement('option'))
+                                    .attr("value", rdi.id)
+                                    .text(rdi.name)
+                            )
+                        } else {
+                            rdi_container.append(
+                                $(document.createElement('div')).
+                                    attr("id", "rdi_block_"+rdi.id).
+                                    attr("class", "margin rdi_settings_block").
+                                    append(
+                                        $(document.createElement('div')).
+                                            attr("class", "s-12 m-6 l-6").
+                                            append(
+                                                $(document.createElement('div')).
+                                                    attr("class", "l-9 left").
+                                                    append(
+                                                        $(document.createElement('div')).append(
+                                                            $(document.createElement('span')).attr("class", "rdi_label rdi_label_name").text('Name: '),
+                                                            $(document.createElement('span')).text(rdi.name),
+                                                        ),
+                                                        $(document.createElement('div')).append(
+                                                            $(document.createElement('span')).attr("class", "rdi_label").text('Host: '),
+                                                            $(document.createElement('span')).text(rdi.host),
+                                                        ),
+                                                        $(document.createElement('div')).append(
+                                                            $(document.createElement('span')).attr("class", "rdi_label").text('User: '),
+                                                            $(document.createElement('span')).text(rdi.user),
+                                                        ),
+                                                        $(document.createElement('div')).append(
+                                                            $(document.createElement('span')).attr("class", "rdi_label").text('Tool: '),
+                                                            $(document.createElement('span')).text("noVNC"),
+                                                        ),
+                                                        $(document.createElement('div')).append(
+                                                            $(document.createElement('span')).attr("class", "rdi_label").text('List CMD: '),
+                                                            $(document.createElement('span')).text(rdi.list_cmd),
+                                                        ),
+                                                        $(document.createElement('div')).append(
+                                                            $(document.createElement('span')).attr("class", "rdi_label").text('Create CMD: '),
+                                                            $(document.createElement('span')).text(rdi.create_cmd),
+                                                        )
+                                                    )
+                                                ,
+                                                $(document.createElement('div')).
+                                                    attr("class", "l-3 right").
+                                                    append(
+                                                        $(document.createElement('button')).
+                                                            attr("id", "del_rdi_"+rdi.id).
+                                                            text('Delete')
+                                                    )
+                                            )
+                                    )
+                            );
+                            setRDIEditButtonsHandler(
+                                "#del_rdi_"+rdi.id,
+                                rdi.id,
+                                refresh_function = function() {
+                                    renderRDIData(container_id,
+                                                  select=false,
+                                                  clear_notifications=false); 
+                                }
+                            );
+                        }
+                    });
                 } else {
-                    rdi_container.append(
-                        $(document.createElement('div')).attr("id", "no_rdi_list").text("No remote desktop infrastructures found")
-                    )
+                    if (select) {
+                        rdi_container.empty();
+                        rdi_container.append(
+                            $(document.createElement('option')).attr("value", "-1").text("No remote desktop infrastructures found")
+                        );
+                    } else {
+                        rdi_container.append(
+                            $(document.createElement('div')).attr("id", "no_rdi_list").text("No remote desktop infrastructures found")
+                        )
+                    }
                 }
             }
         },
         error: function (jqXHR, status, errorThrown) {
+            $(".loader").hide();
             message = "Couldn't get remote desktop infrastructure list: ";
-            message += jqXHR.status+": "+errorThrown+": "+jqXHR.responseText
+            message += jqXHR.status+": "+errorThrown
             appendNotification(message, error=true);
         }
     });
 }
 
-function renderRDIEditButtons(button_id, pk, refresh_function) {
+function setRDIEditButtonsHandler(button_id, pk, refresh_function) {
     $(button_id).on('click', function (event) {
         event.preventDefault();
         $.ajax({
@@ -154,49 +264,29 @@ function renderRDIEditButtons(button_id, pk, refresh_function) {
                 'pk': pk
             },
             dataType: 'json',
+            beforeSend: function (xhr, settings) {
+                $.ajaxSettings.beforeSend(xhr, settings);
+                $(".loader").show();
+            },
             success: function (data) {
-                if (data.error!==undefined) {
+                $(".loader").hide();
+                if (data.redirect!==undefined && data.redirect!==null) {
+                    redirect(data.redirect);
+                } else if (data.error!==undefined && data.error!==null) {
                     appendNotification("Couldn't delete the remote desktop infrastructure: "+data.error, error=true);
                 } else {
                     appendNotification("Remote desktop infrastructure "+data.rdi.name+" removed.");
                 }
             },
             error: function (jqXHR, status, errorThrown) {
+                $(".loader").hide();
                 message = "Couldn't remove the remote desktop infrastructure: ";
-                message += jqXHR.status+": "+errorThrown+": "+jqXHR.responseText
+                message += jqXHR.status+": "+errorThrown
                 appendNotification(message, error=true);
             },
             complete: refresh_function
         });
     });
-}
-
-function cleanNotifications() {
-    $("#remotedesktops_notification_container").empty();
-}
-
-function appendNotification(message, error = false) {
-    var _title = "Success"
-    var _class = "dialog_success";
-    if (error) {
-        _title = "Error"
-        _class = "dialog_failure";
-    }
-
-    message_box = $(document.createElement('div')).text(message)
-
-    $("#experiments_notification_container").append(message_box)
-
-    message_box.dialog({
-        title: _title,
-        dialogClass: _class,
-        height: 100,
-        position: {
-          my: "center",
-          at: "center"
-        },
-        clickOutside: true
-    })
 }
 
 $("#add_rdi").find("button").on('click', function (event) {
@@ -222,8 +312,12 @@ $("#add_rdi").find("button").on('click', function (event) {
                 'create_cmd': create_cmd
             },
             dataType: 'json',
+            beforeSend: function (xhr, settings) {
+                $.ajaxSettings.beforeSend(xhr, settings);
+                $(".loader").show();
+            },
             success: function (data) {
-                if (data.error!==undefined) {
+                if (data.error!==undefined && data.error!==null) {
                     appendNotification("Couldn't add the remote desktop infrastructure: "+data.error, error=true);
                 } else {
                     appendNotification("Remote desktop infrastructure "+data.rdi.name+" added.");
@@ -231,7 +325,7 @@ $("#add_rdi").find("button").on('click', function (event) {
             },
             error: function (jqXHR, status, errorThrown) {
                 message = "Couldn't add the remote desktop infrastructure: ";
-                message += jqXHR.status+": "+errorThrown+": "+jqXHR.responseText
+                message += jqXHR.status+": "+errorThrown
                 appendNotification(message, error=true);
             },
             complete: function() {
@@ -253,14 +347,20 @@ $("#desktops").find("button").on('click', function (event) {
             },
             method: 'POST',
             dataType: 'json',
+            beforeSend: function (xhr, settings) {
+                $.ajaxSettings.beforeSend(xhr, settings);
+                $(".loader").show();
+            },
             success: function (data) {
-                if (data.error!==undefined) {
+                $(".loader").hide();
+                if (data.error!==undefined && data.error!==null) {
                     appendNotification("Couldn't read the desktops: "+data.error, error=true);
                 }
             },
             error: function (jqXHR, status, errorThrown) {
+                $(".loader").hide();
                 message = "Couldn't read the desktops: ";
-                message += jqXHR.status+": "+errorThrown+": "+jqXHR.responseText
+                message += jqXHR.status+": "+errorThrown
                 appendNotification(message, error=true);
             },
             complete: function () {
@@ -287,14 +387,21 @@ function renderRDIDesktops(selector_id, container_id) {
             },
             method: 'POST',
             dataType: 'json',
+            beforeSend: function (xhr, settings) {
+                $.ajaxSettings.beforeSend(xhr, settings);
+                $(".loader").show();
+            },
             success: function (data) {
-                if (data.error!==undefined) {
+                $(".loader").hide();
+                if (data.error!==undefined && data.error!==null) {
                     appendNotification("Couldn't read the desktops: "+data.error, error=true);
                 } else if (data.rd_list.length > 0) {
                     $(data.rd_list).each(function (index, rd) {
+                        console.log("hola!");
+                        console.log(rd);
                         rd_container.append(
                             $(document.createElement('div')).attr({
-                                id: "rd_container_" + rd.name
+                                id: "rd_container_" + index
                             }).append(
                                 $(document.createElement('ul')).append(
                                     $(document.createElement('li')).append(
@@ -320,8 +427,9 @@ function renderRDIDesktops(selector_id, container_id) {
                 }
             },
             error: function (jqXHR, status, errorThrown) {
+                $(".loader").hide();
                 message = "Couldn't read the desktops: ";
-                message += jqXHR.status+": "+errorThrown+": "+jqXHR.responseText
+                message += jqXHR.status+": "+errorThrown
                 appendNotification(message, error=true);
             }
         });

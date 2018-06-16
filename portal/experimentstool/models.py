@@ -1,6 +1,5 @@
 import json
 import time
-import traceback
 import logging
 from urllib.parse import urlparse
 from datetime import datetime
@@ -21,7 +20,7 @@ from cloudify_rest_client.exceptions \
 WAIT_FOR_EXECUTION_SLEEP_INTERVAL = 3
 
 # Get an instance of a logger
-logger = logging.getLogger(__name__)
+LOGGER = logging.getLogger(__name__)
 
 
 def _to_dict(model_instance):
@@ -107,11 +106,8 @@ class HPCInfrastructure(models.Model):
         except cls.DoesNotExist:
             pass
         except Exception as err:
-            logger.exception(err)
+            LOGGER.exception(err)
             error = str(err)
-
-        # if not passwd:
-        #
 
         if not return_dict:
             return (hpc_list, error)
@@ -145,7 +141,7 @@ class HPCInfrastructure(models.Model):
                                      time_zone=tz,
                                      manager=manager)
         except Exception as err:
-            logger.exception(err)
+            LOGGER.exception(err)
             error = str(err)
 
         if not return_dict:
@@ -268,7 +264,7 @@ class Application(models.Model):
                     marketplace_id=marketplace_id,
                     owner=owner)
             except Exception as err:
-                logger.exception(err)
+                LOGGER.exception(err)
                 error = str(err)
                 cls._remove_blueprint(blueprint['id'])
 
@@ -329,7 +325,7 @@ class Application(models.Model):
             else:
                 blueprint = client.blueprints.upload(path, blueprint_id)
         except CloudifyClientError as err:
-            logger.exception(err)
+            LOGGER.exception(err)
             error = str(err)
 
         return (blueprint, error)
@@ -342,7 +338,7 @@ class Application(models.Model):
         try:
             blueprints = client.blueprints.list().items
         except CloudifyClientError as err:
-            logger.exception(err)
+            LOGGER.exception(err)
             error = str(err)
 
         return (blueprints, error)
@@ -361,7 +357,7 @@ class Application(models.Model):
                      'description': input.get('description', '-')}
                     for name, input in inputs.items()]
         except CloudifyClientError as err:
-            logger.exception(err)
+            LOGGER.exception(err)
             error = str(err)
 
         return (data, error)
@@ -374,7 +370,7 @@ class Application(models.Model):
         try:
             blueprint = client.blueprints.delete(app_id)
         except CloudifyClientError as err:
-            logger.exception(err)
+            LOGGER.exception(err)
             error = str(err)
 
         return (blueprint, error)
@@ -462,7 +458,7 @@ class AppInstance(models.Model):
                         separators=(',', ':')),
                     owner=owner)
             except Exception as err:
-                logger.exception(err)
+                LOGGER.exception(err)
                 error = str(err)
                 cls._destroy_deployment(deployment['id'])
 
@@ -517,10 +513,10 @@ class AppInstance(models.Model):
                                                            instance_id,
                                                            inputs,
                                                            retries - 1)
-            logger.exception(err)
+            LOGGER.exception(err)
             error = str(err)
         except CloudifyClientError as err:
-            logger.exception(err)
+            LOGGER.exception(err)
             error = str(err)
 
         return (deployment, error)
@@ -534,7 +530,7 @@ class AppInstance(models.Model):
             deployment = client.deployments.delete(
                 instance_id, ignore_live_nodes=force)
         except CloudifyClientError as err:
-            logger.exception(err)
+            LOGGER.exception(err)
             error = str(err)
 
         return (deployment, error)
@@ -659,7 +655,7 @@ class WorkflowExecution(models.Model):
                     created_on=datetime.now(),
                     owner=owner)
             except Exception as err:
-                logger.exception(err)
+                LOGGER.exception(err)
                 error = str(err)
                 # TODO: cancel execution
 
@@ -687,7 +683,7 @@ class WorkflowExecution(models.Model):
                                                 parameters=params,
                                                 force=force)
         except CloudifyClientError as err:
-            logger.exception(err)
+            LOGGER.exception(err)
             error = str(err)
 
         return (execution, error)

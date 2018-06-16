@@ -116,7 +116,6 @@ function appendNotification(message, error = false) {
     message_box.dialog({
         title: _title,
         dialogClass: _class,
-        height: 100,
         position: {
           my: "center",
           at: "center"
@@ -547,7 +546,6 @@ function renderHPCData(container_id, select=true, clear_notifications=true) {
             } else {
                 var hpc_list = data.hpc_list;
                 if (hpc_list.length > 0) {
-                    //var hpc_list =$.parseJSON(response); 
                     $.each(hpc_list, function (index, hpc) {
                         if (select) {
                             hpc_container.append(

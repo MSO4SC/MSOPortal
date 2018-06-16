@@ -16,15 +16,11 @@ def remotedesktops(request):
 
 @login_required
 def get_rdi_list(request):
-    response = _get_rdi_list(request.user)
-    if response:
-        rdi_list = serializers.serialize(
-            'json',
-            response
-        )
-    else:
-        rdi_list = []
-    return JsonResponse(rdi_list, safe=False)
+    return JsonResponse(
+        RemoteDesktopInfrastructure.list(
+            request.user,
+            return_dict=True),
+        safe=False)
 
 
 @login_required
@@ -56,15 +52,18 @@ def add_rdi(request):
     if not create_cmd or create_cmd == '':
         return JsonResponse({'error': 'No create command provided'})
 
-    return JsonResponse(_add_rdi(name,
-                                 request.user,
-                                 host,
-                                 user,
-                                 password,
-                                 RemoteDesktopInfrastructure.NOVNC,
-                                 list_cmd,
-                                 create_cmd)
-                        )
+    return JsonResponse(
+        RemoteDesktopInfrastructure.create(
+            name,
+            request.user,
+            host,
+            user,
+            password,
+            RemoteDesktopInfrastructure.NOVNC,
+            list_cmd,
+            create_cmd,
+            return_dict=True)
+    )
 
 
 @login_required
@@ -75,7 +74,11 @@ def delete_rdi(request):
         return JsonResponse({'error':
                              'No remote desktop infrastructure provided'})
 
-    return JsonResponse(_delete_rdi(request.user, pk))
+    return JsonResponse(
+        RemoteDesktopInfrastructure.remove(
+            pk,
+            request.user,
+            return_dict=True))
 
 
 @login_required
@@ -104,40 +107,6 @@ def add_rd(request):
                                 rdi.password,
                                 rdi.create_cmd),
                         safe=False)
-
-
-def _get_rdi_list(user):
-    try:
-        rdi_list = RemoteDesktopInfrastructure.objects.filter(
-            owner=user)
-    except RemoteDesktopInfrastructure.DoesNotExist:
-        rdi_list = []
-    return rdi_list
-
-
-def _add_rdi(name, owner, host, user, password, tool, list_cmd, create_cmd):
-    rdi = RemoteDesktopInfrastructure.objects.create(name=name,
-                                                     owner=owner,
-                                                     host=host,
-                                                     user=user,
-                                                     password=password,
-                                                     rd_tool=tool,
-                                                     list_cmd=list_cmd,
-                                                     create_cmd=create_cmd)
-    return {'rdi': model_to_dict(rdi)}
-
-
-def _delete_rdi(owner, pk):
-    rdi = _get_remote_desktop_infrastructure(pk)
-    if not rdi:
-        return {'error': 'Remote desktop infrastructure does not exists'}
-
-    if (owner == rdi.owner):
-        rdi.delete()
-        return {'rdi': model_to_dict(rdi)}
-    else:
-        return {'error': 'Remote desktop infrastructure does not' +
-                ' belong to user'}
 
 
 def _get_remote_desktop_infrastructure(pk):
