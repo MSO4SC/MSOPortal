@@ -93,6 +93,37 @@ $.ajaxSetup({
     }
 });
 
+function redirect(url) {
+    window.location.replace(url);
+}
+
+function cleanNotifications() {
+    $("#experiments_notification_container").empty();
+}
+
+function appendNotification(message, error = false) {
+    var _title = "Success"
+    var _class = "dialog_success";
+    if (error) {
+        _title = "Error"
+        _class = "dialog_failure";
+    }
+
+    message_box = $(document.createElement('div')).text(message)
+
+    $("#experiments_notification_container").append(message_box)
+
+    message_box.dialog({
+        title: _title,
+        dialogClass: _class,
+        position: {
+          my: "center",
+          at: "center"
+        },
+        clickOutside: true
+    })
+}
+
 $log_timeout = null;
 function openExperimentsTool(evt, toolName) {
     // Declare all variables
@@ -173,7 +204,9 @@ function renderStockData(selector_id) {
         },
         success: function (products) {
             $(".loader").hide();
-            if (products.length > 0) {
+            if (products.redirect!==undefined && products.redirect!==null) {
+                redirect(products.redirect);
+            } else if (products.length > 0) {
                 $.each(products, function (index, product) {
                     product_selector.append(
                         $(document.createElement('option'))
@@ -219,7 +252,9 @@ function renderApplicationData(selector_id, only_owned=false) {
         success: function (data) {
             $(".loader").hide();
             application_selector.empty();
-            if (data.error!==undefined && data.error!==null) {
+            if (data.redirect!==undefined && data.redirect!==null) {
+                redirect(data.redirect);
+            } else if (data.error!==undefined && data.error!==null) {
                 appendNotification("Couldn't read applications: "+data.error, error=true);
                 application_selector.append(
                     $(document.createElement('option')).attr("value", "-1").text("Error")
@@ -275,7 +310,9 @@ function renderApplicationInputs(selector_id, container_id) {
             },
             success: function (data) {
                 $(".loader").hide();
-                if (data.error!==undefined && data.error!==null) {
+                if (data.redirect!==undefined && data.redirect!==null) {
+                    redirect(data.redirect);
+                } else if (data.error!==undefined && data.error!==null) {
                     appendNotification("Couldn't read the inputs: "+data.error, error=true);
                 } else if (data.inputs.length > 0) {
                     data.inputs.sort(function(a, b){
@@ -299,9 +336,12 @@ function renderApplicationInputs(selector_id, container_id) {
                                     }).text('HPC: '+input.name.slice(11)),
                                     $(document.createElement('select')).attr({
                                         id: "input_" + input.name,
-                                        name: input.name
+                                        name: input.name,
+                                        title: input.description
                                     }).append(
-                                        $(document.createElement('option')).attr("value", -1).text("None")
+                                        $(document.createElement('option'))
+                                            .attr("value", -1)
+                                            .text("None")
                                     )
                                 )
                             );
@@ -321,7 +361,8 @@ function renderApplicationInputs(selector_id, container_id) {
                                     }).text('Dataset resource: '+input.name.slice(15)),
                                     $(document.createElement('select')).attr({
                                         id: "input_" + input.name,
-                                        name: input.name
+                                        name: input.name,
+                                        title: input.description
                                     }).append(
                                         $(document.createElement('option')).attr("value", -1).text("None")
                                     ),
@@ -352,7 +393,7 @@ function renderApplicationInputs(selector_id, container_id) {
                     });
                 } else {
                     inputs_container.append(
-                        $(document.createElement('label')).text("No input found")
+                        $(document.createElement('label')).text("No inputs found")
                     );
                 }
             },
@@ -377,7 +418,8 @@ function inputToForm(input) {
                 id: "input_" + input.name,
                 value: input.default,
                 type: 'text',
-                name: input.name
+                name: input.name,
+                title: input.description
             })
         ]
     } else if (input.type === "integer") {
@@ -390,7 +432,8 @@ function inputToForm(input) {
                 id: "integer_input_" + input.name,
                 value: input.default,
                 type: 'text',
-                name: input.name
+                name: input.name,
+                title: input.description
             })
         ]
     } else if (input.type === "boolean") {
@@ -400,27 +443,31 @@ function inputToForm(input) {
                 name: input.name,
                 value: 1,
                 type: 'radio',
-                checked: "checked"
-            });
-            false_doc = $(document.createElement('input')).attr({
-                id: "boolean_input_" + input.name + '_false',
-                name: input.name,
-                value: 0,
-                type: 'radio'
-            });
-        } else {
-            true_doc = $(document.createElement('input')).attr({
-                id: "boolean_input_" + input.name + '_true',
-                name: input.name,
-                value: 1,
-                type: 'radio'
+                checked: "checked",
+                title: input.description
             });
             false_doc = $(document.createElement('input')).attr({
                 id: "boolean_input_" + input.name + '_false',
                 name: input.name,
                 value: 0,
                 type: 'radio',
-                checked: "checked"
+                title: input.description
+            });
+        } else {
+            true_doc = $(document.createElement('input')).attr({
+                id: "boolean_input_" + input.name + '_true',
+                name: input.name,
+                value: 1,
+                type: 'radio',
+                title: input.description
+            });
+            false_doc = $(document.createElement('input')).attr({
+                id: "boolean_input_" + input.name + '_false',
+                name: input.name,
+                value: 0,
+                type: 'radio',
+                checked: "checked",
+                title: input.description
             });
         }
         return [
@@ -432,11 +479,13 @@ function inputToForm(input) {
                     id: "boolean_input_" + input.name
                 }).append(
                     $(document.createElement('label')).attr({
-                        for: "boolean_input_" + input.name + '_true'
+                        for: "boolean_input_" + input.name + '_true',
+                        title: input.description
                     }).text("True"),
                     true_doc,
                     $(document.createElement('label')).attr({
                         for: "boolean_input_" + input.name + '_false',
+                        title: input.description
                     }).text("False"),
                     false_doc
                 )
@@ -451,7 +500,8 @@ function inputToForm(input) {
                 id: "array_input_" + input.name,
                 value: input.default,
                 type: 'text',
-                name: input.name
+                name: input.name,
+                title: input.description
             })
         ]
     } else if (jQuery.type(input.default)=="object") {
@@ -464,7 +514,8 @@ function inputToForm(input) {
                 id: "dict_input_" + input.name,
                 value: JSON.stringify(input.default),
                 type: 'text',
-                name: input.name
+                name: input.name,
+                title: input.description
             })
         ]
     } else {
@@ -477,7 +528,8 @@ function inputToForm(input) {
                 id: "input_" + input.name,
                 value: input.default,
                 type: 'text',
-                name: input.name
+                name: input.name,
+                title: input.description
             })
         ]
     }
@@ -527,13 +579,14 @@ function renderHPCData(container_id, select=true, clear_notifications=true) {
         },
         success: function (data) {
             $(".loader").hide();
-            if (data.error!==undefined && data.error!==null) {
+            if (data.redirect!==undefined && data.redirect!==null) {
+                redirect(data.redirect);
+            } else if (data.error!==undefined && data.error!==null) {
                 message = "Couldn't get hpc list: "+data.error;
                 appendNotification(message, error=true);
             } else {
                 var hpc_list = data.hpc_list;
                 if (hpc_list.length > 0) {
-                    //var hpc_list =$.parseJSON(response); 
                     $.each(hpc_list, function (index, hpc) {
                         if (select) {
                             hpc_container.append(
@@ -630,7 +683,9 @@ function setHPCEditButtonsHandler(button_id, pk, refresh_function) {
             },
             success: function (data) {
                 $(".loader").hide();
-                if (data.error!==undefined && data.error!==null) {
+                if (data.redirect!==undefined && data.redirect!==null) {
+                    redirect(data.redirect);
+                } else if (data.error!==undefined && data.error!==null) {
                     appendNotification("Couldn't delete the hpc: "+data.error, error=true);
                 } else {
                     appendNotification("HPC "+data.hpc.name+" removed.");
@@ -706,7 +761,9 @@ function renderDatasetChoices(selector_id, container_id, group_name){
             },
             success: function (data) {
                 $(".loader").hide();
-                if (data.error!==undefined) {
+                if (data.redirect!==undefined && data.redirect!==null) {
+                    redirect(data.redirect);
+                } else if (data.error!==undefined) {
                     appendNotification("Couldn't read the dataset info: "+data.error, error=true);
                 } else if (data.num_resources > 0) {
                     $(data.resources).each(function (index, resource) {
@@ -747,6 +804,7 @@ function renderDeploymentData(selector_id, workflow, execution_selector_id, log_
     var execution_selector = $(execution_selector_id).find("select")
     deployment_selector.empty();
     execution_selector.empty();
+    resetLogBox(log_id);
     deployment_selector.append(
         $(document.createElement('option')).attr("value", "-1").text("Loading..")
     );
@@ -762,7 +820,9 @@ function renderDeploymentData(selector_id, workflow, execution_selector_id, log_
         },
         success: function (data) {
             $(".loader").hide();
-            if (data.error!==undefined && data.error!==null) {
+            if (data.redirect!==undefined && data.redirect!==null) {
+                redirect(data.redirect);
+            } else if (data.error!==undefined && data.error!==null) {
                 appendNotification("Couldn't read the instances: "+data.error, error=true);
             } else {
                 deployment_selector.empty();
@@ -772,10 +832,10 @@ function renderDeploymentData(selector_id, workflow, execution_selector_id, log_
                             $(document.createElement('option')).attr("value", deployment.id).text(deployment.name)
                         )
                     });
-                    renderExecutionData(deployment_selector.val(),
-                                        workflow,
-                                        execution_selector_id,
-                                        log_id);
+                    _renderExecutionData(deployment_selector.val(),
+                                         workflow,
+                                         execution_selector_id,
+                                         log_id);
                 } else {
                     deployment_selector.append(
                         $(document.createElement('option')).attr("value", "-1").text("No instances found")
@@ -796,13 +856,25 @@ function renderDeploymentData(selector_id, workflow, execution_selector_id, log_
     });
 }
 
-function renderExecutionData(instance, workflow, execution_selector_id, log_id) {
+function resetLogBox(log_id) {
+    $(log_id+"_light").attr("src", "/static/experimentstool/img/light_grey.png");
+    $(log_id).find("textarea").val('');
+}
+
+function renderExecutionData(selector_id, workflow, execution_selector_id, log_id) {
+    var deployment_selector = $(selector_id).find("select")
+    _renderExecutionData(deployment_selector.val(),
+                         workflow,
+                         execution_selector_id,
+                         log_id)
+}
+function _renderExecutionData(instance, workflow, execution_selector_id, log_id) {
     var execution_selector = $(execution_selector_id).find("select")
     execution_selector.empty();
     execution_selector.append(
         $(document.createElement('option')).attr("value", "-1").text("Loading..")
     );
-
+    resetLogBox(log_id);
     $.ajax({
         url: '/experimentstool/_get_executions',
         data: {
@@ -815,7 +887,9 @@ function renderExecutionData(instance, workflow, execution_selector_id, log_id) 
         },
         success: function (data) {
             $(".loader").hide();
-            if (data.error!==undefined && data.error!==null) {
+            if (data.redirect!==undefined && data.redirect!==null) {
+                redirect(data.redirect);
+            } else if (data.error!==undefined && data.error!==null) {
                 appendNotification("Couldn't read the instances: "+data.error, error=true);
             } else {
                 execution_selector.empty();
@@ -876,7 +950,9 @@ function renderLogData(exec_id, log_id, reset=false) {
             'reset': reset
         },
         success: function (data) {
-            if (data.error!==undefined && data.error!==null) {
+            if (data.redirect!==undefined && data.redirect!==null) {
+                redirect(data.redirect);
+            } else if (data.error!==undefined && data.error!==null) {
                 appendNotification("Couldn't monitor the operation: "+data.error, error=true);
             } else {
                 if (data.events !== undefined && data.events.logs !== undefined) {
@@ -939,7 +1015,9 @@ function executeDeployment(selector_id, workflow, execution_selector_id, log_id 
         },
         success: function (data) {
             $(".loader").hide();
-            if (data.error!==undefined && data.error!==null) {
+            if (data.redirect!==undefined && data.redirect!==null) {
+                redirect(data.redirect);
+            } else if (data.error!==undefined && data.error!==null) {
                 appendNotification("Execution error: "+data.error, error=true);
             } else {
                 if (execution_selector_id && log_id) {
@@ -964,23 +1042,6 @@ function executeDeployment(selector_id, workflow, execution_selector_id, log_id 
         }
     });
 };
-
-function cleanNotifications() {
-    $("#experiments_notification_container").empty();
-}
-
-function appendNotification(message, error = false) {
-    note_class = "note note_success";
-    if (error) {
-        note_class = "note note_failure";
-    }
-
-    $("#experiments_notification_container").append(
-        $(document.createElement('div')).attr({
-            class: note_class
-        }).text(message)
-    )
-}
 
 $("#ckan_key_form").find("button").on('click', function (event) {
     event.preventDefault();
@@ -1042,7 +1103,9 @@ $("#add_hpc").find("button").on('click', function (event) {
             },
             success: function (data) {
                 $(".loader").hide();
-                if (data.error!==undefined && data.error!==null) {
+                if (data.redirect!==undefined && data.redirect!==null) {
+                    redirect(data.redirect);
+                } else if (data.error!==undefined && data.error!==null) {
                     appendNotification("Couldn't add the HPC: "+data.error, error=true);
                 } else {
                     appendNotification("HPC "+data.hpc.name+" added.");
@@ -1105,7 +1168,9 @@ $("#upload").find("button").on('click', function (event) {
                 },
                 success: function (data) {
                     $(".loader").hide();
-                    if (data.error!==undefined && data.error!==null) {
+                    if (data.redirect!==undefined && data.redirect!==null) {
+                        redirect(data.redirect);
+                    } else if (data.error!==undefined && data.error!==null) {
                         appendNotification("Couldn't register the app: "+data.error, error=true);
                     } else {
                         appendNotification("App "+data.app.name+" registered.");
@@ -1116,6 +1181,9 @@ $("#upload").find("button").on('click', function (event) {
                     message = "Couldn't register the app: ";
                     message += jqXHR.status+": "+errorThrown
                     appendNotification(message, error=true);
+                },
+                complete: function() {
+                    renderStockData("#product_selector");
                 }
             });
         }
@@ -1176,7 +1244,9 @@ $("#deploy_form").find("button").on('click', function (event) {
         },
         success: function (data) {
             $(".loader").hide();
-            if (data.error!==undefined && data.error!==null) {
+            if (data.redirect!==undefined && data.redirect!==null) {
+                redirect(data.redirect);
+            } else if (data.error!==undefined && data.error!==null) {
                 appendNotification("Couldn't create the instance: "+data.error, error=true);
             } else {
                 appendNotification("App instance "+data.instance.name+" created.");
@@ -1187,8 +1257,32 @@ $("#deploy_form").find("button").on('click', function (event) {
             message = "Couldn't create the instance: ";
             message += jqXHR.status+": "+errorThrown
             appendNotification(message, error=true);
+        },
+        complete: function() {
+            $("#application_inputs").empty()
         }
     });
+});
+
+$("#install_deployment_selector").find("select").on('change', function () {
+    renderExecutionData("#install_deployment_selector",
+                        "install",
+                        "#install_execution_selector",
+                        "#install_deployment_log");
+});
+
+$("#run_deployment_selector").find("select").on('change', function () {
+    renderExecutionData("#run_deployment_selector",
+                        "run_jobs",
+                        "#run_execution_selector",
+                        "#run_deployment_log");
+});
+
+$("#uninstall_deployment_selector").find("select").on('change', function () {
+    renderExecutionData("#uninstall_deployment_selector",
+                        "uninstall",
+                        "#uninstall_execution_selector",
+                        "#uninstall_deployment_log");
 });
 
 $("#install").find("button").on('click', function (event) {
@@ -1228,6 +1322,7 @@ $("#destroy-instance-button").on('click', function (event) {
     event.preventDefault();
     executeDeployment("#destroy_deployment_selector",
                       "destroy");
+    renderDeploymentData("#destroy_deployment_selector");
 });
 
 $("#force-destroy-instance-button").on('click', function (event) {
@@ -1253,7 +1348,9 @@ $("#remove").find("button").on('click', function (event) {
         },
         success: function (data) {
             $(".loader").hide();
-            if (data.error!==undefined && data.error!==null) {
+            if (data.redirect!==undefined && data.redirect!==null) {
+                redirect(data.redirect);
+            } else if (data.error!==undefined && data.error!==null) {
                 appendNotification("Couldn't remove the app: "+data.error, error=true);
             } else {
                 appendNotification("App "+data.app.name+" removed.");
@@ -1264,6 +1361,9 @@ $("#remove").find("button").on('click', function (event) {
             message = "Couldn't remove the app: ";
             message += jqXHR.status+": "+errorThrown
             appendNotification(message, error=true);
+        },
+        complete: function() {
+            renderApplicationData("#remove_application_selector", only_owned=true);
         }
     });
 });

@@ -108,6 +108,14 @@ div.tab button.active {
     width: 500px;
 }
 
+.dialog_success>.ui-dialog-titlebar {
+    background-color: #bcffb6;
+}
+
+.dialog_failure>.ui-dialog-titlebar {
+    background-color: #ffa7a4;
+}
+
 div.hpc_settings_block {
     padding: 5px;
     border-bottom: 1px solid;
@@ -126,23 +134,16 @@ span.hpc_label_name {
     font-weight: bold;
 }
 
-div#experiments_notification_container {
-    clear: both;
+div.rdi_settings_block {
+    padding: 5px;
 }
 
-div.note {
-    margin: 2px;
-    text-align: center;
-    border-style: solid;
-    border-radius: 5px;
+span.rdi_label {
+    font-style: italic;
 }
 
-div.note_success {
-    border-color: green;
-}
-
-div.note_failure {
-    border-color: red;
+span.rdi_label_name {
+    font-weight: bold;
 }
 
 .light_status {

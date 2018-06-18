@@ -19,30 +19,32 @@ logger = logging.getLogger(__name__)
 def token_required(view):
     @login_required
     def wrap(request, *args, **kwargs):
-        response = get_token(request)
+        token = get_token(request)
 
-        if token_need_to_redirect(response):
-            return response
+        url = None
+        from_url = None
+        if not token:
+            url = '/oauth/login/fiware?next='
+            from_url = request.get_full_path()
 
-        return view(request, token=response, *args, **kwargs)
+        return view(request,
+                    token=token,
+                    url=url,
+                    from_url=from_url,
+                    *args, **kwargs)
 
     return wrap
 
 
 def get_token(request):
     user = request.user
-    from_url = request.get_full_path()
     try:
         social = user.social_auth.get(provider='fiware')
         return social.get_access_token(load_strategy())
     except Exception as excp:
         logger.warn("Couldn't get token: "+str(excp))
-        logout(request)
-        return redirect('/oauth/login/fiware?next=' + from_url, permanent=True)
-
-
-def token_need_to_redirect(response):
-    return isinstance(response, HttpResponsePermanentRedirect)
+        # logout(request)
+        return False
 
 
 def get_expiration_time(user):
