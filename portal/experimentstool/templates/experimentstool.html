@@ -296,6 +296,8 @@ function renderApplicationInputs(selector_id, container_id) {
 
     var hpc_pattern = new RegExp("^mso4sc_hpc_(.)*$");
     var dataset_pattern = new RegExp("^mso4sc_dataset_(.)*$");
+    var outputdataset_pattern = new RegExp('^mso4sc_outdataset_(.)*$')
+    var datacatalogue_pattern = new RegExp('^mso4sc_datacatalogue_(.)*$')
 
     if (parseInt(application) >= 0) {
         $.ajax({
@@ -347,10 +349,7 @@ function renderApplicationInputs(selector_id, container_id) {
                             );
                             renderHPCData("#input_container_"+input.name);
                         }
-                    });
-                    //Then render datasets inputs
-                    $(data.inputs).each(function (index, input) {
-                        if (dataset_pattern.test(input.name)) {
+                        else if (dataset_pattern.test(input.name)) {
                             inputs_container.append( //datasets
                                 $(document.createElement('div')).attr({
                                     id: "input_container_" + input.name
@@ -378,10 +377,42 @@ function renderApplicationInputs(selector_id, container_id) {
                                                      "resource_" + input.name);
                             });
                         }
-                    });
-                    //Finally the rest of the inputs
-                    $(data.inputs).each(function (index, input) {
-                        if (!(hpc_pattern.test(input.name)) && !(dataset_pattern.test(input.name))) {
+                        else if (outputdataset_pattern.test(input.name)) {
+                            inputs_container.append( //datasets
+                                $(document.createElement('div')).attr({
+                                    id: "input_container_" + input.name
+                                }).append(
+                                    $(document.createElement('label')).attr({
+                                        for: "input_" + input.name,
+                                        title: input.description
+                                    }).text('Dataset resource: '+input.name.slice(18)),
+                                    $(document.createElement('select')).attr({
+                                        id: "input_" + input.name,
+                                        name: input.name,
+                                        title: input.description
+                                    }).append(
+                                        $(document.createElement('option')).attr("value", -1).text("None")
+                                    )
+                                )
+                            );
+                            renderDatasetsData("#input_container_"+input.name);
+                        }
+                        else if (datacatalogue_pattern.test(input.name)) {
+                            inputs_container.append( //datasets
+                                $(document.createElement('div')).attr({
+                                    id: "input_container_" + input.name
+                                }).append(
+                                    $(document.createElement('input')).attr({
+                                        id: "input_" + input.name,
+                                        value: "",
+                                        type: 'hidden',
+                                        name: input.name,
+                                        title: input.description
+                                    })
+                                )
+                            );
+                        }
+                        else if (!(hpc_pattern.test(input.name)) && !(dataset_pattern.test(input.name))) {
                             inputs_container.append( //other
                                 $(document.createElement('div')).attr({
                                     id: "input_container_" + input.name

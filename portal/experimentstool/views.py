@@ -399,9 +399,16 @@ def create_deployment(request):
     if error is not None:
         return JsonResponse({'error': error})
 
+    ckan_key_code = ""
+    key = DataCatalogueKey.get(request.user)
+    if key is not None:
+        ckan_key_code = key.code
+
     hpc_pattern = re.compile('^mso4sc_hpc_(.)*$')
     dataset_pattern = re.compile('^mso4sc_dataset_(.)*$')
     dataset_resource_pattern = re.compile('^resource_mso4sc_dataset_(.)*$')
+    outputdataset_pattern = re.compile('^mso4sc_outdataset_(.)*$')
+    datacatalogue_pattern = re.compile('^mso4sc_datacatalogue_(.)*$')
     tosca_inputs = {}
     for _input, value in inputs.items():
         if hpc_pattern.match(_input):
@@ -448,7 +455,7 @@ def create_deployment(request):
                     dataset_resource_index < 0:
                 return JsonResponse(
                     {'error': 'Bad dataset resource provided. Please ' +
-                     'refresh and try again'})
+                              'refresh and try again'})
             dataset_resource = dataset["resources"][dataset_resource_index]
 
             # finally put the url of the resource
@@ -456,6 +463,30 @@ def create_deployment(request):
         elif dataset_resource_pattern.match(_input):
             # Resources are managed in the dataset section above
             pass
+        elif outputdataset_pattern.match(_input):
+            if 'datasets' not in request.session:
+                return JsonResponse({'error': 'No datasets loaded'})
+            datasets = request.session['datasets']
+
+            # get the dataset
+            dataset_index = value
+            if dataset_index >= len(datasets) or dataset_index < 0:
+                # the dataset input has no configuration
+                tosca_inputs[_input] = ""
+                continue
+            dataset = datasets[dataset_index]
+            if 'error' in dataset:
+                return JsonResponse(dataset)
+
+            tosca_inputs[_input] = dataset["id"]
+        elif datacatalogue_pattern.match(_input):
+            ckan_value = ""
+            if _input.endswith("entrypoint"):
+                ckan_value = settings.DATACATALOGUE_URL
+            elif _input.endswith("key"):
+                ckan_value = ckan_key_code
+
+            tosca_inputs[_input] = ckan_value
         else:
             tosca_inputs[_input] = value
 

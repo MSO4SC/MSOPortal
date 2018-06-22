@@ -86,7 +86,7 @@ class DataCatalogueKey(models.Model):
         try:
             key = cls.objects.create(code=code, owner=owner)
         except Exception as err:
-            logger.exception(err)
+            LOGGER.exception(err)
             error = str(err)
 
         if not return_dict:
