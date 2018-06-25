@@ -155,6 +155,7 @@ function openExperimentsTool(evt, toolName) {
             break;
         case "deploy":
             renderApplicationData("#application_selector");
+            $("#application_inputs").empty();
             break;
         case "install":
             renderDeploymentData("#install_deployment_selector",
@@ -385,7 +386,7 @@ function renderApplicationInputs(selector_id, container_id) {
                                     $(document.createElement('label')).attr({
                                         for: "input_" + input.name,
                                         title: input.description
-                                    }).text('Dataset resource: '+input.name.slice(18)),
+                                    }).text('Output dataset: '+input.name.slice(18)),
                                     $(document.createElement('select')).attr({
                                         id: "input_" + input.name,
                                         name: input.name,
