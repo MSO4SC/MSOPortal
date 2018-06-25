@@ -3,9 +3,8 @@
 import re
 import json
 import tempfile
-import requests
-
 from urllib.parse import urlparse
+import requests
 
 from django.contrib.auth.decorators import login_required, permission_required
 from django.shortcuts import render

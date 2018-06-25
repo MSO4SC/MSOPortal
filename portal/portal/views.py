@@ -5,8 +5,10 @@ import logging
 from django.contrib.auth.decorators import login_required
 from django.shortcuts import render, redirect
 from django.contrib.auth.models import Group
+from django.http import JsonResponse
 
 import sso.utils
+from sso.utils import token_required
 
 from portal import settings
 
@@ -60,8 +62,12 @@ def index(request):
         return render(request, 'landing.html', {})
 
 
-@login_required
-def marketplace_logIn(request):
+@token_required
+def marketplace_logIn(request, *args, **kwargs):
+    access_token = kwargs['token']
+    if not access_token:
+        return JsonResponse({'redirect': kwargs['url']+'/marketplaceLogIn/'})
+
     if 'marketplace' not in request.session:
         request.session['marketplace'] = False
 
@@ -89,8 +95,12 @@ def marketplace(request):
     return render(request, 'marketplace.html', context)
 
 
-@login_required
-def datacatalogue_logIn(request):
+@token_required
+def datacatalogue_logIn(request, *args, **kwargs):
+    access_token = kwargs['token']
+    if not access_token:
+        return JsonResponse({'redirect': kwargs['url']+'/datacatalogueLogIn/'})
+
     if 'datacatalogue' not in request.session:
         request.session['datacatalogue'] = False
 
