@@ -90,9 +90,11 @@ def add_hpc(request):
         # TODO validation
         return JsonResponse({'error': 'No user provided'})
 
-    password = request.POST.get('password', None)
-    if not password or password == '':
-        return JsonResponse({'error': 'No password provided'})
+    key = str(request.FILES['key'].read(), "utf-8")
+    key_password = request.POST.get('key_password', '')
+    password = request.POST.get('password', '')
+    if key == '' and password == '':
+        return JsonResponse({'error': 'No authentication (key/password) provided'})
 
     tz = request.POST.get('timezone', None)
     if not tz or tz == '':
@@ -104,6 +106,8 @@ def add_hpc(request):
                                  request.user,
                                  host,
                                  user,
+                                 key,
+                                 key_password,
                                  password,
                                  tz,
                                  HPCInfrastructure.SLURM,

@@ -192,10 +192,12 @@ function openExperimentsTool(evt, toolName) {
     evt.currentTarget.className += " active";
 }
 
-function renderStockData(selector_id) {
+function renderStockData(selector_id, cleanup=true) {
     var product_selector = $(selector_id).find("select")
     product_selector.empty();
-    cleanNotifications();
+    if (cleanup) {
+        cleanNotifications();
+    }
 
     $.ajax({
         url: '/experimentstool/_get_new_stock',
@@ -1110,25 +1112,43 @@ $("#ckan_key_form").find("button").on('click', function (event) {
 
 $("#add_hpc").find("button").on('click', function (event) {
     event.preventDefault();
+    if (!window.File || !window.FileReader || !window.FileList || !window.Blob) {
+        appendNotification('The File APIs are not fully supported in this browser.', error=true);
+    }
+
     var name = $("#add_hpc_name").val();
     var host = $("#add_hpc_host").val();
     var user = $("#add_hpc_user").val();
+    var key_file = $("#add_hpc_key")[0]
+    var key_password = $("#add_hpc_key_password").val();
     var password = $("#add_hpc_password").val();
     var timezone = $("#add_hpc_timezone").val();
 
+    var key = null
+    if (key_file && key_file.files && key_file.files[0]) {
+        key = key_file.files[0]
+    }
+    var have_auth = key != null || password != ''
+
     cleanNotifications();
-    if (name != '' && host != '' && user!= '' && password != '' && timezone != '') {
+    if (name != '' && host != '' && user!= '' && timezone != '' && have_auth) {
+        console.log(key)
+        var data = new FormData();
+        data.append('name', name);
+        data.append('host', host);
+        data.append('user', user);
+        data.append('key', key);
+        data.append('key_password', key_password);
+        data.append('password', password);
+        data.append('timezone', timezone);
         $.ajax({
             url: '/experimentstool/_add_hpc',
             type: "POST",
-            data: {
-                'name': name,
-                'host': host,
-                'user': user,
-                'password': password,
-                'timezone': timezone,
-            },
+            data: data,
             dataType: 'json',
+            contentType: false,
+            processData: false,
+            cache: false,
             beforeSend: function (xhr, settings) {
                 $.ajaxSettings.beforeSend(xhr, settings);
                 $(".loader").show();
@@ -1158,11 +1178,9 @@ $("#add_hpc").find("button").on('click', function (event) {
 
 $("#upload").find("button").on('click', function (event) {
     event.preventDefault();
-    if (window.File && window.FileReader && window.FileList && window.Blob) {
-        // Great success! All the File APIs are supported.
-    } else {
-        // TODO: do something better than an alert
-        alert('The File APIs are not fully supported in this browser.');
+    if (!window.File || !window.FileReader || !window.FileList || !window.Blob) {
+        appendNotification('The File APIs are not fully supported in this browser.', error=true);
+        return
     }
 
     var product = $("#product_selector").find("select").val();
@@ -1171,54 +1189,50 @@ $("#upload").find("button").on('click', function (event) {
 
     cleanNotifications();
     if (product >= 0) {
-        // TODO: do something better than an alert
-        if (!blueprint_package) {
-            alert("Um, couldn't find the fileinput element.");
+        var blueprint = null
+        if (blueprint_package && blueprint_package.files && blueprint_package.files[0]) {
+            blueprint = blueprint_package.files[0]
+        } else {
+            appendNotification('No package provided', error=true);
+            return
         }
-        else if (!blueprint_package.files) {
-            alert("This browser doesn't seem to support the `files` property of file inputs.");
-        }
-        else if (!blueprint_package.files[0]) {
-            alert("Please select a file before deploy");               
-        }
-        else {
-            var data = new FormData();
-            data.append('product', product);
-            data.append('mso_id', mso_id);
-            data.append('blueprint_package', blueprint_package.files[0]);
-            $.ajax({
-                url: '/experimentstool/_upload_application',
-                type: "POST",
-                data: data,
-                dataType: 'json',
-                contentType: false,
-                processData: false,
-                cache: false,
-                beforeSend: function (xhr, settings) {
-                    $.ajaxSettings.beforeSend(xhr, settings);
-                    $(".loader").show();
-                },
-                success: function (data) {
-                    $(".loader").hide();
-                    if (data.redirect!==undefined && data.redirect!==null) {
-                        redirect(data.redirect);
-                    } else if (data.error!==undefined && data.error!==null) {
-                        appendNotification("Couldn't register the app: "+data.error, error=true);
-                    } else {
-                        appendNotification("App "+data.app.name+" registered.");
-                    }
-                },
-                error: function (jqXHR, status, errorThrown) {
-                    $(".loader").hide();
-                    message = "Couldn't register the app: ";
-                    message += jqXHR.status+": "+errorThrown
-                    appendNotification(message, error=true);
-                },
-                complete: function() {
-                    renderStockData("#product_selector");
+        
+        var data = new FormData();
+        data.append('product', product);
+        data.append('mso_id', mso_id);
+        data.append('blueprint_package', blueprint);
+        $.ajax({
+            url: '/experimentstool/_upload_application',
+            type: "POST",
+            data: data,
+            dataType: 'json',
+            contentType: false,
+            processData: false,
+            cache: false,
+            beforeSend: function (xhr, settings) {
+                $.ajaxSettings.beforeSend(xhr, settings);
+                $(".loader").show();
+            },
+            success: function (data) {
+                $(".loader").hide();
+                if (data.redirect!==undefined && data.redirect!==null) {
+                    redirect(data.redirect);
+                } else if (data.error!==undefined && data.error!==null) {
+                    appendNotification("Couldn't register the app: "+data.error, error=true);
+                } else {
+                    appendNotification("App "+data.app.name+" registered.");
                 }
-            });
-        }
+            },
+            error: function (jqXHR, status, errorThrown) {
+                $(".loader").hide();
+                message = "Couldn't register the app: ";
+                message += jqXHR.status+": "+errorThrown
+                appendNotification(message, error=true);
+            },
+            complete: function() {
+                renderStockData("#product_selector", cleanup=false);
+            }
+        });
     }
 });
 

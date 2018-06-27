@@ -127,7 +127,10 @@ class HPCInfrastructure(models.Model):
     )
     host = models.CharField(max_length=50)
     user = models.CharField(max_length=50)
-    password = models.CharField(max_length=50)
+    private_key = models.CharField(max_length=1800, blank=True, default='')
+    private_key_password = models.CharField(
+        max_length=50, blank=True, default='')
+    password = models.CharField(max_length=50, blank=True, default='')
     time_zone = models.CharField(max_length=20)
 
     SLURM = 'SLURM'
@@ -159,6 +162,8 @@ class HPCInfrastructure(models.Model):
         else:
             if hpc is not None:
                 hpc = _to_dict(hpc)
+                hpc.pop('private_key')
+                hpc.pop('private_key_password')
                 hpc.pop('password')
             return {'hpc': hpc, 'error': error}
 
@@ -181,6 +186,8 @@ class HPCInfrastructure(models.Model):
             passwordless_list = []
             for hpc in hpc_list:
                 hpc_dict = _to_dict(hpc)
+                hpc_dict.pop('private_key')
+                hpc_dict.pop('private_key_password')
                 hpc_dict.pop('password')
                 passwordless_list.append(hpc_dict)
             return {'hpc_list':  passwordless_list,
@@ -192,6 +199,8 @@ class HPCInfrastructure(models.Model):
                owner,
                host,
                user,
+               private_key,
+               private_key_password,
                password,
                tz,
                manager,
@@ -203,6 +212,8 @@ class HPCInfrastructure(models.Model):
                                      owner=owner,
                                      host=host,
                                      user=user,
+                                     private_key=private_key,
+                                     private_key_password=private_key_password,
                                      password=password,
                                      time_zone=tz,
                                      manager=manager)
@@ -230,6 +241,8 @@ class HPCInfrastructure(models.Model):
         else:
             if hpc is not None:
                 hpc = _to_dict(hpc)
+                hpc.pop('private_key')
+                hpc.pop('private_key_password')
                 hpc.pop('password')
             return {'hpc': hpc, 'error': error}
 
@@ -245,6 +258,8 @@ class HPCInfrastructure(models.Model):
             'credentials': {
                 'host': self.host,
                 'user': self.user,
+                'private_key': self.private_key,
+                'private_key_password': self.private_key_password,
                 'password': self.password,
             },
             'country_tz': self.time_zone,
@@ -602,18 +617,6 @@ class AppInstance(models.Model):
             error = str(err)
 
         return (deployment, error)
-
-    def _install_deployment(self, force):
-        return self._execute_workflow('install', force)
-
-    def _run_deployment(self, force):
-        return self._execute_workflow('run_jobs', force)
-
-    def _uninstall_deployment(self, force):
-        params = None
-        if force:
-            params = {'ignore_failure': True}
-        return self._execute_workflow('uninstall', force, params=params)
 
 
 class WorkflowExecution(models.Model):
