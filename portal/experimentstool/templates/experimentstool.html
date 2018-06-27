@@ -184,6 +184,8 @@ function openExperimentsTool(evt, toolName) {
         case "settings":
             renderKeyData("#ckan_key_form");
             renderHPCData("#infrastructure_list", select=false);
+            renderTunnelData("#add_hpc_tunnel");
+            renderTunnelData("#tunnel_list", select=false);
             break;
     }
 
@@ -594,13 +596,154 @@ function renderKeyData(container_id) {
 
 }
 
+function renderTunnelData(container_id, select=true, clear_notifications=true) {
+    var tunnel_container = $(container_id);
+    if (select) {
+        tunnel_container = tunnel_container.find("select");
+    }
+    tunnel_container.empty();
+    if (clear_notifications) {
+        cleanNotifications();
+    }
+
+    $.ajax({
+        url: '/experimentstool/_get_tunnel_list',
+        beforeSend: function (xhr, settings) {
+            $.ajaxSettings.beforeSend(xhr, settings);
+            $(".loader").show();
+        },
+        success: function (data) {
+            $(".loader").hide();
+            if (data.redirect!==undefined && data.redirect!==null) {
+                redirect(data.redirect);
+            } else if (data.error!==undefined && data.error!==null) {
+                message = "Couldn't get tunnel list: "+data.error;
+                appendNotification(message, error=true);
+            } else {
+                if (select) {
+                    tunnel_container.append(
+                        $(document.createElement('option'))
+                            .attr("value", -1)
+                            .text("None")
+                    )
+                }
+                var tunnel_list = data.tunnel_list;
+                if (tunnel_list.length > 0) {
+                    $.each(tunnel_list, function (index, tunnel) {
+                        if (select) {
+                            tunnel_container.append(
+                                $(document.createElement('option'))
+                                    .attr("value", tunnel.id)
+                                    .text(tunnel.name)
+                            )
+                        } else {
+                            tunnel_container.append(
+                                $(document.createElement('div')).
+                                    attr("id", "tunnel_block_"+tunnel.id).
+                                    attr("class", "margin hpc_settings_block").
+                                    append(
+                                        $(document.createElement('div')).
+                                            attr("class", "s-12 m-6 l-8").
+                                            append(
+                                                $(document.createElement('div')).
+                                                    attr("class", "l-9 left").
+                                                    append(
+                                                        $(document.createElement('div')).append(
+                                                            $(document.createElement('span')).attr("class", "hpc_label hpc_label_name").text('Name: '),
+                                                            $(document.createElement('span')).text(tunnel.name),
+                                                        ),
+                                                        $(document.createElement('div')).append(
+                                                            $(document.createElement('span')).attr("class", "hpc_label").text('Host: '),
+                                                            $(document.createElement('span')).text(tunnel.host),
+                                                        ),
+                                                        $(document.createElement('div')).append(
+                                                            $(document.createElement('span')).attr("class", "hpc_label").text('User: '),
+                                                            $(document.createElement('span')).text(tunnel.user),
+                                                        )
+                                                    )
+                                                ,
+                                                $(document.createElement('div')).
+                                                    attr("class", "l-3 right").
+                                                    append(
+                                                        $(document.createElement('button')).
+                                                            attr("id", "del_tunnel_"+tunnel.id).
+                                                            text('Delete')
+                                                    )
+                                            )
+                                    )
+                            );
+                            setTunnelEditButtonsHandler(
+                                "#del_tunnel_"+tunnel.id,
+                                tunnel.id,
+                                refresh_function = function() {
+                                    renderTunnelData(container_id,
+                                                  select=false,
+                                                  clear_notifications=false); 
+                                }
+                            );
+                        }
+                    });
+                } else {
+                    if (!select) {
+                        tunnel_container.append(
+                            $(document.createElement('div'))
+                                .attr("id", "no_tunnel_list")
+                                .text("No Tunnel infrastructures found")
+                        )
+                    }
+                }
+            }
+        },
+        error: function (jqXHR, status, errorThrown) {
+            $(".loader").hide();
+            message = "Couldn't get tunnel list: ";
+            message += jqXHR.status+": "+errorThrown
+            appendNotification(message, error=true);
+        }
+    });
+}
+
+function setTunnelEditButtonsHandler(button_id, pk, refresh_function) {
+    $(button_id).on('click', function (event) {
+        event.preventDefault();
+        $.ajax({
+            method: "POST",
+            url: '/experimentstool/_delete_tunnel',
+            data: {
+                'pk': pk
+            },
+            dataType: 'json',
+            beforeSend: function (xhr, settings) {
+                $.ajaxSettings.beforeSend(xhr, settings);
+                $(".loader").show();
+            },
+            success: function (data) {
+                $(".loader").hide();
+                if (data.redirect!==undefined && data.redirect!==null) {
+                    redirect(data.redirect);
+                } else if (data.error!==undefined && data.error!==null) {
+                    appendNotification("Couldn't delete the tunnel: "+data.error, error=true);
+                } else {
+                    appendNotification("Tunnel "+data.tunnel.name+" removed.");
+                }
+            },
+            error: function (jqXHR, status, errorThrown) {
+                $(".loader").hide();
+                message = "Couldn't remove the tunnel: ";
+                message += jqXHR.status+": "+errorThrown
+                appendNotification(message, error=true);
+            },
+            complete: refresh_function
+        });
+    });
+}
+
 function renderHPCData(container_id, select=true, clear_notifications=true) {
     var hpc_container = $(container_id);
     if (select) {
         hpc_container = hpc_container.find("select");
-    } else {
-        hpc_container.empty();
     }
+    hpc_container.empty();
     if (clear_notifications) {
         cleanNotifications();
     }
@@ -659,6 +802,10 @@ function renderHPCData(container_id, select=true, clear_notifications=true) {
                                                         $(document.createElement('div')).append(
                                                             $(document.createElement('span')).attr("class", "hpc_label").text('Time Zone: '),
                                                             $(document.createElement('span')).text(hpc.time_zone),
+                                                        ),
+                                                        $(document.createElement('div')).append(
+                                                            $(document.createElement('span')).attr("class", "hpc_label").text('Tunnel: '),
+                                                            $(document.createElement('span')).text(hpc.tunnel? hpc.tunnel.name : "None"),
                                                         )
                                                     )
                                                 ,
@@ -1073,6 +1220,11 @@ function executeDeployment(selector_id, workflow, execution_selector_id, log_id 
             message = "Couldn't execute the operation: ";
             message += jqXHR.status+": "+errorThrown
             appendNotification(message, error=true);
+        },
+        complete: function() {
+            if (workflow=='destroy') {
+                renderDeploymentData("#destroy_deployment_selector");
+            }
         }
     });
 };
@@ -1110,6 +1262,70 @@ $("#ckan_key_form").find("button").on('click', function (event) {
     });
 });
 
+$("#add_tunnel").find("button").on('click', function (event) {
+    event.preventDefault();
+    if (!window.File || !window.FileReader || !window.FileList || !window.Blob) {
+        appendNotification('The File APIs are not fully supported in this browser.', error=true);
+    }
+
+    var name = $("#add_tunnel_name").val();
+    var host = $("#add_tunnel_host").val();
+    var user = $("#add_tunnel_user").val();
+    var key_file = $("#add_tunnel_key")[0]
+    var key_password = $("#add_tunnel_key_password").val();
+    var password = $("#add_tunnel_password").val();
+
+    var key = null
+    if (key_file && key_file.files && key_file.files[0]) {
+        key = key_file.files[0]
+    }
+    var have_auth = key != null || password != ''
+
+    cleanNotifications();
+    if (name != '' && host != '' && user!= '' && have_auth) {
+        var data = new FormData();
+        data.append('name', name);
+        data.append('host', host);
+        data.append('user', user);
+        data.append('key', key);
+        data.append('key_password', key_password);
+        data.append('password', password);
+        $.ajax({
+            url: '/experimentstool/_add_tunnel',
+            type: "POST",
+            data: data,
+            dataType: 'json',
+            contentType: false,
+            processData: false,
+            cache: false,
+            beforeSend: function (xhr, settings) {
+                $.ajaxSettings.beforeSend(xhr, settings);
+                $(".loader").show();
+            },
+            success: function (data) {
+                $(".loader").hide();
+                if (data.redirect!==undefined && data.redirect!==null) {
+                    redirect(data.redirect);
+                } else if (data.error!==undefined && data.error!==null) {
+                    appendNotification("Couldn't add the tunnel: "+data.error, error=true);
+                } else {
+                    appendNotification("Tunnel "+data.tunnel.name+" added.");
+                }
+            },
+            error: function (jqXHR, status, errorThrown) {
+                $(".loader").hide();
+                message = "Couldn't add the tunnel: ";
+                message += jqXHR.status+": "+errorThrown
+                appendNotification(message, error=true);
+            },
+            complete: function() {
+                renderTunnelData("#add_hpc_tunnel");
+                renderTunnelData("#tunnel_list", selector=false, clean=false);
+            }
+        });
+    }
+});
+
 $("#add_hpc").find("button").on('click', function (event) {
     event.preventDefault();
     if (!window.File || !window.FileReader || !window.FileList || !window.Blob) {
@@ -1123,6 +1339,7 @@ $("#add_hpc").find("button").on('click', function (event) {
     var key_password = $("#add_hpc_key_password").val();
     var password = $("#add_hpc_password").val();
     var timezone = $("#add_hpc_timezone").val();
+    var tunnel = $("#add_hpc_tunnel").find("select").val();
 
     var key = null
     if (key_file && key_file.files && key_file.files[0]) {
@@ -1132,7 +1349,6 @@ $("#add_hpc").find("button").on('click', function (event) {
 
     cleanNotifications();
     if (name != '' && host != '' && user!= '' && timezone != '' && have_auth) {
-        console.log(key)
         var data = new FormData();
         data.append('name', name);
         data.append('host', host);
@@ -1141,6 +1357,7 @@ $("#add_hpc").find("button").on('click', function (event) {
         data.append('key_password', key_password);
         data.append('password', password);
         data.append('timezone', timezone);
+        data.append('tunnel', tunnel);
         $.ajax({
             url: '/experimentstool/_add_hpc',
             type: "POST",

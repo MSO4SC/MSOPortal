@@ -18,6 +18,7 @@ from experimentstool.models import (Application,
                                     AppInstance,
                                     WorkflowExecution,
                                     HPCInfrastructure,
+                                    TunnelConnection,
                                     DataCatalogueKey)
 
 
@@ -90,7 +91,9 @@ def add_hpc(request):
         # TODO validation
         return JsonResponse({'error': 'No user provided'})
 
-    key = str(request.FILES['key'].read(), "utf-8")
+    key = ''
+    if "key" in request.FILES:
+        key = str(request.FILES['key'].read(), "utf-8")
     key_password = request.POST.get('key_password', '')
     password = request.POST.get('password', '')
     if key == '' and password == '':
@@ -101,6 +104,9 @@ def add_hpc(request):
         # TODO validation
         return JsonResponse({'error': 'No time zone provided'})
 
+    tunnel = int(request.POST.get('tunnel', -1))
+    if tunnel == -1:
+        tunnel = None
     return JsonResponse(
         HPCInfrastructure.create(name,
                                  request.user,
@@ -111,11 +117,66 @@ def add_hpc(request):
                                  password,
                                  tz,
                                  HPCInfrastructure.SLURM,
+                                 tunnel,
                                  return_dict=True))
 
 
 @login_required
 def delete_hpc(request):
+    pk = request.POST.get('pk', None)
+    if not pk or pk == '':
+        # TODO validation
+        return JsonResponse({'error': 'No hpc provided'})
+
+    return JsonResponse(
+        HPCInfrastructure.remove(pk,
+                                 request.user,
+                                 return_dict=True))
+
+
+@login_required
+def get_tunnel_list(request):
+    return JsonResponse(
+        TunnelConnection.list(request.user, return_dict=True),
+        safe=False)
+
+
+@login_required
+def add_tunnel(request):
+    name = request.POST.get('name', None)
+    if not name or name == '':
+        # TODO validation
+        return JsonResponse({'error': 'No name provided'})
+
+    host = request.POST.get('host', None)
+    if not host or host == '':
+        # TODO validation
+        return JsonResponse({'error': 'No host provided'})
+
+    user = request.POST.get('user', None)
+    if not user or user == '':
+        # TODO validation
+        return JsonResponse({'error': 'No user provided'})
+
+    key = str(request.FILES['key'].read(), "utf-8")
+    key_password = request.POST.get('key_password', '')
+    password = request.POST.get('password', '')
+    if key == '' and password == '':
+        return JsonResponse({'error': 'No authentication (key/password) provided'})
+
+    return JsonResponse(
+        TunnelConnection.create(name,
+                                request.user,
+                                host,
+                                user,
+                                key,
+                                key_password,
+                                password,
+                                return_dict=True))
+
+
+@login_required
+def delete_tunnel(request):
     pk = request.POST.get('pk', None)
     if not pk or pk == '':
         # TODO validation

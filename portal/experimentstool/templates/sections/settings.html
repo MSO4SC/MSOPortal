@@ -11,12 +11,14 @@
         </div> 
     </div>
     <hr>
+    <hr>
     <h2>Computing Infrastructures:</h2>
     <div class="s-12 m-12 l-12">    
         <div class="l-8" id="infrastructure_list">
         </div>
     </div>
-    <h3>Add a new one:</h3>
+    <div style="width: 10px; display: inline-block;"></div>
+    <h3>New computing infrastructure:</h3>
     <div class="s-12 m-12 l-12"> 
         <div class="l-8" id="add_hpc">
             <div>
@@ -44,6 +46,13 @@
                 <input type='password' maxlength="50" id="add_hpc_password" />
             </div>
             <div>
+                <label for="add_hpc_tunnel">Tunnel:</label>
+                <div id="add_hpc_tunnel">
+                    <select></select>
+                </div>
+                
+            </div>
+            <div>
                 <label for="add_hpc_manager">Workload Manager: *</label>
                 <select id="add_hpc_manager">
                     <option>Slurm</option>
@@ -57,5 +66,45 @@
                 <button>Add</button>
             </div>    
         </div>
-    </div>    
+    </div>
+    <hr>
+    <hr>
+    <h2>SSH Tunnels:</h2>
+    <div class="s-12 m-12 l-12">    
+        <div class="l-8" id="tunnel_list">
+        </div>
+    </div>
+    <div style="width: 10px; display: inline-block;"></div>
+    <h3>New ssh tunnel:</h3>
+    <div class="s-12 m-12 l-12"> 
+        <div class="l-8" id="add_tunnel">
+            <div>
+                <label for="add_tunnel_name">Name: *</label>
+                <input type='text' maxlength="50" id="add_tunnel_name" />
+            </div>
+            <div>
+                <label for="add_tunnel_host">Host: *</label>
+                <input type='text' maxlength="50" id="add_tunnel_host" />
+            </div>
+            <div>
+                <label for="add_tunnel_user">User: *</label>
+                <input type='text' maxlength="50" id="add_tunnel_user" />
+            </div>
+            <div>
+                <label for="add_tunnel_key">RSA Private Key: </label>
+                <input type="file" id="add_tunnel_key">
+            </div>
+            <div>
+                <label for="add_tunnel_key_password">Private Key password: </label>
+                <input type='password' maxlength="50" id="add_tunnel_key_password" />
+            </div>
+            <div>
+                <label for="add_tunnel_password">Password:</label>
+                <input type='password' maxlength="50" id="add_tunnel_password" />
+            </div>
+            <div class="s-12 l-3 center">
+                <button>Add</button>
+            </div>    
+        </div>
+    </div>
 </form>
