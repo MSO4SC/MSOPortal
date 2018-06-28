@@ -8,11 +8,8 @@
     <p class="nav-text"></p> 
     <div class="top-nav">        
             <ul>
-                {% if perms.experimentstool.register_app %}
-                    <li class="developer"><a class="tablinks" onclick="openExperimentsTool(event, 'upload')">Register App</a></li>
-                {% endif %}
-                {% if perms.experimentstool.remove_app %}
-                    <li class="developer-last"><a class="tablinks" onclick="openExperimentsTool(event, 'remove')">Remove App</a></li>
+                {% if perms.experimentstool.register_app and perms.experimentstool.remove_app%}
+                    <li class="developer"><a class="tablinks" onclick="openExperimentsTool(event, 'apps')">Applications</a></li>
                 {% endif %}
                 <li><a class="tablinks" onclick="openExperimentsTool(event, 'deploy')">Create App Instance</a></li>
                 <li><a class="tablinks" onclick="openExperimentsTool(event, 'install')">Deploy Instance</a></li>
@@ -27,15 +24,9 @@
 
 <div id="experiments_notification_container"></div>
 
-{% if perms.experimentstool.register_app %}
-<div id="upload" class="tabcontent">
-    {% include "sections/upload.html" %}
-</div>
-{% endif %}
-
-{% if perms.experimentstool.remove_app %}
-<div id="remove" class="tabcontent">
-    {% include "sections/remove.html" %}
+{% if perms.experimentstool.register_app and perms.experimentstool.remove_app%}
+<div id="apps" class="tabcontent">
+    {% include "sections/apps.html" %}
 </div>
 {% endif %}
 
@@ -150,8 +141,9 @@ function openExperimentsTool(evt, toolName) {
     cleanNotifications();
 
     switch(toolName) {
-        case "upload":
+        case "apps":
             renderStockData("#product_selector");
+            renderApplicationData("#remove_application_selector", only_owned=true);
             break;
         case "deploy":
             renderApplicationData("#application_selector");
@@ -177,9 +169,6 @@ function openExperimentsTool(evt, toolName) {
             break;
         case "destroy":
             renderDeploymentData("#destroy_deployment_selector");
-            break;
-        case "remove":
-            renderApplicationData("#remove_application_selector", only_owned=true);
             break;
         case "settings":
             renderKeyData("#ckan_key_form");
@@ -1448,6 +1437,7 @@ $("#upload").find("button").on('click', function (event) {
             },
             complete: function() {
                 renderStockData("#product_selector", cleanup=false);
+                renderApplicationData("#remove_application_selector", only_owned=true);
             }
         });
     }
@@ -1626,6 +1616,7 @@ $("#remove").find("button").on('click', function (event) {
             appendNotification(message, error=true);
         },
         complete: function() {
+            renderStockData("#product_selector", cleanup=false);
             renderApplicationData("#remove_application_selector", only_owned=true);
         }
     });
