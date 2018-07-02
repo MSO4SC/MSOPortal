@@ -5,7 +5,9 @@ from urllib.parse import urlparse
 from datetime import datetime
 
 from django.conf import settings
-from django.db import models
+from threading import Thread
+
+from django.db import models, connection
 
 from django.forms.models import model_to_dict
 
@@ -21,6 +23,14 @@ WAIT_FOR_EXECUTION_SLEEP_INTERVAL = 3
 
 # Get an instance of a logger
 LOGGER = logging.getLogger(__name__)
+
+
+def backend(function):
+    def decorator(*args, **kwargs):
+        t = Thread(target=function, args=args, kwargs=kwargs)
+        t.daemon = True
+        t.start()
+    return decorator
 
 
 def _to_dict(model_instance):
@@ -296,16 +306,16 @@ class HPCInfrastructure(models.Model):
             return (hpc, error)
         else:
             if hpc is not None:
-                hpc = _to_dict(hpc)
-                hpc.pop('private_key')
-                hpc.pop('private_key_password')
-                hpc.pop('password')
+                hpc_dict = _to_dict(hpc)
+                hpc_dict.pop('private_key')
+                hpc_dict.pop('private_key_password')
+                hpc_dict.pop('password')
                 if hpc.tunnel is not None:
-                    hpc['tunnel'] = _to_dict(hpc.tunnel)
-                    hpc['tunnel'].pop('private_key')
-                    hpc['tunnel'].pop('private_key_password')
-                    hpc['tunnel'].pop('password')
-            return {'hpc': hpc, 'error': error}
+                    hpc_dict['tunnel'] = _to_dict(hpc.tunnel)
+                    hpc_dict['tunnel'].pop('private_key')
+                    hpc_dict['tunnel'].pop('private_key_password')
+                    hpc_dict['tunnel'].pop('password')
+            return {'hpc': hpc_dict, 'error': error}
 
     @classmethod
     def list(cls, owner, return_dict=False):
@@ -396,15 +406,15 @@ class HPCInfrastructure(models.Model):
             return (hpc, error)
         else:
             if hpc is not None:
-                hpc = _to_dict(hpc)
-                hpc.pop('private_key')
-                hpc.pop('private_key_password')
-                hpc.pop('password')
+                hpc_dict = _to_dict(hpc)
+                hpc_dict.pop('private_key')
+                hpc_dict.pop('private_key_password')
+                hpc_dict.pop('password')
                 if hpc.tunnel is not None:
-                    hpc['tunnel'] = _to_dict(hpc.tunnel)
-                    hpc['tunnel'].pop('private_key')
-                    hpc['tunnel'].pop('private_key_password')
-                    hpc['tunnel'].pop('password')
+                    hpc_dict['tunnel'] = _to_dict(hpc.tunnel)
+                    hpc_dict['tunnel'].pop('private_key')
+                    hpc_dict['tunnel'].pop('private_key_password')
+                    hpc_dict['tunnel'].pop('password')
             return {'hpc': hpc, 'error': error}
 
     def __str__(self):
@@ -636,6 +646,31 @@ class AppInstance(models.Model):
     inputs = models.CharField(max_length=256, null=True)
     outputs = models.CharField(max_length=256, null=True)
 
+    PREPARED = 'prepared'
+    TERMINATED = 'terminated'
+    FAILED = 'failed'
+    CANCELLED = 'cancelled'
+    PENDING = 'pending'
+    STARTED = 'started'
+    CANCELLING = 'cancelling'
+    FORCE_CANCELLING = 'force_cancelling'
+    STATUS_CHOICES = (
+        (TERMINATED, 'terminated'),
+        (FAILED, 'failed'),
+        (CANCELLED, 'cancelled'),
+        (PENDING, 'pending'),
+        (STARTED, 'started'),
+        (CANCELLING, 'cancelling'),
+        (FORCE_CANCELLING, 'force_cancelling'),
+        (PREPARED, 'prepared')
+    )
+    status = models.CharField(
+        max_length=5,
+        choices=STATUS_CHOICES,
+        default=PREPARED,
+        blank=True
+    )
+
     owner = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.CASCADE,
@@ -716,6 +751,199 @@ class AppInstance(models.Model):
         else:
             return {'instance': _to_dict(instance), 'error': error}
 
+    @backend
+    def clean_up_execution(self, owner):
+        self._update_status(AppInstance.PREPARED)
+
+        # logs
+        logs_list, error = ApplicationInstanceLog.list(
+            self,
+            owner,
+            offset=0
+        )
+        if error is None:
+            for log in logs_list:
+                log.delete()
+        else:
+            LOGGER.warning("Couldn't clean up logs: "+error)
+
+        # executions
+        executions_list, error = WorkflowExecution.list(
+            self,
+            owner)
+        if error is None:
+            for execution in executions_list:
+                execution.delete()
+        else:
+            LOGGER.warning("Couldn't clean up executions: "+error)
+
+    @backend
+    def run_workflows(self, owner):
+        # TODO: create cfy deployment again
+        self._update_status(Execution.STARTED)
+
+        status = self.run_workflow(WorkflowExecution.INSTALL, owner)
+        if WorkflowExecution.is_execution_finished(status) and \
+                not WorkflowExecution.is_execution_wrong(status):
+            status = self.run_workflow(WorkflowExecution.RUN, owner)
+            if WorkflowExecution.is_execution_finished(status) and \
+                    not WorkflowExecution.is_execution_wrong(status):
+                status = self.run_workflow(WorkflowExecution.UNINSTALL, owner)
+
+        if not WorkflowExecution.is_execution_finished(status):
+            # TODO: cancel execution
+            pass
+
+        self._update_status(status)
+
+        self.__class__._destroy_deployment(self.name, force=True)
+
+        # Django creates a new connection that needs to be manually closed
+        connection.close()
+
+        return status
+
+    def run_workflow(self, workflow, owner):
+        error = None
+        execution = None
+
+        execution, error = WorkflowExecution.create(
+            self,
+            workflow,
+            owner,
+            force=False)
+
+        if error is not None:
+            status = Execution.CANCELLED
+            self._update_status(Execution.CANCELLED)
+            message = "Couldn't execute the workflow '" + \
+                workflow+"': "+error
+            LOGGER.error(message)
+            ApplicationInstanceLog.create(
+                self,
+                datetime.now(),
+                message)
+            return status
+        if execution is None:
+            status = Execution.CANCELLED
+            self._update_status(Execution.CANCELLED)
+            message = "Couldn't create the execution for workflow '" + \
+                workflow+"'"
+            LOGGER.error(message)
+            ApplicationInstanceLog.create(
+                self,
+                datetime.now(),
+                message)
+            return status
+
+        ApplicationInstanceLog.create(
+            self,
+            datetime.now(),
+            "-------"+workflow.upper()+"-------")
+
+        retries = 5
+        offset = 0
+        finished = False
+        status = Execution.PENDING
+        while not finished and (retries > 0 or error is None):
+            events, error = execution.get_execution_events(offset)
+            if error is None:
+                retries = 0
+                offset = events['last']
+                status = events['status']
+                finished = WorkflowExecution.is_execution_finished(status)
+                self.append_logs(events['logs'])
+            else:
+                retries -= 1
+            time.sleep(10)
+
+        return status
+
+    def _update_status(self, status):
+        if status != self.status:
+            self.status = status
+            self.save()
+
+    def is_finished(self):
+        return self.status in Execution.END_STATES \
+            or self.status == AppInstance.PREPARED
+
+    def is_wrong(self):
+        return self.is_finished() and self.status != Execution.TERMINATED \
+            and self.status != AppInstance.PREPARED
+
+    def append_logs(self, events_list):
+        for event in events_list:
+            if not "reported_timestamp" in event:
+                # this event cannot be logged
+                LOGGER.warning(
+                    "The event has not a timestamp, will not be registered")
+                continue
+            timestamp = event["reported_timestamp"]
+            message = ""
+            if "message" in event:
+                message = event["message"]
+
+            event_type = event["type"]
+            if event_type == "cloudify_event":
+                cloudify_event_type = event["event_type"]
+                if cloudify_event_type == "workflow_node_event":
+                    message += " " + event["node_instance_id"] + \
+                        " (" + event["node_name"] + ")"
+                elif cloudify_event_type == "sending_task" \
+                        or cloudify_event_type == "task_started" \
+                        or cloudify_event_type == "task_succeeded" \
+                        or cloudify_event_type == "task_failed":
+                    # message += " [" + event["operation"] + "]"
+                    if "node_instance_id" in event and event["node_instance_id"]:
+                        message += " " + event["node_instance_id"]
+                    if "node_name" and event["node_name"]:
+                        message += " (" + event["node_name"] + ")"
+                elif cloudify_event_type == "workflow_started" \
+                        or cloudify_event_type == "workflow_succeeded" \
+                        or cloudify_event_type == "workflow_failed" \
+                        or cloudify_event_type == "workflow_cancelled":
+                    pass
+                else:
+                    event.pop("reported_timestamp")
+                    message = json.dumps(event)
+                if event["error_causes"]:
+                    for cause in event["error_causes"]:
+                        message += "\n" + \
+                            cause['type'] + ": " + cause["message"]
+                        message += "\n\t" + cause["traceback"]
+            else:
+                event.pop("reported_timestamp")
+                message = json.dumps(event)
+
+            ApplicationInstanceLog.create(self, timestamp, message)
+
+    @classmethod
+    def get_instance_events(cls, pk, offset, owner):
+        logs_list = []
+        status = None
+        instance, error = cls.get(pk, owner)
+
+        if error is None:
+            if instance is not None:
+                status = instance.status
+                logs_list, error = ApplicationInstanceLog.list(
+                    instance,
+                    owner,
+                    offset=offset
+                )
+        else:
+            error = "Can't get instance events because it doesn't exist"
+
+        return (
+            {
+                'logs': [_to_dict(log) for log in logs_list],
+                'last': offset + len(logs_list),
+                'status': instance.status,
+                'finished': instance.is_finished()
+            },
+            error)
+
     @classmethod
     def remove(cls, pk, owner, return_dict=False, force=False):
         instance, error = cls.get(pk, owner)
@@ -725,7 +953,7 @@ class AppInstance(models.Model):
                 _, error = cls._destroy_deployment(
                     instance.name,
                     force=force)
-                if error is None:
+                if error is None or instance.is_finished():
                     instance.delete()
             else:
                 error = "Can't delete instance because it doesn't exists"
@@ -785,11 +1013,55 @@ class AppInstance(models.Model):
         return (deployment, error)
 
 
+class ApplicationInstanceLog(models.Model):
+    instance = models.ForeignKey(
+        AppInstance,
+        on_delete=models.CASCADE,
+    )
+
+    generated = models.DateTimeField()
+    message = models.TextField()
+
+    @classmethod
+    def list(cls, instance, owner, offset=0, return_dict=False):
+        error = None
+        logs_list = []
+        try:
+            logs_list = \
+                cls.objects.filter(instance=instance)[offset:]
+        except cls.DoesNotExist:
+            pass
+
+        if not return_dict:
+            return (logs_list, error)
+        else:
+            return {
+                'logs_list': [_to_dict(log) for log in logs_list],
+                'error': error}
+
+    @classmethod
+    def create(cls, instance, generated, message):
+        error = None
+
+        if instance is None:
+            error = 'Application instance does not belong to user'
+        else:
+            try:
+                instance = cls.objects.create(
+                    instance=instance,
+                    generated=generated,
+                    message=message)
+            except Exception as err:
+                LOGGER.exception(err)
+                error = str(err)
+
+        return error
+
+
 class WorkflowExecution(models.Model):
     INSTALL = 'install'
     RUN = 'run_jobs'
     UNINSTALL = 'uninstall'
-    DESTROY = 'destroy'
 
     id_code = models.CharField(max_length=50)
     app_instance = models.ForeignKey(
@@ -827,11 +1099,13 @@ class WorkflowExecution(models.Model):
             return {'execution': execution, 'error': error}
 
     @classmethod
-    def list(cls, owner, return_dict=False):
+    def list(cls, instance, owner, return_dict=False):
         error = None
         execution_list = []
         try:
-            execution_list = cls.objects.filter(owner=owner)
+            execution_list = cls.objects.filter(
+                owner=owner,
+                app_instance=instance)
         except cls.DoesNotExist:
             pass
 
@@ -844,44 +1118,23 @@ class WorkflowExecution(models.Model):
                 'error': error}
 
     @classmethod
-    def list_by_instance_workflow(cls,
-                                  owner,
-                                  instance,
-                                  workflow,
-                                  return_dict=False):
-        error = None
-        execution_list = []
-        try:
-            execution_list = cls.objects.filter(owner=owner,
-                                                app_instance=instance,
-                                                workflow=workflow)
-        except cls.DoesNotExist:
-            pass
-
-        if not return_dict:
-            return (execution_list, error)
-        else:
-            return {
-                'execution_list':
-                    [_to_dict(execution) for execution in execution_list],
-                'error': error}
-
-    @classmethod
-    def create(cls, instance_pk, workflow, owner,
+    def create(cls, instance, workflow, owner,
                force=False, params=None, return_dict=False):
         error = None
         execution = None
 
-        instance, error = AppInstance.get(instance_pk, owner)
-        if error is None:
-            if instance is None:
-                error = \
-                    "Can't create execution because instance doesn't exists"
-            else:
-                execution, error = cls._execute_workflow(instance.name,
-                                                         workflow,
-                                                         force,
-                                                         params)
+        if instance is None:
+            error = "Can't create execution because instance doesn't exist"
+        elif instance.owner != owner:
+            error = \
+                "Can't create execution because instance doesn't " +\
+                "belong to user"
+        else:
+            execution, error = cls._execute_workflow(
+                instance.name,
+                workflow,
+                force,
+                params)
 
         if error is None:
             try:
@@ -925,83 +1178,36 @@ class WorkflowExecution(models.Model):
 
         return (execution, error)
 
-    @classmethod
-    def get_execution_events(cls, execution_pk, offset, owner,
-                             return_dict=False):
-        events = None
-        wf_execution, error = cls.get(execution_pk, owner)
-        if error is None:
-            if wf_execution is None:
-                error = \
-                    "Can't get execution events because it doesn't exists"
-            else:
-                events = cls._get_execution_events(
-                    wf_execution.id_code,
-                    offset)
+    def get_execution_events(self, offset, return_dict=False):
+        events = self._get_execution_events(offset)
 
         if not return_dict:
-            return (events, error)
+            return (events, None)
         else:
-            return {'events': events, 'error': error}
+            return {'events': events, 'error': None}
 
-    @staticmethod
-    def _get_execution_events(execution_id, offset):
+    def _get_execution_events(self, offset):
         client = _get_client()
 
-        execution = client.executions.get(execution_id)
-        events = client.events.list(execution_id=execution_id,
+        # TODO: manage errors
+        cfy_execution = client.executions.get(self.id_code)
+        events = client.events.list(execution_id=self.id_code,
                                     _offset=offset,
                                     _size=100)
         last_message = events.metadata.pagination.total
 
         return {
-            'logs': WorkflowExecution._events_to_string(events.items),
+            'logs': events.items,
             'last': last_message,
-            'status': execution.status,
-            'finished': WorkflowExecution._is_execution_finished(
-                execution.status)
+            'status': cfy_execution.status
         }
 
-    @staticmethod
-    def _events_to_string(events):
-        response = []
-        for event in events:
-            event_type = event["type"]
-            message = ""
-            if event_type == "cloudify_event":
-                cloudify_event_type = event["event_type"]
-                message = event["reported_timestamp"] + \
-                    " " + event["message"]
-                if cloudify_event_type == "workflow_node_event":
-                    message += " " + event["node_instance_id"] + \
-                        " (" + event["node_name"] + ")"
-                elif cloudify_event_type == "sending_task" \
-                        or cloudify_event_type == "task_started" \
-                        or cloudify_event_type == "task_succeeded" \
-                        or cloudify_event_type == "task_failed":
-                    # message += " [" + event["operation"] + "]"
-                    if event["node_instance_id"]:
-                        message += " " + event["node_instance_id"]
-                    if event["node_name"]:
-                        message += " (" + event["node_name"] + ")"
-                elif cloudify_event_type == "workflow_started" \
-                        or cloudify_event_type == "workflow_succeeded" \
-                        or cloudify_event_type == "workflow_failed" \
-                        or cloudify_event_type == "workflow_cancelled":
-                    pass
-                else:
-                    message = json.dumps(event)
-                if event["error_causes"]:
-                    for cause in event["error_causes"]:
-                        message += "\n" + \
-                            cause['type'] + ": " + cause["message"]
-                        message += "\n\t" + cause["traceback"]
-            else:
-                message = json.dumps(event)
-            response.append(message)
+    @classmethod
+    def is_execution_finished(cls, status):
+        return status in Execution.END_STATES \
+            or status == AppInstance.PREPARED
 
-        return response
-
-    @staticmethod
-    def _is_execution_finished(status):
-        return status in Execution.END_STATES
+    @classmethod
+    def is_execution_wrong(cls, status):
+        return cls.is_execution_finished(status) and status != Execution.TERMINATED \
+            and status != AppInstance.PREPARED

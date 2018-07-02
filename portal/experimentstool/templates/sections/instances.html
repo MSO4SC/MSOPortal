@@ -1,0 +1,53 @@
+{% load static %}
+
+<form class="customform" id="deploy_form" method=POST enctype=multipart/form-data>
+    {% csrf_token %}    
+    <div class="s-12 m-12 l-12">    
+        <div class="l-8" id="application_selector">
+            <label>Application: </label>
+            <select></select>
+        </div>
+    </div>
+    <div class="s-12 m-12 l-12">
+        <div class="l-8" id="deployment_id">
+            <label>Deployment ID: </label>
+            <input type='text'>
+        </div>
+    </div>
+    <div class="s-12 m-12 l-12">    
+        <div id="application_inputs" class="dynamic_list"></div>
+    </div>    
+    <div class="s-12 l-3 center">
+        <button>Create new Instance</button>
+    </div>
+</form>
+
+<form id="instances" class="customform">
+    {% csrf_token %}
+    <div class="s-12 m-12 l-12">
+        <div class="l-8" id="deployment_selector">
+            <label>App Instance: </label>
+            <select></select>
+        </div>
+        <img id="deployment_log_light" class="light_status" src="/static/experimentstool/img/light_grey.png">
+    </div>
+    <div class="margin">
+        <div class="s-6 m-6 l-9">
+            <div class="s-1 m-1 l-2 left">
+                <button id="run-instance-button">Run!</button>
+            </div>
+            <div class="s-2 m-2 l-3 right">
+                <button id="destroy-instance-button">Destroy Instance!</button>
+            </div>
+            <div class="s-2 m-2 l-3 right">                
+                <button id="force-destroy-instance-button">Force Destroy Instance!</button>                
+            </div>    
+        </div>
+    </div>
+
+    <div class="s-12 m-12 l-12">
+        <div class="l-9" id="deployment_log">
+            <textarea rows="20" cols="70" ></textarea>
+        </div>
+    </div>    
+</form>    

@@ -22,8 +22,6 @@ urlpatterns = [
         views.create_deployment, name='_deploy_application'),
     url(r'^_get_deployments$',
         views.get_deployments, name='_get_deployments'),
-    url(r'^_get_executions$',
-        views.get_executions, name='_get_executions'),
     url(r'^_execute_deployment$',
         views.execute_deployment, name='_execute_deployment'),
     url(r'^_get_executions_events$',

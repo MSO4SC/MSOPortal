@@ -554,11 +554,15 @@ def create_deployment(request):
         else:
             tosca_inputs[_input] = value
 
-    return JsonResponse(AppInstance.create(application_id,
-                                           deployment_id,
-                                           tosca_inputs,
-                                           request.user,
-                                           return_dict=True))
+    instance, error = AppInstance.create(application_id,
+                                         deployment_id,
+                                         tosca_inputs,
+                                         request.user)
+
+    return JsonResponse({
+        "instance": instance.name if instance is not None else None,
+        "error": error
+    })
 
 
 @login_required
@@ -572,8 +576,6 @@ def get_deployments(request):
 @permission_required('experimentstool.run_instance')
 def execute_deployment(request):
     deployment_id = int(request.POST.get('deployment_id', -1))
-    workflow = request.POST.get('workflow')
-    force = bool(request.POST.get('force', False))
 
     if deployment_id is None:
         return {'error': 'No deployment provided'}
@@ -581,43 +583,32 @@ def execute_deployment(request):
     if deployment_id < 0:
         return {'error': 'Bad deployment provided'}
 
-    return JsonResponse(
-        WorkflowExecution.create(deployment_id,
-                                 workflow,
-                                 request.user,
-                                 force=force,
-                                 return_dict=True))
+    instance, error = AppInstance.get(deployment_id, request.user)
+    if error is None:
+        instance.clean_up_execution(request.user)
+        instance.run_workflows(request.user)
 
-
-@login_required
-def get_executions(request):
-    instance_pk = int(request.GET.get('instance', -1))
-    workflow = request.GET.get('workflow')
-    return JsonResponse(
-        WorkflowExecution.list_by_instance_workflow(
-            request.user,
-            instance_pk,
-            workflow,
-            return_dict=True),
-        safe=False)
+    return JsonResponse({
+        "instance": instance.name,
+        "error": error
+    })
 
 
 @login_required
 def get_executions_events(request):
-    execution_pk = int(request.GET.get('exec_id', -1))
+    instance_pk = int(request.GET.get('instance_id', -1))
     reset = request.GET.get("reset", "False") in ["True", "true", "TRUE"]
     offset = 0
 
-    if execution_pk < 0:
-        return JsonResponse({'error': 'Bad execution provided'})
-    # TODO: check owner
+    if instance_pk < 0:
+        return JsonResponse({'error': 'Bad instance provided'})
 
     if not reset and 'log_offset' in request.session:
         offset = request.session['log_offset']
 
-    events, error = WorkflowExecution.get_execution_events(execution_pk,
-                                                           offset,
-                                                           request.user)
+    events, error = AppInstance.get_instance_events(instance_pk,
+                                                    offset,
+                                                    request.user)
     if error is None:
         if offset != events['last']:
             request.session['log_offset'] = events.pop('last')

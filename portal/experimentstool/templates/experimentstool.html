@@ -11,11 +11,7 @@
                 {% if perms.experimentstool.register_app and perms.experimentstool.remove_app%}
                     <li class="developer"><a class="tablinks" onclick="openExperimentsTool(event, 'apps')">Applications</a></li>
                 {% endif %}
-                <li><a class="tablinks" onclick="openExperimentsTool(event, 'deploy')">Create App Instance</a></li>
-                <li><a class="tablinks" onclick="openExperimentsTool(event, 'install')">Deploy Instance</a></li>
-                <li><a class="tablinks" onclick="openExperimentsTool(event, 'run')">Run Instance</a></li>
-                <li><a class="tablinks" onclick="openExperimentsTool(event, 'uninstall')">Undeploy/Clean Up Instance</a></li>
-                <li><a class="tablinks" onclick="openExperimentsTool(event, 'destroy')">Destroy App Instance</a></li>
+                <li><a class="tablinks" onclick="openExperimentsTool(event, 'instances')">Instances</a></li>
                 <li class="settings"><a class="tablinks" onclick="openExperimentsTool(event, 'settings')">Settings</a></li>                
             </ul>            
     </div>
@@ -30,24 +26,8 @@
 </div>
 {% endif %}
 
-<div id="deploy" class="tabcontent">
-    {% include "sections/deploy.html" %}
-</div>
-
-<div id="install" class="tabcontent">
-    {% include "sections/install.html" %}
-</div>
-
-<div id="run" class="tabcontent">
-    {% include "sections/run.html" %}
-</div>
-
-<div id="uninstall" class="tabcontent">
-    {% include "sections/uninstall.html" %}
-</div>
-
-<div id="destroy" class="tabcontent">
-    {% include "sections/destroy.html" %}
+<div id="instances" class="tabcontent">
+    {% include "sections/instances.html" %}
 </div>
 
 <div id="settings" class="tabcontent">
@@ -145,30 +125,11 @@ function openExperimentsTool(evt, toolName) {
             renderStockData("#product_selector");
             renderApplicationData("#remove_application_selector", only_owned=true);
             break;
-        case "deploy":
+        case "instances":
             renderApplicationData("#application_selector");
             $("#application_inputs").empty();
-            break;
-        case "install":
-            renderDeploymentData("#install_deployment_selector",
-                                 "install",
-                                 "#install_execution_selector",
-                                 "#install_deployment_log");
-            break;
-        case "run":
-            renderDeploymentData("#run_deployment_selector",
-                                 "run_jobs",
-                                 "#run_execution_selector",
-                                 "#run_deployment_log");
-            break;
-        case "uninstall":
-            renderDeploymentData("#uninstall_deployment_selector",
-                                 "uninstall",
-                                 "#uninstall_execution_selector",
-                                 "#uninstall_deployment_log");
-            break;
-        case "destroy":
-            renderDeploymentData("#destroy_deployment_selector");
+            renderDeploymentData("#deployment_selector",
+                                 "#deployment_log");
             break;
         case "settings":
             renderKeyData("#ckan_key_form");
@@ -969,17 +930,12 @@ function renderDatasetChoices(selector_id, container_id, group_name){
     }
 }
 
-function renderDeploymentData(selector_id, workflow, execution_selector_id, log_id) {
+function renderDeploymentData(selector_id, log_id) {
     var deployment_selector = $(selector_id).find("select")
-    var execution_selector = $(execution_selector_id).find("select")
     deployment_selector.empty();
-    execution_selector.empty();
     resetLogBox(log_id);
     deployment_selector.append(
         $(document.createElement('option')).attr("value", "-1").text("Loading..")
-    );
-    execution_selector.append(
-        $(document.createElement('option')).attr("value", "-1").text("...")
     );
 
     $.ajax({
@@ -999,20 +955,16 @@ function renderDeploymentData(selector_id, workflow, execution_selector_id, log_
                 if (data.instance_list.length > 0) {
                     $.each(data.instance_list, function (index, deployment) {
                         deployment_selector.append(
-                            $(document.createElement('option')).attr("value", deployment.id).text(deployment.name)
+                            $(document.createElement('option'))
+                                .attr("value", deployment.id)
+                                .text(deployment.name)
                         )
                     });
-                    _renderExecutionData(deployment_selector.val(),
-                                         workflow,
-                                         execution_selector_id,
-                                         log_id);
+                    _renderLogData(deployment_selector.val(),
+                                   log_id);
                 } else {
                     deployment_selector.append(
                         $(document.createElement('option')).attr("value", "-1").text("No instances found")
-                    );
-                    execution_selector.empty();
-                    execution_selector.append(
-                        $(document.createElement('option')).attr("value", "-1").text("None")
                     );
                 }
             }
@@ -1031,82 +983,14 @@ function resetLogBox(log_id) {
     $(log_id).find("textarea").val('');
 }
 
-function renderExecutionData(selector_id, workflow, execution_selector_id, log_id) {
+function renderLogData(selector_id, log_id, reset=true) {
     var deployment_selector = $(selector_id).find("select")
-    _renderExecutionData(deployment_selector.val(),
-                         workflow,
-                         execution_selector_id,
-                         log_id)
-}
-function _renderExecutionData(instance, workflow, execution_selector_id, log_id) {
-    var execution_selector = $(execution_selector_id).find("select")
-    execution_selector.empty();
-    execution_selector.append(
-        $(document.createElement('option')).attr("value", "-1").text("Loading..")
-    );
-    resetLogBox(log_id);
-    $.ajax({
-        url: '/experimentstool/_get_executions',
-        data: {
-            'instance': instance,
-            'workflow': workflow
-        },
-        beforeSend: function (xhr, settings) {
-            $.ajaxSettings.beforeSend(xhr, settings);
-            $(".loader").show();
-        },
-        success: function (data) {
-            $(".loader").hide();
-            if (data.redirect!==undefined && data.redirect!==null) {
-                redirect(data.redirect);
-            } else if (data.error!==undefined && data.error!==null) {
-                appendNotification("Couldn't read the instances: "+data.error, error=true);
-            } else {
-                execution_selector.empty();
-                if (data.execution_list.length > 0) {
-                    $.each(data.execution_list, function (index, execution) {
-                        execution_selector.append(
-                            $(document.createElement('option'))
-                                .attr("value", execution.id)
-                                .text(execution.created_on)
-                        )
-                    });
-                    //select newest
-                    $(execution_selector_id).find("select option:last")
-                        .attr("selected", "selected");
-                    
-                    //render the log of selected execution
-                    renderLogData(
-                        $(execution_selector_id).find("select option:last").val(),
-                        log_id,
-                        reset=true)
-                    
-                    //execution selector on change
-                    execution_selector.change(function (event) {
-                        event.preventDefault();
-                        renderLogData(
-                            $(execution_selector_id).find("select").val(),
-                            log_id,
-                            reset=true)
-                    });
-
-                } else {
-                    execution_selector.append(
-                        $(document.createElement('option')).attr("value", "-1").text("None")
-                    );
-                }
-            }
-        },
-        error: function (jqXHR, status, errorThrown) {
-            $(".loader").hide();
-            message = "Couldn't get executions list: ";
-            message += jqXHR.status+": "+errorThrown
-            appendNotification(message, error=true);
-        }
-    });
+    _renderLogData(deployment_selector.val(),
+                   log_id,
+                   reset=reset)
 }
 
-function renderLogData(exec_id, log_id, reset=false) {
+function _renderLogData(instance_id, log_id, reset=true) {
     var textarea = $(log_id).find("textarea");
     if (reset) {
         textarea.val("");
@@ -1116,7 +1000,7 @@ function renderLogData(exec_id, log_id, reset=false) {
     $.ajax({
         url: '/experimentstool/_get_executions_events',
         data: {
-            'exec_id': exec_id,
+            'instance_id': instance_id,
             'reset': reset
         },
         success: function (data) {
@@ -1128,7 +1012,10 @@ function renderLogData(exec_id, log_id, reset=false) {
                 if (data.events !== undefined && data.events.logs !== undefined) {
                     // Write events in the textarea
                     data.events.logs.forEach(function(event) {
-                        textarea.val(textarea.val()+event+'\n');
+                        textarea.val(textarea.val()
+                            +"["+event.generated+"] "
+                            +event.message
+                            +'\n');
                     });
                     textarea.scrollTop = textarea.scrollHeight;
                 }
@@ -1137,16 +1024,16 @@ function renderLogData(exec_id, log_id, reset=false) {
                 if (!data.events.finished) {
                     $log_timeout = setTimeout(
                         function () {
-                            renderLogData(exec_id, log_id, reset=false);
+                            _renderLogData(instance_id, log_id, reset=false);
                         },
                         3000);
-                    if (reset) {
-                        $(log_id+"_light").attr("src", "/static/experimentstool/img/light_blue.png");
-                    }
+                    $(log_id+"_light").attr("src", "/static/experimentstool/img/light_blue.png");
                 } else {
                     var light = $(log_id+"_light");
                     if (data.events.status=="terminated") {
                         light.attr("src", "/static/experimentstool/img/light_green.png");
+                    } else if (data.events.status=="prepared") {
+                            light.attr("src", "/static/experimentstool/img/light_grey.png");
                     } else {
                         light.attr("src", "/static/experimentstool/img/light_red.png");
                     }
@@ -1161,21 +1048,52 @@ function renderLogData(exec_id, log_id, reset=false) {
     });
 }
 
-function executeDeployment(selector_id, workflow, execution_selector_id, log_id = null, force = false) {
+function runDeployment(selector_id, log_id, force = false) {
     var deployment_id = $(selector_id).find("select").val();
+    resetLogBox(log_id);
     cleanNotifications();
-
-    var url = "/experimentstool/_execute_deployment";
-    if (workflow=='destroy') {
-        url = "/experimentstool/_destroy_deployment";
-    }
 
     $.ajax({
         method: "POST",
-        url: url,
+        url: "/experimentstool/_execute_deployment",
+        data: {
+            'deployment_id': deployment_id
+        },
+        dataType: 'json',
+        beforeSend: function (xhr, settings) {
+            $.ajaxSettings.beforeSend(xhr, settings);
+            $(".loader").show();
+        },
+        success: function (data) {
+            $(".loader").hide();
+            if (data.redirect!==undefined && data.redirect!==null) {
+                redirect(data.redirect);
+            } else if (data.error!==undefined && data.error!==null) {
+                appendNotification("Run error: "+data.error, error=true);
+            }
+        },
+        error: function (jqXHR, status, errorThrown) {
+            $(".loader").hide();
+            message = "Couldn't run the instance: ";
+            message += jqXHR.status+": "+errorThrown
+            appendNotification(message, error=true);
+        },
+        complete: function() {
+            renderDeploymentData(selector_id,
+                                 log_id);
+        }
+    });
+};
+
+function removeDeployment(selector_id, force = false) {
+    var deployment_id = $(selector_id).find("select").val();
+    cleanNotifications();
+
+    $.ajax({
+        method: "POST",
+        url: "/experimentstool/_destroy_deployment",
         data: {
             'deployment_id': deployment_id,
-            'workflow': workflow,
             'force': force
         },
         dataType: 'json',
@@ -1188,32 +1106,20 @@ function executeDeployment(selector_id, workflow, execution_selector_id, log_id 
             if (data.redirect!==undefined && data.redirect!==null) {
                 redirect(data.redirect);
             } else if (data.error!==undefined && data.error!==null) {
-                appendNotification("Execution error: "+data.error, error=true);
+                appendNotification("Removing error: "+data.error, error=true);
             } else {
-                if (execution_selector_id && log_id) {
-                    var execution_selector = $(execution_selector_id).find("select");
-                    execution_selector.append(
-                        $(document.createElement('option'))
-                            .attr("value", data.execution.id)
-                            .attr("selected", "selected")
-                            .text(data.execution.created_on)
-                    )
-                    renderLogData(data.execution.id, log_id, reset=true);
-                } else {
-                    appendNotification("Operation successful.");
-                }
+                appendNotification("Operation successful.");
             }
         },
         error: function (jqXHR, status, errorThrown) {
             $(".loader").hide();
-            message = "Couldn't execute the operation: ";
+            message = "Couldn't remove the instance: ";
             message += jqXHR.status+": "+errorThrown
             appendNotification(message, error=true);
         },
         complete: function() {
-            if (workflow=='destroy') {
-                renderDeploymentData("#destroy_deployment_selector");
-            }
+            renderDeploymentData("#deployment_selector",
+                                 "#deployment_log");
         }
     });
 };
@@ -1502,7 +1408,7 @@ $("#deploy_form").find("button").on('click', function (event) {
             } else if (data.error!==undefined && data.error!==null) {
                 appendNotification("Couldn't create the instance: "+data.error, error=true);
             } else {
-                appendNotification("App instance "+data.instance.name+" created.");
+                appendNotification("App instance "+ data.instance +" created.");
             }
         },
         error: function (jqXHR, status, errorThrown) {
@@ -1513,76 +1419,33 @@ $("#deploy_form").find("button").on('click', function (event) {
         },
         complete: function() {
             $("#application_inputs").empty()
+            renderDeploymentData("#deployment_selector",
+                                 "#deployment_log");
         }
     });
 });
 
-$("#install_deployment_selector").find("select").on('change', function () {
-    renderExecutionData("#install_deployment_selector",
-                        "install",
-                        "#install_execution_selector",
-                        "#install_deployment_log");
+$("#deployment_selector").find("select").on('change', function () {
+    renderLogData("#deployment_selector",
+                  "#deployment_log")
 });
 
-$("#run_deployment_selector").find("select").on('change', function () {
-    renderExecutionData("#run_deployment_selector",
-                        "run_jobs",
-                        "#run_execution_selector",
-                        "#run_deployment_log");
-});
-
-$("#uninstall_deployment_selector").find("select").on('change', function () {
-    renderExecutionData("#uninstall_deployment_selector",
-                        "uninstall",
-                        "#uninstall_execution_selector",
-                        "#uninstall_deployment_log");
-});
-
-$("#install").find("button").on('click', function (event) {
+$("#run-instance-button").on('click', function (event) {
     event.preventDefault();
-    executeDeployment("#install_deployment_selector",
-                      "install",
-                      "#install_execution_selector",
-                      "#install_deployment_log");
-});
-
-$("#run").find("button").on('click', function (event) {
-    event.preventDefault();
-    executeDeployment("#run_deployment_selector",
-                      "run_jobs",
-                      "#run_execution_selector",
-                      "#run_deployment_log");
-});
-
-$("#undeploy-button").on('click', function (event) {
-    event.preventDefault();
-    executeDeployment("#uninstall_deployment_selector",
-                      "uninstall",
-                      "#uninstall_execution_selector",
-                      "#uninstall_deployment_log");
-});
-
-$("#force-undeploy-button").on('click', function (event) {
-    event.preventDefault();
-    executeDeployment("#uninstall_deployment_selector",
-                      "uninstall",
-                      "#uninstall_execution_selector",
-                      "#uninstall_deployment_log",
-                      force = true);
+    runDeployment("#deployment_selector",
+                  "#deployment_log")
 });
 
 $("#destroy-instance-button").on('click', function (event) {
     event.preventDefault();
-    executeDeployment("#destroy_deployment_selector",
-                      "destroy");
-    renderDeploymentData("#destroy_deployment_selector");
+    removeDeployment("#deployment_selector");
+    renderDeploymentData("#deployment_selector",
+                         "#deployment_log");
 });
 
 $("#force-destroy-instance-button").on('click', function (event) {
     event.preventDefault();
-    executeDeployment("#destroy_deployment_selector",
-                      "destroy",
-                      force=true);
+    removeDeployment("#deployment_selector", force=true);
 });
 
 $("#remove").find("button").on('click', function (event) {
