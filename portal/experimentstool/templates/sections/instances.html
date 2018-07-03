@@ -1,26 +1,31 @@
 {% load static %}
 
-<form class="customform" id="deploy_form" method=POST enctype=multipart/form-data>
-    {% csrf_token %}    
-    <div class="s-12 m-12 l-12">    
-        <div class="l-8" id="application_selector">
-            <label>Application: </label>
-            <select></select>
+<div class="wrapper">
+    <form class="wrappedform customform" id="deploy_form" method=POST enctype=multipart/form-data>
+        {% csrf_token %}
+        <h5><a href="#" class="toogle">&rarr; Add a new one</a></h5>
+        <div class="collapsed">
+            <div class="s-12 m-12 l-12">    
+                <div class="l-8" id="application_selector">
+                    <label>Application: </label>
+                    <select></select>
+                </div>
+            </div>
+            <div class="s-12 m-12 l-12">
+                <div class="l-8" id="deployment_id">
+                    <label>Deployment ID: </label>
+                    <input type='text'>
+                </div>
+            </div>
+            <div class="s-12 m-12 l-12">    
+                <div id="application_inputs" class="dynamic_list"></div>
+            </div>    
+            <div class="s-12 l-3 center">
+                <button>Create new Instance</button>
+            </div>
         </div>
-    </div>
-    <div class="s-12 m-12 l-12">
-        <div class="l-8" id="deployment_id">
-            <label>Deployment ID: </label>
-            <input type='text'>
-        </div>
-    </div>
-    <div class="s-12 m-12 l-12">    
-        <div id="application_inputs" class="dynamic_list"></div>
-    </div>    
-    <div class="s-12 l-3 center">
-        <button>Create new Instance</button>
-    </div>
-</form>
+    </form>
+</div>
 
 <form id="instances" class="customform">
     {% csrf_token %}

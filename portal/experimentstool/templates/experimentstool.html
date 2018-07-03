@@ -96,6 +96,12 @@ function appendNotification(message, error = false) {
 }
 
 $log_timeout = null;
+function stop_logs() {
+    if ($log_timeout != null) {
+        clearTimeout($log_timeout);
+    }
+}
+
 function openExperimentsTool(evt, toolName) {
     // Declare all variables
     var i, tabcontent, tablinks;
@@ -113,9 +119,7 @@ function openExperimentsTool(evt, toolName) {
     }
 
     // Stop all log monitoring
-    if ($log_timeout != null) {
-        clearTimeout($log_timeout);
-    }
+    stop_logs();
 
     // Clean Up the errors container
     cleanNotifications();
@@ -994,8 +998,9 @@ function _renderLogData(instance_id, log_id, reset=true) {
     var textarea = $(log_id).find("textarea");
     if (reset) {
         textarea.val("");
+        stop_logs();
+        cleanNotifications();
     }
-    cleanNotifications();
 
     $.ajax({
         url: '/experimentstool/_get_executions_events',
@@ -1081,8 +1086,8 @@ function runDeployment(selector_id, log_id, force = false) {
             appendNotification(message, error=true);
         },
         complete: function() {
-            renderDeploymentData(selector_id,
-                                 log_id);
+            renderLogData("#deployment_selector",
+                          "#deployment_log")
         }
     });
 };
@@ -1485,6 +1490,13 @@ $("#remove").find("button").on('click', function (event) {
             renderApplicationData("#remove_application_selector", only_owned=true);
         }
     });
+});
+
+$('.wrapper').find('.toogle').on('click', function (e) {
+    e.preventDefault();
+    this.expand = !this.expand;
+    $(this).html(this.expand?"&uarr; Add a new one:":"&rarr; Add a new one");
+    $(this).closest('.wrapper').find('.collapsed, .expanded').toggleClass('collapsed expanded');
 });
 
 </script>

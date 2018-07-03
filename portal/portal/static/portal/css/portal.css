@@ -210,3 +210,14 @@ a.disabled {
         transform: rotate(360deg);
     }
 }
+
+.collapsed {
+    height: 0px;
+    overflow: hidden;
+    transition: all 1s;
+}
+
+.expanded {
+    height: auto;
+    transition: all 1s;
+}
