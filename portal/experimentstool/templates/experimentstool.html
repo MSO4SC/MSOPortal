@@ -1021,19 +1021,21 @@ function _renderLogData(instance_id, log_id, reset=true) {
                 }
 
                 // Schedule the next request when the current one's complete
+                var light = $(log_id+"_light");
                 if (!data.events.finished) {
                     $log_timeout = setTimeout(
                         function () {
                             _renderLogData(instance_id, log_id, reset=false);
                         },
                         3000);
-                    $(log_id+"_light").attr("src", "/static/experimentstool/img/light_blue.png");
+                    if (data.events.status=="prepared") {
+                        light.attr("src", "/static/experimentstool/img/light_yellow.png");
+                    } else {
+                        light.attr("src", "/static/experimentstool/img/light_blue.png");
+                    }
                 } else {
-                    var light = $(log_id+"_light");
                     if (data.events.status=="terminated") {
                         light.attr("src", "/static/experimentstool/img/light_green.png");
-                    } else if (data.events.status=="prepared") {
-                            light.attr("src", "/static/experimentstool/img/light_grey.png");
                     } else {
                         light.attr("src", "/static/experimentstool/img/light_red.png");
                     }

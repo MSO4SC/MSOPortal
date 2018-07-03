@@ -2,13 +2,12 @@ import json
 import time
 import logging
 from urllib.parse import urlparse
-from datetime import datetime
 
 from django.conf import settings
 from threading import Thread
 
 from django.db import models, connection
-
+from django.utils import timezone
 from django.forms.models import model_to_dict
 
 from cloudify_rest_client import CloudifyClient
@@ -19,7 +18,7 @@ from cloudify_rest_client.exceptions \
 from cloudify_rest_client.exceptions \
     import DeploymentEnvironmentCreationInProgressError
 
-WAIT_FOR_EXECUTION_SLEEP_INTERVAL = 3
+WAIT_FOR_EXECUTION_SLEEP_INTERVAL = 5
 
 # Get an instance of a logger
 LOGGER = logging.getLogger(__name__)
@@ -452,7 +451,7 @@ def _get_client():
 
 
 class Application(models.Model):
-    name = models.CharField(max_length=50)
+    name = models.CharField(max_length=50, unique=True)
 
     description = models.CharField(max_length=256, null=True)
     marketplace_id = models.CharField(max_length=10, db_index=True)
@@ -636,7 +635,7 @@ class Application(models.Model):
 
 
 class AppInstance(models.Model):
-    name = models.CharField(max_length=50)
+    name = models.CharField(max_length=50, unique=True)
     app = models.ForeignKey(
         Application,
         on_delete=models.CASCADE,
@@ -644,7 +643,6 @@ class AppInstance(models.Model):
 
     description = models.CharField(max_length=256, null=True)
     inputs = models.CharField(max_length=256, null=True)
-    outputs = models.CharField(max_length=256, null=True)
 
     PREPARED = 'prepared'
     TERMINATED = 'terminated'
@@ -655,14 +653,14 @@ class AppInstance(models.Model):
     CANCELLING = 'cancelling'
     FORCE_CANCELLING = 'force_cancelling'
     STATUS_CHOICES = (
+        (PREPARED, 'prepared'),
         (TERMINATED, 'terminated'),
         (FAILED, 'failed'),
         (CANCELLED, 'cancelled'),
         (PENDING, 'pending'),
         (STARTED, 'started'),
         (CANCELLING, 'cancelling'),
-        (FORCE_CANCELLING, 'force_cancelling'),
-        (PREPARED, 'prepared')
+        (FORCE_CANCELLING, 'force_cancelling')
     )
     status = models.CharField(
         max_length=5,
@@ -721,30 +719,21 @@ class AppInstance(models.Model):
         if error is None:
             if app is None:
                 error = "Can't create instance because app doesn't exists"
-            else:
-                deployment, error = cls._create_deployment(app.name,
-                                                           deployment_id,
-                                                           inputs)
 
         if error is None:
             try:
                 instance = cls.objects.create(
-                    name=deployment['id'],
+                    name=deployment_id,
                     app=app,
-                    description=deployment['description'],
+                    description="",
                     inputs=json.dumps(
-                        deployment['inputs'],
-                        ensure_ascii=False,
-                        separators=(',', ':')),
-                    outputs=json.dumps(
-                        deployment['outputs'],
+                        inputs,
                         ensure_ascii=False,
                         separators=(',', ':')),
                     owner=owner)
             except Exception as err:
                 LOGGER.exception(err)
                 error = str(err)
-                cls._destroy_deployment(deployment['id'])
 
         if not return_dict:
             return (instance, error)
@@ -752,7 +741,7 @@ class AppInstance(models.Model):
             return {'instance': _to_dict(instance), 'error': error}
 
     @backend
-    def clean_up_execution(self, owner):
+    def reset_execution(self, owner):
         self._update_status(AppInstance.PREPARED)
 
         # logs
@@ -777,9 +766,17 @@ class AppInstance(models.Model):
         else:
             LOGGER.warning("Couldn't clean up executions: "+error)
 
+        return error
+
     @backend
     def run_workflows(self, owner):
-        # TODO: create cfy deployment again
+
+        # Create cfy deployment
+        _, error = self.__class__._create_deployment(
+            self.app.name,
+            self.name,
+            json.loads(self.inputs))
+
         self._update_status(Execution.STARTED)
 
         status = self.run_workflow(WorkflowExecution.INSTALL, owner)
@@ -796,6 +793,7 @@ class AppInstance(models.Model):
 
         self._update_status(status)
 
+        # Finally delete cfy deployment
         self.__class__._destroy_deployment(self.name, force=True)
 
         # Django creates a new connection that needs to be manually closed
@@ -821,7 +819,7 @@ class AppInstance(models.Model):
             LOGGER.error(message)
             ApplicationInstanceLog.create(
                 self,
-                datetime.now(),
+                timezone.now(),
                 message)
             return status
         if execution is None:
@@ -832,13 +830,13 @@ class AppInstance(models.Model):
             LOGGER.error(message)
             ApplicationInstanceLog.create(
                 self,
-                datetime.now(),
+                timezone.now(),
                 message)
             return status
 
         ApplicationInstanceLog.create(
             self,
-            datetime.now(),
+            timezone.now(),
             "-------"+workflow.upper()+"-------")
 
         retries = 5
@@ -865,12 +863,10 @@ class AppInstance(models.Model):
             self.save()
 
     def is_finished(self):
-        return self.status in Execution.END_STATES \
-            or self.status == AppInstance.PREPARED
+        return self.status in Execution.END_STATES
 
     def is_wrong(self):
-        return self.is_finished() and self.status != Execution.TERMINATED \
-            and self.status != AppInstance.PREPARED
+        return self.is_finished() and self.status != Execution.TERMINATED
 
     def append_logs(self, events_list):
         for event in events_list:
@@ -954,6 +950,7 @@ class AppInstance(models.Model):
                     instance.name,
                     force=force)
                 if error is None or instance.is_finished():
+                    error = None
                     instance.delete()
             else:
                 error = "Can't delete instance because it doesn't exists"
@@ -970,7 +967,7 @@ class AppInstance(models.Model):
             self.owner.username)
 
     @classmethod
-    def _create_deployment(cls, app_id, instance_id, inputs, retries=3):
+    def _create_deployment(cls, app_id, instance_id, inputs):
         error = None
         deployment = None
 
@@ -982,16 +979,6 @@ class AppInstance(models.Model):
                 inputs=inputs,
                 skip_plugins_validation=True
             )
-        except (DeploymentEnvironmentCreationPendingError,
-                DeploymentEnvironmentCreationInProgressError) as err:
-            if (retries > 0):
-                time.sleep(WAIT_FOR_EXECUTION_SLEEP_INTERVAL)
-                deployment, error = cls._create_deployment(app_id,
-                                                           instance_id,
-                                                           inputs,
-                                                           retries - 1)
-            LOGGER.exception(err)
-            error = str(err)
         except CloudifyClientError as err:
             LOGGER.exception(err)
             error = str(err)
@@ -1142,7 +1129,7 @@ class WorkflowExecution(models.Model):
                     id_code=execution['id'],
                     app_instance=instance,
                     workflow=workflow,
-                    created_on=datetime.now(),
+                    created_on=timezone.now(),
                     owner=owner)
             except Exception as err:
                 LOGGER.exception(err)
@@ -1166,15 +1153,23 @@ class WorkflowExecution(models.Model):
         error = None
         execution = None
 
+        retries = 9
         client = _get_client()
-        try:
-            execution = client.executions.start(deployment_id,
-                                                workflow,
-                                                parameters=params,
-                                                force=force)
-        except CloudifyClientError as err:
-            LOGGER.exception(err)
-            error = str(err)
+        while retries >= 0:
+            try:
+                execution = client.executions.start(deployment_id,
+                                                    workflow,
+                                                    parameters=params,
+                                                    force=force)
+                break
+            except CloudifyClientError as err:
+                if (retries > 0):
+                    LOGGER.warning(err)
+                    time.sleep(WAIT_FOR_EXECUTION_SLEEP_INTERVAL)
+                else:
+                    error = str(err)
+                    LOGGER.exception(err)
+                retries -= 1
 
         return (execution, error)
 
@@ -1204,10 +1199,8 @@ class WorkflowExecution(models.Model):
 
     @classmethod
     def is_execution_finished(cls, status):
-        return status in Execution.END_STATES \
-            or status == AppInstance.PREPARED
+        return status in Execution.END_STATES
 
     @classmethod
     def is_execution_wrong(cls, status):
-        return cls.is_execution_finished(status) and status != Execution.TERMINATED \
-            and status != AppInstance.PREPARED
+        return cls.is_execution_finished(status) and status != Execution.TERMINATED

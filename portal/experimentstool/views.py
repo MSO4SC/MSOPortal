@@ -2,6 +2,7 @@
 
 import re
 import json
+import time
 import tempfile
 from urllib.parse import urlparse
 import requests
@@ -585,8 +586,10 @@ def execute_deployment(request):
 
     instance, error = AppInstance.get(deployment_id, request.user)
     if error is None:
-        instance.clean_up_execution(request.user)
-        instance.run_workflows(request.user)
+        error = instance.reset_execution(request.user)
+        time.sleep(1)
+        if error is None:
+            instance.run_workflows(request.user)
 
     return JsonResponse({
         "instance": instance.name,
@@ -610,7 +613,7 @@ def get_executions_events(request):
                                                     offset,
                                                     request.user)
     if error is None:
-        if offset != events['last']:
+        if offset != events['last'] or offset != request.session['log_offset']:
             request.session['log_offset'] = events.pop('last')
             request.session.modified = True
 
