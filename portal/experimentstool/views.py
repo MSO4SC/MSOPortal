@@ -613,7 +613,9 @@ def get_executions_events(request):
                                                     offset,
                                                     request.user)
     if error is None:
-        if offset != events['last'] or offset != request.session['log_offset']:
+        if offset != events['last'] or \
+                ('log_offset' in request.session and
+                 offset != request.session['log_offset']):
             request.session['log_offset'] = events.pop('last')
             request.session.modified = True
 
