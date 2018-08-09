@@ -28,6 +28,7 @@ services:
         environment:
             - IDM_HOST=$IDM_HOST
             - IDM_PORT=$IDM_PORT
+            - IDM_HTTPS=$IDM_HTTPS
             - SMTP_HOST=$SMTP_HOST
             - SMTP_PORT=$SMTP_PORT
             - SMTP_SECURE=$SMTP_SECURE
