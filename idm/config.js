@@ -6,9 +6,11 @@ var idm_port = (process.env.IDM_PORT) ? process.env.IDM_PORT : 'localhost'
 config.host = 'http://'+ idm_host +':' + idm_port;
 config.port = idm_port
 
+var idm_https = (process.env.IDM_HTTPS == 'true' || process.env.IDM_HTTPS == 'True' || process.env.IDM_HTTPS == 'TRUE') ? true : false
+
 // HTTPS enable
 config.https = {
-    enabled: true,
+    enabled: idm_https,
     cert_file: '/certs/fullchain.pem',
     key_file: '/certs/privkey.pem',
     port: 443
