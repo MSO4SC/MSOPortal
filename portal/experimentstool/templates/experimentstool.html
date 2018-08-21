@@ -257,6 +257,7 @@ function renderApplicationInputs(selector_id, container_id) {
     var dataset_pattern = new RegExp("^mso4sc_dataset_(.)*$");
     var outputdataset_pattern = new RegExp('^mso4sc_outdataset_(.)*$')
     var datacatalogue_pattern = new RegExp('^mso4sc_datacatalogue_(.)*$')
+    var file_pattern = new RegExp('^mso4sc_file_(.)*$')
 
     if (parseInt(application) >= 0) {
         $.ajax({
@@ -356,6 +357,37 @@ function renderApplicationInputs(selector_id, container_id) {
                             );
                             renderDatasetsData("#input_container_"+input.name);
                         }
+                        else if (file_pattern.test(input.name)) {
+                            inputs_container.append( //files
+                                $(document.createElement('div')).attr({
+                                    id: "input_container_" + input.name
+                                }).append(
+                                    $(document.createElement('label')).attr({
+                                        for: "input_" + input.name,
+                                        title: input.description,
+                                        class: "toogle"
+                                    }).html('File: '+input.name.slice(12)+' &darr;'),
+                                    $(document.createElement('div')).attr({
+                                        id: "text_container_" + input.name,
+                                        class: "collapsed"
+                                    }).append(
+                                        $(document.createElement('textarea')).attr({
+                                            id: "input_" + input.name,
+                                            name: input.name,
+                                            placeholder: input.description,
+                                            rows: 25,
+                                            cols: 50
+                                        }).text(input.default)
+                                    )
+                                )
+                            );
+                            $("#input_container_" + input.name).find('.toogle').on('click', function (e) {
+                                e.preventDefault();
+                                this.expand = !this.expand;
+                                $(this).html(this.expand?'File: '+input.name.slice(12)+' &uarr;':'File: '+input.name.slice(12)+' &darr;');
+                                $(this).closest("#input_container_" + input.name).find('.collapsed, .expanded').toggleClass('collapsed expanded');
+                            });
+                        }
                         else if (datacatalogue_pattern.test(input.name)) {
                             inputs_container.append( //datasets
                                 $(document.createElement('div')).attr({
@@ -371,7 +403,7 @@ function renderApplicationInputs(selector_id, container_id) {
                                 )
                             );
                         }
-                        else if (!(hpc_pattern.test(input.name)) && !(dataset_pattern.test(input.name))) {
+                        else {
                             inputs_container.append( //other
                                 $(document.createElement('div')).attr({
                                     id: "input_container_" + input.name
