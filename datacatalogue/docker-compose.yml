@@ -4,7 +4,7 @@ version: "3.3"
 services:
   ckan:
     container_name: ckan
-    image: mso4sc/datacatalogue:2.0
+    image: mso4sc/datacatalogue:2.1
     restart: always
     links:
       - db
