@@ -24,7 +24,7 @@ RUN chmod +x fiware-idm-plugin.sh
 RUN ./fiware-idm-plugin.sh
 RUN rm fiware-idm-plugin.sh
 # Enable unsecure transport (not https)
-#ENV OAUTHLIB_INSECURE_TRANSPORT True
+ENV OAUTHLIB_INSECURE_TRANSPORT True
 
 # Modify entrypoint to write IDM config the first time
 ADD fiware-idm-plugin-config.sh /
