@@ -32,6 +32,11 @@ RUN chmod +x /fiware-idm-plugin-config.sh
 RUN sed -i '/ckan-paster make-config/a\
     /fiware-idm-plugin-config.sh' /ckan-entrypoint.sh
 
+## Modify entrypoint to write CKAN config the first time
+ADD ckan-config.sh /
+RUN chmod +x /ckan-config.sh
+RUN sed -i '/ckan-paster make-config/a\
+    /ckan-config.sh' /ckan-entrypoint.sh
 
 # Modify entrypoint to write IDM credentials
 ADD ckan-idm-entrypoint.sh /
