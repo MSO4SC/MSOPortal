@@ -30,16 +30,9 @@ services:
       - FIWARE_SECRET=${IDM_CKAN_SECRET}
 
     volumes:
-      - $CONFIG_PATH/ckan:/etc/ckan
-      - ckan_home:/usr/lib/ckan
-      - $DATA_PATH/ckan/storage:/var/lib/ckan
-
-  datapusher:
-    container_name: datapusher
-    image: clementmouchet/datapusher
-    restart: always
-    ports:
-      - "8800:8800"
+      - ckan_config:/etc/ckan/default
+      - ckan_home:/usr/lib/ckan/default
+      - ckan_storage:/var/lib/ckan
 
   db:
     container_name: db
@@ -49,7 +42,7 @@ services:
       - DS_RO_PASS=${DATASTORE_READONLY_PASSWORD}
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
     volumes:
-      - $DATA_PATH/pg/data:/var/lib/postgresql/data
+      - pgdata:/var/lib/postgresql/data
 
   solr:
     container_name: solr
@@ -61,6 +54,12 @@ services:
     container_name: redis
     image: redis:latest
     restart: always
-    
+    volumes:
+      - redis_data:/data
+
 volumes:
+    ckan_config:
     ckan_home:
+    ckan_storage:
+    pgdata:
+    redis_data:
