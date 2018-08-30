@@ -230,17 +230,8 @@ def load_owned_applications(request, *args, **kwargs):
     access_token = kwargs['token']
     if not access_token:
         return JsonResponse({'redirect': kwargs['url']+'/experimentstool/'})
-    uid = sso.utils.get_uid(request.user)
 
-    stock_data = _get_stock(access_token, uid)
-    if 'error' in stock_data:
-        return JsonResponse(stock_data, safe=False)
-
-    marketplace_ids = []
-    for product in stock_data:
-        marketplace_ids.append(_get_productid_from_specification(product))
-
-    applications = Application.list(marketplace_ids, return_dict=True)
+    applications = Application.list_owned(request.user, return_dict=True)
 
     return JsonResponse(applications, safe=False)
 
@@ -259,7 +250,7 @@ def load_applications(request, *args, **kwargs):
     if 'error' in inventory_data:
         return JsonResponse(inventory_data, safe=False)
 
-    marketplace_ids = []
+    marketplace_ids = ['-1'] # id for apps that are not in the marketplace
     for product in stock_data:
         marketplace_ids.append(_get_productid_from_specification(product))
     for offering in inventory_data:
@@ -311,10 +302,6 @@ def _get_productid_from_offering(data, access_token):
 @login_required
 @permission_required('experimentstool.register_app')
 def upload_application(request):
-    if 'stock' not in request.session:
-        return JsonResponse({'error': 'No stock products loaded'})
-
-    products = request.session['stock']
     product_id = request.POST.get('product', None)
     if not product_id:
         return JsonResponse({'error': 'No product id provided'})
@@ -324,13 +311,20 @@ def upload_application(request):
         # TODO validation
         return JsonResponse({'error': 'No mso4sc id provided'})
 
-    product = None
-    for p in products:
-        if p["id"] == product_id:
-            product = p
-            break
-    if not product:
-        return JsonResponse({'error': 'Product not found'})
+    register_for_all = product_id == "-1"
+    if register_for_all:
+        pass
+    elif 'stock' in request.session:
+        products = request.session['stock']
+        product = None
+        for _p in products:
+            if _p["id"] == product_id:
+                product = _p
+                break
+        if not product:
+            return JsonResponse({'error': 'Product not found'})
+    else:
+        return JsonResponse({'error': 'No stock products loaded'})
 
     # TODO: check errors, if does not exist, etc.
     blueprint_package = request.FILES['blueprint_package']

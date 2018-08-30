@@ -503,6 +503,24 @@ class Application(models.Model):
                     'error': error}
 
     @classmethod
+    def list_owned(cls, owner, return_dict=False):
+        error = None
+        app_list = []
+        try:
+            app_list = cls.objects.filter(owner=owner)
+        except cls.DoesNotExist:
+            pass
+        except Exception as err:
+            LOGGER.exception(err)
+            error = str(err)
+
+        if not return_dict:
+            return (app_list, error)
+        else:
+            return {'app_list': [_to_dict(app) for app in app_list],
+                    'error': error}
+
+    @classmethod
     def create(cls,
                path,
                blueprint_id,

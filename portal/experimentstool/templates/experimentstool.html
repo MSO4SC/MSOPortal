@@ -165,20 +165,21 @@ function renderStockData(selector_id, cleanup=true) {
             $(".loader").hide();
             if (products.redirect!==undefined && products.redirect!==null) {
                 redirect(products.redirect);
-            } else if (products.length > 0) {
-                $.each(products, function (index, product) {
-                    product_selector.append(
-                        $(document.createElement('option'))
-                            .attr("value", product.id)
-                            .text(product.name)
-                    )
-                });
             } else {
                 product_selector.append(
                     $(document.createElement('option'))
                         .attr("value", "-1")
-                        .text("No new products found in stock")
+                        .text("Register for all users")
                 );
+                if (products.length > 0) {
+                    $.each(products, function (index, product) {
+                        product_selector.append(
+                            $(document.createElement('option'))
+                                .attr("value", product.id)
+                                .text(product.name)
+                        )
+                    });
+                }
             }
         },
         error: function (jqXHR, status, errorThrown) {
@@ -1339,53 +1340,51 @@ $("#upload").find("button").on('click', function (event) {
     var blueprint_package = $("#blueprint_package").find("input")[0];
 
     cleanNotifications();
-    if (product >= 0) {
-        var blueprint = null
-        if (blueprint_package && blueprint_package.files && blueprint_package.files[0]) {
-            blueprint = blueprint_package.files[0]
-        } else {
-            appendNotification('No package provided', error=true);
-            return
-        }
-        
-        var data = new FormData();
-        data.append('product', product);
-        data.append('mso_id', mso_id);
-        data.append('blueprint_package', blueprint);
-        $.ajax({
-            url: '/experimentstool/_upload_application',
-            type: "POST",
-            data: data,
-            dataType: 'json',
-            contentType: false,
-            processData: false,
-            cache: false,
-            beforeSend: function (xhr, settings) {
-                $.ajaxSettings.beforeSend(xhr, settings);
-                $(".loader").show();
-            },
-            success: function (data) {
-                $(".loader").hide();
-                if (data.redirect!==undefined && data.redirect!==null) {
-                    redirect(data.redirect);
-                } else if (data.error!==undefined && data.error!==null) {
-                    appendNotification("Couldn't register the app: "+data.error, error=true);
-                } else {
-                    appendNotification("App "+data.app.name+" registered.");
-                }
-            },
-            error: function (jqXHR, status, errorThrown) {
-                $(".loader").hide();
-                message = "Couldn't register the app: ";
-                message += jqXHR.status+": "+errorThrown
-                appendNotification(message, error=true);
-            },
-            complete: function() {
-                renderStockData("#product_selector", cleanup=false);
-                renderApplicationData("#remove_application_selector", only_owned=true);
-            }
-        });
+    var blueprint = null
+    if (blueprint_package && blueprint_package.files && blueprint_package.files[0]) {
+        blueprint = blueprint_package.files[0]
+    } else {
+        appendNotification('No package provided', error=true);
+        return
     }
+    
+    var data = new FormData();
+    data.append('product', product);
+    data.append('mso_id', mso_id);
+    data.append('blueprint_package', blueprint);
+    $.ajax({
+        url: '/experimentstool/_upload_application',
+        type: "POST",
+        data: data,
+        dataType: 'json',
+        contentType: false,
+        processData: false,
+        cache: false,
+        beforeSend: function (xhr, settings) {
+            $.ajaxSettings.beforeSend(xhr, settings);
+            $(".loader").show();
+        },
+        success: function (data) {
+            $(".loader").hide();
+            if (data.redirect!==undefined && data.redirect!==null) {
+                redirect(data.redirect);
+            } else if (data.error!==undefined && data.error!==null) {
+                appendNotification("Couldn't register the app: "+data.error, error=true);
+            } else {
+                appendNotification("App "+data.app.name+" registered.");
+            }
+        },
+        error: function (jqXHR, status, errorThrown) {
+            $(".loader").hide();
+            message = "Couldn't register the app: ";
+            message += jqXHR.status+": "+errorThrown
+            appendNotification(message, error=true);
+        },
+        complete: function() {
+            renderStockData("#product_selector", cleanup=false);
+            renderApplicationData("#remove_application_selector", only_owned=true);
+        }
+    });
 });
 
 $("#application_selector").find("select").on('change', function () {
