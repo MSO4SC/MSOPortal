@@ -17,7 +17,7 @@
 set -e
 CKAN_CONFIG_FILE="${CKAN_CONFIG}/ckan.ini"
 
-RUN sed -i "s|ckan.auth.create_unowned_dataset = false|ckan.auth.create_unowned_dataset = true|g" $CKAN_CONFIG_FILE
-RUN sed -i "s|ckan.auth.create_dataset_if_not_in_organization = false|ckan.auth.create_dataset_if_not_in_organization = true|g" $CKAN_CONFIG_FILE
-RUN sed -i "s|ckan.auth.user_create_organizations = false|ckan.auth.user_create_organizations = true|g" $CKAN_CONFIG_FILE
-RUN sed -i "s|ckan.auth.user_create_groups = false|ckan.auth.user_create_groups = true|g" $CKAN_CONFIG_FILE
+sed -i "s|ckan.auth.create_unowned_dataset = false|ckan.auth.create_unowned_dataset = true|g" $CKAN_CONFIG_FILE
+sed -i "s|ckan.auth.create_dataset_if_not_in_organization = false|ckan.auth.create_dataset_if_not_in_organization = true|g" $CKAN_CONFIG_FILE
+sed -i "s|ckan.auth.user_create_organizations = false|ckan.auth.user_create_organizations = true|g" $CKAN_CONFIG_FILE
+sed -i "s|ckan.auth.user_create_groups = false|ckan.auth.user_create_groups = true|g" $CKAN_CONFIG_FILE

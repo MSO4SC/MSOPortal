@@ -26,7 +26,6 @@ apt-get update
 apt-get install -y certbot 
 
 COMMAND="certbot certonly --standalone --agree-tos -m $1"
-#COMMAND="certbot certonly --webroot -w ./certs --agree-tos -m $1"
 
 for host in "${@:2}"
 do
@@ -35,6 +34,3 @@ done
 
 # generate the keys
 eval $COMMAND
-
-# automatic renewal
-#certbot renew --dry-run

@@ -21,5 +21,7 @@ echo "Warning: This command has to be executed with MSOPortal stopped"
 read -n 1 -s -r -p "Press any key to continue"
 
 systemctl stop nginx
-certbot renew --dry-run
+docker-compose stop
+certbot renew
+docker-compose start
 systemctl start nginx
