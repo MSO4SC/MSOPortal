@@ -5,7 +5,7 @@ Brings the MSO4SC catalogue through _docker-compose_, based on CKAN: https://git
 == How to run
 
 .*Requires*
-* docker >= 18, docker-compose >= 1.16
+* docker >= 18, docker-compose >= 1.16, local persist driver
 * A working IDM instance
 * A working portal instance to which the data catalogue will redirect after log in
 
