@@ -50,9 +50,28 @@
         </div>
     </div>
 
+    <div class="s-12">
+    <nav class="submenu">
+        <p class="nav-text"></p> 
+        <div class="top-nav">        
+                <ul>
+                    <li><a class="tablinks active" onclick="openExperimentsTool(event, 'instances')">Execution Logs</a></li>
+                    <li><a class="tablinks" onclick="openExperimentsTool(event, 'settings')">Application Logs</a></li>                
+                </ul>            
+        </div>
+    </nav>
+    </div>
+
     <div class="s-12 m-12 l-12">
         <div class="l-9" id="deployment_log">
             <textarea rows="20" cols="70" ></textarea>
         </div>
-    </div>    
+    </div>
+
+    <div class="s-12 m-12 l-12">
+        <object class="l-9" id="application_log"
+            data="http://logging.mso4sc.eu:8080/default/WORKFLOWID">
+            <textarea rows="20" cols="70" ></textarea>
+        </object>
+    </div>
 </form>    
