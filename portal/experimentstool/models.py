@@ -2,11 +2,12 @@ import json
 import time
 import logging
 from urllib.parse import urlparse
-from datetime import datetime
 
 from django.conf import settings
-from django.db import models
+from threading import Thread
 
+from django.db import models, connection
+from django.utils import timezone
 from django.forms.models import model_to_dict
 
 from cloudify_rest_client import CloudifyClient
@@ -17,10 +18,18 @@ from cloudify_rest_client.exceptions \
 from cloudify_rest_client.exceptions \
     import DeploymentEnvironmentCreationInProgressError
 
-WAIT_FOR_EXECUTION_SLEEP_INTERVAL = 3
+WAIT_FOR_EXECUTION_SLEEP_INTERVAL = 5
 
 # Get an instance of a logger
 LOGGER = logging.getLogger(__name__)
+
+
+def backend(function):
+    def decorator(*args, **kwargs):
+        t = Thread(target=function, args=args, kwargs=kwargs)
+        t.daemon = True
+        t.start()
+    return decorator
 
 
 def _to_dict(model_instance):
@@ -52,6 +61,202 @@ class Orchestrator(models.Model):
         )
 
 
+class DataCatalogueKey(models.Model):
+    code = models.CharField(max_length=50)
+
+    owner = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+    )
+
+    @classmethod
+    def get(cls, owner, return_dict=False):
+        """ If returning a dict, password is removed """
+        key = None
+        try:
+            key = cls.objects.get(owner=owner)
+        except cls.DoesNotExist:
+            pass
+
+        if not return_dict:
+            return key
+        else:
+            if key is not None:
+                key = _to_dict(key)
+            return {'key': key}
+
+    @classmethod
+    def create(cls,
+               code,
+               owner,
+               return_dict=False):
+        error = None
+        key = None
+        try:
+            key = cls.objects.create(code=code, owner=owner)
+        except Exception as err:
+            LOGGER.exception(err)
+            error = str(err)
+
+        if not return_dict:
+            return (key, error)
+        else:
+            return {'key': _to_dict(key), 'error': error}
+
+    def update(self,
+               code):
+        self.code = code
+        self.save()
+
+    @classmethod
+    def remove(cls, owner, return_dict=False):
+        error = None
+        key = cls.get(owner)
+
+        if key is not None:
+            key.delete()
+        else:
+            error = "Can't delete key because it doesn't exists"
+
+        if not return_dict:
+            return (key, error)
+        else:
+            return {'key': _to_dict(key), 'error': error}
+
+    def __str__(self):
+        return "Key from {0}".format(self.owner.username)
+
+
+class TunnelConnection(models.Model):
+    name = models.CharField(max_length=50)
+
+    owner = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+    )
+    host = models.CharField(max_length=50)
+    user = models.CharField(max_length=50)
+    private_key = models.CharField(max_length=1800, blank=True, default='')
+    private_key_password = models.CharField(
+        max_length=50, blank=True, default='')
+    password = models.CharField(max_length=50, blank=True, default='')
+
+    @classmethod
+    def get(cls, pk, owner, return_dict=False):
+        """ If returning a dict, password is removed """
+        error = None
+        tunnel = None
+        try:
+            tunnel = cls.objects.get(pk=pk)
+        except cls.DoesNotExist:
+            pass
+
+        if tunnel is not None and owner != tunnel.owner:
+            tunnel = None
+            error = 'Tunnel does not belong to user'
+
+        if not return_dict:
+            return (tunnel, error)
+        else:
+            if tunnel is not None:
+                tunnel = _to_dict(tunnel)
+                tunnel.pop('private_key')
+                tunnel.pop('private_key_password')
+                tunnel.pop('password')
+            return {'tunnel': tunnel, 'error': error}
+
+    @classmethod
+    def list(cls, owner, return_dict=False):
+        """ If returning a dict, passwords are removed """
+        error = None
+        tunnel_list = []
+        try:
+            tunnel_list = cls.objects.filter(owner=owner)
+        except cls.DoesNotExist:
+            pass
+        except Exception as err:
+            LOGGER.exception(err)
+            error = str(err)
+
+        if not return_dict:
+            return (tunnel_list, error)
+        else:
+            passwordless_list = []
+            for tunnel in tunnel_list:
+                tunnel_dict = _to_dict(tunnel)
+                tunnel_dict.pop('private_key')
+                tunnel_dict.pop('private_key_password')
+                tunnel_dict.pop('password')
+                passwordless_list.append(tunnel_dict)
+            return {'tunnel_list':  passwordless_list,
+                    'error': error}
+
+    @classmethod
+    def create(cls,
+               name,
+               owner,
+               host,
+               user,
+               private_key,
+               private_key_password,
+               password,
+               return_dict=False):
+        error = None
+        tunnel = None
+        try:
+            tunnel = cls.objects.create(name=name,
+                                        owner=owner,
+                                        host=host,
+                                        user=user,
+                                        private_key=private_key,
+                                        private_key_password=private_key_password,
+                                        password=password)
+        except Exception as err:
+            LOGGER.exception(err)
+            error = str(err)
+
+        if not return_dict:
+            return (tunnel, error)
+        else:
+            return {'tunnel': _to_dict(tunnel), 'error': error}
+
+    @classmethod
+    def remove(cls, pk, owner, return_dict=False):
+        tunnel, error = cls.get(pk, owner)
+
+        if error is None:
+            if tunnel is not None:
+                tunnel.delete()
+            else:
+                error = "Can't delete tunnel because it doesn't exists"
+
+        if not return_dict:
+            return (tunnel, error)
+        else:
+            if tunnel is not None:
+                tunnel = _to_dict(tunnel)
+                tunnel.pop('private_key')
+                tunnel.pop('private_key_password')
+                tunnel.pop('password')
+            return {'tunnel': tunnel, 'error': error}
+
+    def __str__(self):
+        return "{0}: Tunnel at {1} from {2}({3})".format(
+            self.name,
+            self.host,
+            self.owner.username,
+            self.user)
+
+    def to_dict(self):
+        return {
+            'host': self.host,
+            'user': self.user,
+            'private_key': self.private_key,
+            'private_key_password': self.private_key_password,
+            'password': self.password,
+        }
+
+
 class HPCInfrastructure(models.Model):
     name = models.CharField(max_length=50)
 
@@ -61,8 +266,16 @@ class HPCInfrastructure(models.Model):
     )
     host = models.CharField(max_length=50)
     user = models.CharField(max_length=50)
-    password = models.CharField(max_length=50)
+    private_key = models.CharField(max_length=1800, blank=True, default='')
+    private_key_password = models.CharField(
+        max_length=50, blank=True, default='')
+    password = models.CharField(max_length=50, blank=True, default='')
     time_zone = models.CharField(max_length=20)
+    tunnel = models.ForeignKey(
+        TunnelConnection,
+        on_delete=models.CASCADE,
+        null=True
+    )
 
     SLURM = 'SLURM'
     MANAGER_CHOICES = (
@@ -92,9 +305,16 @@ class HPCInfrastructure(models.Model):
             return (hpc, error)
         else:
             if hpc is not None:
-                hpc = _to_dict(hpc)
-                hpc.pop('password')
-            return {'hpc': hpc, 'error': error}
+                hpc_dict = _to_dict(hpc)
+                hpc_dict.pop('private_key')
+                hpc_dict.pop('private_key_password')
+                hpc_dict.pop('password')
+                if hpc.tunnel is not None:
+                    hpc_dict['tunnel'] = _to_dict(hpc.tunnel)
+                    hpc_dict['tunnel'].pop('private_key')
+                    hpc_dict['tunnel'].pop('private_key_password')
+                    hpc_dict['tunnel'].pop('password')
+            return {'hpc': hpc_dict, 'error': error}
 
     @classmethod
     def list(cls, owner, return_dict=False):
@@ -115,7 +335,14 @@ class HPCInfrastructure(models.Model):
             passwordless_list = []
             for hpc in hpc_list:
                 hpc_dict = _to_dict(hpc)
+                hpc_dict.pop('private_key')
+                hpc_dict.pop('private_key_password')
                 hpc_dict.pop('password')
+                if hpc.tunnel is not None:
+                    hpc_dict['tunnel'] = _to_dict(hpc.tunnel)
+                    hpc_dict['tunnel'].pop('private_key')
+                    hpc_dict['tunnel'].pop('private_key_password')
+                    hpc_dict['tunnel'].pop('password')
                 passwordless_list.append(hpc_dict)
             return {'hpc_list':  passwordless_list,
                     'error': error}
@@ -126,23 +353,38 @@ class HPCInfrastructure(models.Model):
                owner,
                host,
                user,
+               private_key,
+               private_key_password,
                password,
                tz,
                manager,
+               tunnel_pk,
                return_dict=False):
         error = None
         hpc = None
-        try:
-            hpc = cls.objects.create(name=name,
-                                     owner=owner,
-                                     host=host,
-                                     user=user,
-                                     password=password,
-                                     time_zone=tz,
-                                     manager=manager)
-        except Exception as err:
-            LOGGER.exception(err)
-            error = str(err)
+        tunnel = None
+
+        if tunnel_pk is not None:
+            tunnel, error = TunnelConnection.get(tunnel_pk, owner)
+            if error is None:
+                if tunnel is None:
+                    error = "Can't create HPC because tunnel doesn't exists"
+
+        if error is None:
+            try:
+                hpc = cls.objects.create(name=name,
+                                         owner=owner,
+                                         host=host,
+                                         user=user,
+                                         private_key=private_key,
+                                         private_key_password=private_key_password,
+                                         password=password,
+                                         time_zone=tz,
+                                         manager=manager,
+                                         tunnel=tunnel)
+            except Exception as err:
+                LOGGER.exception(err)
+                error = str(err)
 
         if not return_dict:
             return (hpc, error)
@@ -151,7 +393,6 @@ class HPCInfrastructure(models.Model):
 
     @classmethod
     def remove(cls, pk, owner, return_dict=False):
-        # TODO: remove passwords from response
         hpc, error = cls.get(pk, owner)
 
         if error is None:
@@ -163,7 +404,17 @@ class HPCInfrastructure(models.Model):
         if not return_dict:
             return (hpc, error)
         else:
-            return {'hpc': _to_dict(hpc), 'error': error}
+            if hpc is not None:
+                hpc_dict = _to_dict(hpc)
+                hpc_dict.pop('private_key')
+                hpc_dict.pop('private_key_password')
+                hpc_dict.pop('password')
+                if hpc.tunnel is not None:
+                    hpc_dict['tunnel'] = _to_dict(hpc.tunnel)
+                    hpc_dict['tunnel'].pop('private_key')
+                    hpc_dict['tunnel'].pop('private_key_password')
+                    hpc_dict['tunnel'].pop('password')
+            return {'hpc': hpc, 'error': error}
 
     def __str__(self):
         return "{0}: HPC at {1} from {2}({3})".format(
@@ -173,15 +424,22 @@ class HPCInfrastructure(models.Model):
             self.user)
 
     def to_dict(self):
-        return {
+        inputs_data = {
             'credentials': {
                 'host': self.host,
                 'user': self.user,
+                'private_key': self.private_key,
+                'private_key_password': self.private_key_password,
                 'password': self.password,
             },
             'country_tz': self.time_zone,
             'workload_manager': self.manager
         }
+
+        if self.tunnel is not None:
+            inputs_data['credentials']["tunnel"] = self.tunnel.to_dict()
+
+        return inputs_data
 
 
 def _get_client():
@@ -193,7 +451,7 @@ def _get_client():
 
 
 class Application(models.Model):
-    name = models.CharField(max_length=50)
+    name = models.CharField(max_length=50, unique=True)
 
     description = models.CharField(max_length=256, null=True)
     marketplace_id = models.CharField(max_length=10, db_index=True)
@@ -237,6 +495,24 @@ class Application(models.Model):
             app_list = cls.objects.filter(marketplace_id__in=marketplace_ids)
         except cls.DoesNotExist:
             pass
+
+        if not return_dict:
+            return (app_list, error)
+        else:
+            return {'app_list': [_to_dict(app) for app in app_list],
+                    'error': error}
+
+    @classmethod
+    def list_owned(cls, owner, return_dict=False):
+        error = None
+        app_list = []
+        try:
+            app_list = cls.objects.filter(owner=owner)
+        except cls.DoesNotExist:
+            pass
+        except Exception as err:
+            LOGGER.exception(err)
+            error = str(err)
 
         if not return_dict:
             return (app_list, error)
@@ -377,7 +653,7 @@ class Application(models.Model):
 
 
 class AppInstance(models.Model):
-    name = models.CharField(max_length=50)
+    name = models.CharField(max_length=50, unique=True)
     app = models.ForeignKey(
         Application,
         on_delete=models.CASCADE,
@@ -385,7 +661,31 @@ class AppInstance(models.Model):
 
     description = models.CharField(max_length=256, null=True)
     inputs = models.CharField(max_length=256, null=True)
-    outputs = models.CharField(max_length=256, null=True)
+
+    PREPARED = 'prepared'
+    TERMINATED = 'terminated'
+    FAILED = 'failed'
+    CANCELLED = 'cancelled'
+    PENDING = 'pending'
+    STARTED = 'started'
+    CANCELLING = 'cancelling'
+    FORCE_CANCELLING = 'force_cancelling'
+    STATUS_CHOICES = (
+        (PREPARED, 'prepared'),
+        (TERMINATED, 'terminated'),
+        (FAILED, 'failed'),
+        (CANCELLED, 'cancelled'),
+        (PENDING, 'pending'),
+        (STARTED, 'started'),
+        (CANCELLING, 'cancelling'),
+        (FORCE_CANCELLING, 'force_cancelling')
+    )
+    status = models.CharField(
+        max_length=5,
+        choices=STATUS_CHOICES,
+        default=PREPARED,
+        blank=True
+    )
 
     owner = models.ForeignKey(
         settings.AUTH_USER_MODEL,
@@ -437,35 +737,226 @@ class AppInstance(models.Model):
         if error is None:
             if app is None:
                 error = "Can't create instance because app doesn't exists"
-            else:
-                deployment, error = cls._create_deployment(app.name,
-                                                           deployment_id,
-                                                           inputs)
 
         if error is None:
             try:
                 instance = cls.objects.create(
-                    name=deployment['id'],
+                    name=deployment_id,
                     app=app,
-                    description=deployment['description'],
+                    description="",
                     inputs=json.dumps(
-                        deployment['inputs'],
-                        ensure_ascii=False,
-                        separators=(',', ':')),
-                    outputs=json.dumps(
-                        deployment['outputs'],
+                        inputs,
                         ensure_ascii=False,
                         separators=(',', ':')),
                     owner=owner)
             except Exception as err:
                 LOGGER.exception(err)
                 error = str(err)
-                cls._destroy_deployment(deployment['id'])
 
         if not return_dict:
             return (instance, error)
         else:
             return {'instance': _to_dict(instance), 'error': error}
+
+    @backend
+    def reset_execution(self, owner):
+        self._update_status(AppInstance.PREPARED)
+
+        # logs
+        logs_list, error = ApplicationInstanceLog.list(
+            self,
+            owner,
+            offset=0
+        )
+        if error is None:
+            for log in logs_list:
+                log.delete()
+        else:
+            LOGGER.warning("Couldn't clean up logs: "+error)
+
+        # executions
+        executions_list, error = WorkflowExecution.list(
+            self,
+            owner)
+        if error is None:
+            for execution in executions_list:
+                execution.delete()
+        else:
+            LOGGER.warning("Couldn't clean up executions: "+error)
+
+        return error
+
+    @backend
+    def run_workflows(self, owner):
+
+        # Create cfy deployment
+        _, error = self.__class__._create_deployment(
+            self.app.name,
+            self.name,
+            json.loads(self.inputs))
+
+        self._update_status(Execution.STARTED)
+
+        status = self.run_workflow(WorkflowExecution.INSTALL, owner)
+        if WorkflowExecution.is_execution_finished(status) and \
+                not WorkflowExecution.is_execution_wrong(status):
+            status = self.run_workflow(WorkflowExecution.RUN, owner)
+            if WorkflowExecution.is_execution_finished(status) and \
+                    not WorkflowExecution.is_execution_wrong(status):
+                status = self.run_workflow(WorkflowExecution.UNINSTALL, owner)
+
+        if not WorkflowExecution.is_execution_finished(status):
+            # TODO: cancel execution
+            pass
+
+        self._update_status(status)
+
+        # Finally delete cfy deployment
+        self.__class__._destroy_deployment(self.name, force=True)
+
+        # Django creates a new connection that needs to be manually closed
+        connection.close()
+
+        return status
+
+    def run_workflow(self, workflow, owner):
+        error = None
+        execution = None
+
+        execution, error = WorkflowExecution.create(
+            self,
+            workflow,
+            owner,
+            force=False)
+
+        if error is not None:
+            status = Execution.CANCELLED
+            self._update_status(Execution.CANCELLED)
+            message = "Couldn't execute the workflow '" + \
+                workflow+"': "+error
+            LOGGER.error(message)
+            ApplicationInstanceLog.create(
+                self,
+                timezone.now(),
+                message)
+            return status
+        if execution is None:
+            status = Execution.CANCELLED
+            self._update_status(Execution.CANCELLED)
+            message = "Couldn't create the execution for workflow '" + \
+                workflow+"'"
+            LOGGER.error(message)
+            ApplicationInstanceLog.create(
+                self,
+                timezone.now(),
+                message)
+            return status
+
+        ApplicationInstanceLog.create(
+            self,
+            timezone.now(),
+            "-------"+workflow.upper()+"-------")
+
+        retries = 5
+        offset = 0
+        finished = False
+        status = Execution.PENDING
+        while not finished and (retries > 0 or error is None):
+            events, error = execution.get_execution_events(offset)
+            if error is None:
+                retries = 0
+                offset = events['last']
+                status = events['status']
+                finished = WorkflowExecution.is_execution_finished(status)
+                self.append_logs(events['logs'])
+            else:
+                retries -= 1
+            time.sleep(10)
+
+        return status
+
+    def _update_status(self, status):
+        if status != self.status:
+            self.status = status
+            self.save()
+
+    def is_finished(self):
+        return self.status in Execution.END_STATES
+
+    def is_wrong(self):
+        return self.is_finished() and self.status != Execution.TERMINATED
+
+    def append_logs(self, events_list):
+        for event in events_list:
+            if not "reported_timestamp" in event:
+                # this event cannot be logged
+                LOGGER.warning(
+                    "The event has not a timestamp, will not be registered")
+                continue
+            timestamp = event["reported_timestamp"]
+            message = ""
+            if "message" in event:
+                message = event["message"]
+
+            event_type = event["type"]
+            if event_type == "cloudify_event":
+                cloudify_event_type = event["event_type"]
+                if cloudify_event_type == "workflow_node_event":
+                    message += " " + event["node_instance_id"] + \
+                        " (" + event["node_name"] + ")"
+                elif cloudify_event_type == "sending_task" \
+                        or cloudify_event_type == "task_started" \
+                        or cloudify_event_type == "task_succeeded" \
+                        or cloudify_event_type == "task_failed":
+                    # message += " [" + event["operation"] + "]"
+                    if "node_instance_id" in event and event["node_instance_id"]:
+                        message += " " + event["node_instance_id"]
+                    if "node_name" and event["node_name"]:
+                        message += " (" + event["node_name"] + ")"
+                elif cloudify_event_type == "workflow_started" \
+                        or cloudify_event_type == "workflow_succeeded" \
+                        or cloudify_event_type == "workflow_failed" \
+                        or cloudify_event_type == "workflow_cancelled":
+                    pass
+                else:
+                    event.pop("reported_timestamp")
+                    message = json.dumps(event)
+                if event["error_causes"]:
+                    for cause in event["error_causes"]:
+                        message += "\n" + \
+                            cause['type'] + ": " + cause["message"]
+                        message += "\n\t" + cause["traceback"]
+            else:
+                event.pop("reported_timestamp")
+                message = json.dumps(event)
+
+            ApplicationInstanceLog.create(self, timestamp, message)
+
+    @classmethod
+    def get_instance_events(cls, pk, offset, owner):
+        logs_list = []
+        status = None
+        instance, error = cls.get(pk, owner)
+
+        if error is None:
+            if instance is not None:
+                status = instance.status
+                logs_list, error = ApplicationInstanceLog.list(
+                    instance,
+                    owner,
+                    offset=offset
+                )
+        else:
+            error = "Can't get instance events because it doesn't exist"
+
+        return (
+            {
+                'logs': [_to_dict(log) for log in logs_list],
+                'last': offset + len(logs_list),
+                'status': instance.status,
+                'finished': instance.is_finished()
+            },
+            error)
 
     @classmethod
     def remove(cls, pk, owner, return_dict=False, force=False):
@@ -476,7 +967,8 @@ class AppInstance(models.Model):
                 _, error = cls._destroy_deployment(
                     instance.name,
                     force=force)
-                if error is None:
+                if error is None or instance.is_finished():
+                    error = None
                     instance.delete()
             else:
                 error = "Can't delete instance because it doesn't exists"
@@ -493,7 +985,7 @@ class AppInstance(models.Model):
             self.owner.username)
 
     @classmethod
-    def _create_deployment(cls, app_id, instance_id, inputs, retries=3):
+    def _create_deployment(cls, app_id, instance_id, inputs):
         error = None
         deployment = None
 
@@ -505,16 +997,6 @@ class AppInstance(models.Model):
                 inputs=inputs,
                 skip_plugins_validation=True
             )
-        except (DeploymentEnvironmentCreationPendingError,
-                DeploymentEnvironmentCreationInProgressError) as err:
-            if (retries > 0):
-                time.sleep(WAIT_FOR_EXECUTION_SLEEP_INTERVAL)
-                deployment, error = cls._create_deployment(app_id,
-                                                           instance_id,
-                                                           inputs,
-                                                           retries - 1)
-            LOGGER.exception(err)
-            error = str(err)
         except CloudifyClientError as err:
             LOGGER.exception(err)
             error = str(err)
@@ -535,24 +1017,56 @@ class AppInstance(models.Model):
 
         return (deployment, error)
 
-    def _install_deployment(self, force):
-        return self._execute_workflow('install', force)
 
-    def _run_deployment(self, force):
-        return self._execute_workflow('run_jobs', force)
+class ApplicationInstanceLog(models.Model):
+    instance = models.ForeignKey(
+        AppInstance,
+        on_delete=models.CASCADE,
+    )
 
-    def _uninstall_deployment(self, force):
-        params = None
-        if force:
-            params = {'ignore_failure': True}
-        return self._execute_workflow('uninstall', force, params=params)
+    generated = models.DateTimeField()
+    message = models.TextField()
+
+    @classmethod
+    def list(cls, instance, owner, offset=0, return_dict=False):
+        error = None
+        logs_list = []
+        try:
+            logs_list = \
+                cls.objects.filter(instance=instance)[offset:]
+        except cls.DoesNotExist:
+            pass
+
+        if not return_dict:
+            return (logs_list, error)
+        else:
+            return {
+                'logs_list': [_to_dict(log) for log in logs_list],
+                'error': error}
+
+    @classmethod
+    def create(cls, instance, generated, message):
+        error = None
+
+        if instance is None:
+            error = 'Application instance does not belong to user'
+        else:
+            try:
+                instance = cls.objects.create(
+                    instance=instance,
+                    generated=generated,
+                    message=message)
+            except Exception as err:
+                LOGGER.exception(err)
+                error = str(err)
+
+        return error
 
 
 class WorkflowExecution(models.Model):
     INSTALL = 'install'
     RUN = 'run_jobs'
     UNINSTALL = 'uninstall'
-    DESTROY = 'destroy'
 
     id_code = models.CharField(max_length=50)
     app_instance = models.ForeignKey(
@@ -590,11 +1104,13 @@ class WorkflowExecution(models.Model):
             return {'execution': execution, 'error': error}
 
     @classmethod
-    def list(cls, owner, return_dict=False):
+    def list(cls, instance, owner, return_dict=False):
         error = None
         execution_list = []
         try:
-            execution_list = cls.objects.filter(owner=owner)
+            execution_list = cls.objects.filter(
+                owner=owner,
+                app_instance=instance)
         except cls.DoesNotExist:
             pass
 
@@ -607,44 +1123,23 @@ class WorkflowExecution(models.Model):
                 'error': error}
 
     @classmethod
-    def list_by_instance_workflow(cls,
-                                  owner,
-                                  instance,
-                                  workflow,
-                                  return_dict=False):
-        error = None
-        execution_list = []
-        try:
-            execution_list = cls.objects.filter(owner=owner,
-                                                app_instance=instance,
-                                                workflow=workflow)
-        except cls.DoesNotExist:
-            pass
-
-        if not return_dict:
-            return (execution_list, error)
-        else:
-            return {
-                'execution_list':
-                    [_to_dict(execution) for execution in execution_list],
-                'error': error}
-
-    @classmethod
-    def create(cls, instance_pk, workflow, owner,
+    def create(cls, instance, workflow, owner,
                force=False, params=None, return_dict=False):
         error = None
         execution = None
 
-        instance, error = AppInstance.get(instance_pk, owner)
-        if error is None:
-            if instance is None:
-                error = \
-                    "Can't create execution because instance doesn't exists"
-            else:
-                execution, error = cls._execute_workflow(instance.name,
-                                                         workflow,
-                                                         force,
-                                                         params)
+        if instance is None:
+            error = "Can't create execution because instance doesn't exist"
+        elif instance.owner != owner:
+            error = \
+                "Can't create execution because instance doesn't " +\
+                "belong to user"
+        else:
+            execution, error = cls._execute_workflow(
+                instance.name,
+                workflow,
+                force,
+                params)
 
         if error is None:
             try:
@@ -652,7 +1147,7 @@ class WorkflowExecution(models.Model):
                     id_code=execution['id'],
                     app_instance=instance,
                     workflow=workflow,
-                    created_on=datetime.now(),
+                    created_on=timezone.now(),
                     owner=owner)
             except Exception as err:
                 LOGGER.exception(err)
@@ -676,95 +1171,54 @@ class WorkflowExecution(models.Model):
         error = None
         execution = None
 
+        retries = 9
         client = _get_client()
-        try:
-            execution = client.executions.start(deployment_id,
-                                                workflow,
-                                                parameters=params,
-                                                force=force)
-        except CloudifyClientError as err:
-            LOGGER.exception(err)
-            error = str(err)
+        while retries >= 0:
+            try:
+                execution = client.executions.start(deployment_id,
+                                                    workflow,
+                                                    parameters=params,
+                                                    force=force)
+                break
+            except CloudifyClientError as err:
+                if (retries > 0):
+                    LOGGER.warning(err)
+                    time.sleep(WAIT_FOR_EXECUTION_SLEEP_INTERVAL)
+                else:
+                    error = str(err)
+                    LOGGER.exception(err)
+                retries -= 1
 
         return (execution, error)
 
-    @classmethod
-    def get_execution_events(cls, execution_pk, offset, owner,
-                             return_dict=False):
-        events = None
-        wf_execution, error = cls.get(execution_pk, owner)
-        if error is None:
-            if wf_execution is None:
-                error = \
-                    "Can't get execution events because it doesn't exists"
-            else:
-                events = cls._get_execution_events(
-                    wf_execution.id_code,
-                    offset)
+    def get_execution_events(self, offset, return_dict=False):
+        events = self._get_execution_events(offset)
 
         if not return_dict:
-            return (events, error)
+            return (events, None)
         else:
-            return {'events': events, 'error': error}
+            return {'events': events, 'error': None}
 
-    @staticmethod
-    def _get_execution_events(execution_id, offset):
+    def _get_execution_events(self, offset):
         client = _get_client()
 
-        execution = client.executions.get(execution_id)
-        events = client.events.list(execution_id=execution_id,
+        # TODO: manage errors
+        cfy_execution = client.executions.get(self.id_code)
+        events = client.events.list(execution_id=self.id_code,
                                     _offset=offset,
                                     _size=100)
         last_message = events.metadata.pagination.total
 
         return {
-            'logs': WorkflowExecution._events_to_string(events.items),
+            'logs': events.items,
             'last': last_message,
-            'status': execution.status,
-            'finished': WorkflowExecution._is_execution_finished(
-                execution.status)
+            'status': cfy_execution.status
         }
 
-    @staticmethod
-    def _events_to_string(events):
-        response = []
-        for event in events:
-            event_type = event["type"]
-            message = ""
-            if event_type == "cloudify_event":
-                cloudify_event_type = event["event_type"]
-                message = event["reported_timestamp"] + \
-                    " " + event["message"]
-                if cloudify_event_type == "workflow_node_event":
-                    message += " " + event["node_instance_id"] + \
-                        " (" + event["node_name"] + ")"
-                elif cloudify_event_type == "sending_task" \
-                        or cloudify_event_type == "task_started" \
-                        or cloudify_event_type == "task_succeeded" \
-                        or cloudify_event_type == "task_failed":
-                    # message += " [" + event["operation"] + "]"
-                    if event["node_instance_id"]:
-                        message += " " + event["node_instance_id"]
-                    if event["node_name"]:
-                        message += " (" + event["node_name"] + ")"
-                elif cloudify_event_type == "workflow_started" \
-                        or cloudify_event_type == "workflow_succeeded" \
-                        or cloudify_event_type == "workflow_failed" \
-                        or cloudify_event_type == "workflow_cancelled":
-                    pass
-                else:
-                    message = json.dumps(event)
-                if event["error_causes"]:
-                    for cause in event["error_causes"]:
-                        message += "\n" + \
-                            cause['type'] + ": " + cause["message"]
-                        message += "\n\t" + cause["traceback"]
-            else:
-                message = json.dumps(event)
-            response.append(message)
-
-        return response
-
-    @staticmethod
-    def _is_execution_finished(status):
+    @classmethod
+    def is_execution_finished(cls, status):
         return status in Execution.END_STATES
+
+    @classmethod
+    def is_execution_wrong(cls, status):
+        return cls.is_execution_finished(status) and status != Execution.TERMINATED

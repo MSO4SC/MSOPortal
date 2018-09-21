@@ -2,10 +2,10 @@
 
 import re
 import json
+import time
 import tempfile
-import requests
-
 from urllib.parse import urlparse
+import requests
 
 from django.contrib.auth.decorators import login_required, permission_required
 from django.shortcuts import render
@@ -18,7 +18,9 @@ from portal import settings
 from experimentstool.models import (Application,
                                     AppInstance,
                                     WorkflowExecution,
-                                    HPCInfrastructure)
+                                    HPCInfrastructure,
+                                    TunnelConnection,
+                                    DataCatalogueKey)
 
 
 @login_required
@@ -29,6 +31,41 @@ def experimentstool(request):
     }
 
     return render(request, 'experimentstool.html', context)
+
+
+@login_required
+def get_ckan_key(request):
+    return JsonResponse(
+        DataCatalogueKey.get(request.user, return_dict=True),
+        safe=False)
+
+
+@login_required
+def update_ckan_key(request):
+    code = request.POST.get('ckan_key', None)
+    if code is None:
+        return JsonResponse({'error': "No key provided"})
+
+    key = DataCatalogueKey.get(request.user)
+
+    if code == '' and key is not None:
+        return JsonResponse(
+            DataCatalogueKey.remove(request.user,
+                                    return_dict=True),
+            safe=False)
+
+    if key is None:
+        return JsonResponse(
+            DataCatalogueKey.create(code,
+                                    request.user,
+                                    return_dict=True),
+            safe=False)
+    else:
+        DataCatalogueKey.objects.filter()
+        key.update(code=code)
+        return JsonResponse(
+            {'key': code, 'error': None}
+        )
 
 
 @login_required
@@ -55,28 +92,92 @@ def add_hpc(request):
         # TODO validation
         return JsonResponse({'error': 'No user provided'})
 
-    password = request.POST.get('password', None)
-    if not password or password == '':
-        return JsonResponse({'error': 'No password provided'})
+    key = ''
+    if "key" in request.FILES:
+        key = str(request.FILES['key'].read(), "utf-8")
+    key_password = request.POST.get('key_password', '')
+    password = request.POST.get('password', '')
+    if key == '' and password == '':
+        return JsonResponse({'error': 'No authentication (key/password) provided'})
 
     tz = request.POST.get('timezone', None)
     if not tz or tz == '':
         # TODO validation
         return JsonResponse({'error': 'No time zone provided'})
 
+    tunnel = int(request.POST.get('tunnel', -1))
+    if tunnel == -1:
+        tunnel = None
     return JsonResponse(
         HPCInfrastructure.create(name,
                                  request.user,
                                  host,
                                  user,
+                                 key,
+                                 key_password,
                                  password,
                                  tz,
                                  HPCInfrastructure.SLURM,
+                                 tunnel,
                                  return_dict=True))
 
 
 @login_required
 def delete_hpc(request):
+    pk = request.POST.get('pk', None)
+    if not pk or pk == '':
+        # TODO validation
+        return JsonResponse({'error': 'No hpc provided'})
+
+    return JsonResponse(
+        HPCInfrastructure.remove(pk,
+                                 request.user,
+                                 return_dict=True))
+
+
+@login_required
+def get_tunnel_list(request):
+    return JsonResponse(
+        TunnelConnection.list(request.user, return_dict=True),
+        safe=False)
+
+
+@login_required
+def add_tunnel(request):
+    name = request.POST.get('name', None)
+    if not name or name == '':
+        # TODO validation
+        return JsonResponse({'error': 'No name provided'})
+
+    host = request.POST.get('host', None)
+    if not host or host == '':
+        # TODO validation
+        return JsonResponse({'error': 'No host provided'})
+
+    user = request.POST.get('user', None)
+    if not user or user == '':
+        # TODO validation
+        return JsonResponse({'error': 'No user provided'})
+
+    key = str(request.FILES['key'].read(), "utf-8")
+    key_password = request.POST.get('key_password', '')
+    password = request.POST.get('password', '')
+    if key == '' and password == '':
+        return JsonResponse({'error': 'No authentication (key/password) provided'})
+
+    return JsonResponse(
+        TunnelConnection.create(name,
+                                request.user,
+                                host,
+                                user,
+                                key,
+                                key_password,
+                                password,
+                                return_dict=True))
+
+
+@login_required
+def delete_tunnel(request):
     pk = request.POST.get('pk', None)
     if not pk or pk == '':
         # TODO validation
@@ -129,17 +230,8 @@ def load_owned_applications(request, *args, **kwargs):
     access_token = kwargs['token']
     if not access_token:
         return JsonResponse({'redirect': kwargs['url']+'/experimentstool/'})
-    uid = sso.utils.get_uid(request.user)
 
-    stock_data = _get_stock(access_token, uid)
-    if 'error' in stock_data:
-        return JsonResponse(stock_data, safe=False)
-
-    marketplace_ids = []
-    for product in stock_data:
-        marketplace_ids.append(_get_productid_from_specification(product))
-
-    applications = Application.list(marketplace_ids, return_dict=True)
+    applications = Application.list_owned(request.user, return_dict=True)
 
     return JsonResponse(applications, safe=False)
 
@@ -158,7 +250,7 @@ def load_applications(request, *args, **kwargs):
     if 'error' in inventory_data:
         return JsonResponse(inventory_data, safe=False)
 
-    marketplace_ids = []
+    marketplace_ids = ['-1'] # id for apps that are not in the marketplace
     for product in stock_data:
         marketplace_ids.append(_get_productid_from_specification(product))
     for offering in inventory_data:
@@ -210,10 +302,6 @@ def _get_productid_from_offering(data, access_token):
 @login_required
 @permission_required('experimentstool.register_app')
 def upload_application(request):
-    if 'stock' not in request.session:
-        return JsonResponse({'error': 'No stock products loaded'})
-
-    products = request.session['stock']
     product_id = request.POST.get('product', None)
     if not product_id:
         return JsonResponse({'error': 'No product id provided'})
@@ -223,13 +311,20 @@ def upload_application(request):
         # TODO validation
         return JsonResponse({'error': 'No mso4sc id provided'})
 
-    product = None
-    for p in products:
-        if p["id"] == product_id:
-            product = p
-            break
-    if not product:
-        return JsonResponse({'error': 'Product not found'})
+    register_for_all = product_id == "-1"
+    if register_for_all:
+        pass
+    elif 'stock' in request.session:
+        products = request.session['stock']
+        product = None
+        for _p in products:
+            if _p["id"] == product_id:
+                product = _p
+                break
+        if not product:
+            return JsonResponse({'error': 'Product not found'})
+    else:
+        return JsonResponse({'error': 'No stock products loaded'})
 
     # TODO: check errors, if does not exist, etc.
     blueprint_package = request.FILES['blueprint_package']
@@ -278,17 +373,58 @@ def remove_application(request):
 @login_required
 def get_datasets(request):
     url = settings.DATACATALOGUE_URL + \
-        "/api/3/action/package_list"
+        "/api/3/action/package_search"
 
-    text_data = requests.request("GET", url).text
-    json_data = json.loads(text_data)
-    if not json_data["success"]:
-        return JsonResponse([], safe=False)  # TODO(emepetres) manage errors
+    key = DataCatalogueKey.get(request.user)
 
-    request.session['datasets'] = json_data["result"]
+    names = []
+    datasets = []
+    left = True
+    offset = 0
+    error = None
+    while error is None and left:
+        names_chunk, datasets_chunk, left, error = \
+            _get_datasets(url, key, offset)
+        names += names_chunk
+        datasets += datasets_chunk
+        offset += len(names_chunk)
+
+    request.session['datasets'] = datasets
     request.session.modified = True
 
-    return JsonResponse(json_data["result"], safe=False)
+    return JsonResponse({'names': names, 'error': error})
+
+
+def _get_datasets(url, key, offset):
+    datasets = []
+    names = []
+    left = False
+    error = None
+
+    url += "?start="+str(offset)
+
+    headers = {}
+    if key is not None:
+        headers = {'Authorization': key.code}
+        url += "&include_private=True"
+
+    text_data = requests.request("GET", url, headers=headers).text
+    json_data = json.loads(text_data)
+    if 'success' not in json_data or not bool(json_data["success"]):
+        error = "Could not get datasets: "+text_data
+
+    if error is None:
+        if "result" in json_data and "results" in json_data["result"]:
+            datasets = json_data["result"]["results"]
+            for dataset in json_data["result"]["results"]:
+                names.append(dataset["name"])
+        else:
+            error = "Could not get datasets: No results"
+
+    if error is None:
+        left = (int(json_data["result"]["count"]) - offset + len(names)) > 0
+
+    return (names, datasets, left, error)
 
 
 @login_required
@@ -302,17 +438,7 @@ def get_dataset_info(request):
     if dataset_index >= len(datasets) or dataset_index < 0:
         return JsonResponse({'error': 'Bad dataset index provided'})
 
-    dataset = datasets[dataset_index]
-
-    url = settings.DATACATALOGUE_URL + \
-        "/api/rest/dataset/" + dataset
-
-    text_data = requests.request("GET", url).text
-    if text_data == "Not found":
-        return JsonResponse(None)  # TODO(emepetres) manage errors
-
-    json_data = json.loads(text_data)
-    return JsonResponse(json_data, safe=False)
+    return JsonResponse(datasets[dataset_index], safe=False)
 
 
 @login_required
@@ -332,9 +458,16 @@ def create_deployment(request):
     if error is not None:
         return JsonResponse({'error': error})
 
+    ckan_key_code = ""
+    key = DataCatalogueKey.get(request.user)
+    if key is not None:
+        ckan_key_code = key.code
+
     hpc_pattern = re.compile('^mso4sc_hpc_(.)*$')
     dataset_pattern = re.compile('^mso4sc_dataset_(.)*$')
     dataset_resource_pattern = re.compile('^resource_mso4sc_dataset_(.)*$')
+    outputdataset_pattern = re.compile('^mso4sc_outdataset_(.)*$')
+    datacatalogue_pattern = re.compile('^mso4sc_datacatalogue_(.)*$')
     tosca_inputs = {}
     for _input, value in inputs.items():
         if hpc_pattern.match(_input):
@@ -365,7 +498,7 @@ def create_deployment(request):
                 # the dataset input has no configuration
                 tosca_inputs[_input] = ""
                 continue
-            dataset = _get_dataset(datasets[dataset_index])
+            dataset = datasets[dataset_index]
             if 'error' in dataset:
                 return JsonResponse(dataset)
 
@@ -381,7 +514,7 @@ def create_deployment(request):
                     dataset_resource_index < 0:
                 return JsonResponse(
                     {'error': 'Bad dataset resource provided. Please ' +
-                     'refresh and try again'})
+                              'refresh and try again'})
             dataset_resource = dataset["resources"][dataset_resource_index]
 
             # finally put the url of the resource
@@ -389,14 +522,42 @@ def create_deployment(request):
         elif dataset_resource_pattern.match(_input):
             # Resources are managed in the dataset section above
             pass
+        elif outputdataset_pattern.match(_input):
+            if 'datasets' not in request.session:
+                return JsonResponse({'error': 'No datasets loaded'})
+            datasets = request.session['datasets']
+
+            # get the dataset
+            dataset_index = value
+            if dataset_index >= len(datasets) or dataset_index < 0:
+                # the dataset input has no configuration
+                tosca_inputs[_input] = ""
+                continue
+            dataset = datasets[dataset_index]
+            if 'error' in dataset:
+                return JsonResponse(dataset)
+
+            tosca_inputs[_input] = dataset["id"]
+        elif datacatalogue_pattern.match(_input):
+            ckan_value = ""
+            if _input.endswith("entrypoint"):
+                ckan_value = settings.DATACATALOGUE_URL
+            elif _input.endswith("key"):
+                ckan_value = ckan_key_code
+
+            tosca_inputs[_input] = ckan_value
         else:
             tosca_inputs[_input] = value
 
-    return JsonResponse(AppInstance.create(application_id,
-                                           deployment_id,
-                                           tosca_inputs,
-                                           request.user,
-                                           return_dict=True))
+    instance, error = AppInstance.create(application_id,
+                                         deployment_id,
+                                         tosca_inputs,
+                                         request.user)
+
+    return JsonResponse({
+        "instance": instance.name if instance is not None else None,
+        "error": error
+    })
 
 
 @login_required
@@ -410,8 +571,6 @@ def get_deployments(request):
 @permission_required('experimentstool.run_instance')
 def execute_deployment(request):
     deployment_id = int(request.POST.get('deployment_id', -1))
-    workflow = request.POST.get('workflow')
-    force = bool(request.POST.get('force', False))
 
     if deployment_id is None:
         return {'error': 'No deployment provided'}
@@ -419,45 +578,38 @@ def execute_deployment(request):
     if deployment_id < 0:
         return {'error': 'Bad deployment provided'}
 
-    return JsonResponse(
-        WorkflowExecution.create(deployment_id,
-                                 workflow,
-                                 request.user,
-                                 force=force,
-                                 return_dict=True))
+    instance, error = AppInstance.get(deployment_id, request.user)
+    if error is None:
+        error = instance.reset_execution(request.user)
+        time.sleep(1)
+        if error is None:
+            instance.run_workflows(request.user)
 
-
-@login_required
-def get_executions(request):
-    instance_pk = int(request.GET.get('instance', -1))
-    workflow = request.GET.get('workflow')
-    return JsonResponse(
-        WorkflowExecution.list_by_instance_workflow(
-            request.user,
-            instance_pk,
-            workflow,
-            return_dict=True),
-        safe=False)
+    return JsonResponse({
+        "instance": instance.name,
+        "error": error
+    })
 
 
 @login_required
 def get_executions_events(request):
-    execution_pk = int(request.GET.get('exec_id', -1))
+    instance_pk = int(request.GET.get('instance_id', -1))
     reset = request.GET.get("reset", "False") in ["True", "true", "TRUE"]
     offset = 0
 
-    if execution_pk < 0:
-        return JsonResponse({'error': 'Bad execution provided'})
-    # TODO: check owner
+    if instance_pk < 0:
+        return JsonResponse({'error': 'Bad instance provided'})
 
     if not reset and 'log_offset' in request.session:
         offset = request.session['log_offset']
 
-    events, error = WorkflowExecution.get_execution_events(execution_pk,
-                                                           offset,
-                                                           request.user)
+    events, error = AppInstance.get_instance_events(instance_pk,
+                                                    offset,
+                                                    request.user)
     if error is None:
-        if offset != events['last']:
+        if offset != events['last'] or \
+                ('log_offset' in request.session and
+                 offset != request.session['log_offset']):
             request.session['log_offset'] = events.pop('last')
             request.session.modified = True
 
@@ -490,26 +642,3 @@ def destroy_deployment(request):
             request.session.pop('uninstall_execution')
         request.session.modified = True
     return JsonResponse(response)
-
-
-def _get_dataset(dataset_name):
-    url = settings.DATACATALOGUE_URL + \
-        "/api/3/action/package_search?q=" + \
-        dataset_name
-
-    text_data = requests.request("GET", url).text
-    json_data = json.loads(text_data)
-    if not json_data["success"]:
-        return {'error': json_data['result']}
-
-    response = json_data["result"]
-    if response["count"] <= 0:
-        return {'error': "No data found"}
-    # elif response["count"] == 1:
-    #    return response["results"][0]
-    else:
-        for dataset in response["results"]:
-            if dataset["name"] == dataset_name:
-                return dataset
-
-    return {'error': "No dataset match"}

@@ -18,18 +18,6 @@ Frontend of the MSO4SC project.
 
 The portal uses keyrock IDM to authenticate and authorize users. You will need to create an account in the IDM first.
 
-=== Data Catalogue
-
-The data catalogue is used to manage the data in the portal, and it is based on CKAN. To know more about its functionalities and how to use it, check {uri-ckan-doc}[the CKAN user guide] for more information.
-
-==== Adding new content
-
-NOTE: To add content to CKAN, first you need to have admin privileges. Ask the portal manager to give your idm admin privileges on the data catalogue. If you are the manager, use the script `datacatalogue/add-admin-user.sh`
-
-Datasets are compilations of files that share common properties (same source, related content, etc), and belongs to an organization. To create a new organization, click `Organizations -> Add Organization` and follow the steps at the screen.
-
-Likewise to create a new Dataset, click `Datasets -> Add Dataset` and follow the steps at the screen. In the first step can be set properties like the title, description, tags, license, or source (a link to reference the data), among others. Then it ask for adding new data. Each data has a title, a format, and a source, which *has to be of url type*. _That means that the data is never stored in the data catalogue, but referenced by url links._
-
 === Marketplace
 
 The marketplace is where the applications are managed. From here, the user is able to purchase applications available. Products (applications) in the user _stock_ will be available in the <<Experiments Tool>>. Detailed information about its use can be found at the {uri-biz-doc}[Business API Ecosystem user guide].
@@ -58,13 +46,28 @@ WARNING: Marketplace payment functionalities are not yet fully available. Theref
 To start using a new application, first go to the marketplace and navigate through the offerings available. After purchasing the desired one, the owner of the offering will receive a notification in the marketplace to accept or deny the purchase. If accepted, the new product will appear in the user _stock_, as well as in the <<Experinments Tool>>.
 
 
+=== Data Catalogue
+
+The data catalogue is used to manage the data in the portal, and it is based on CKAN. To know more about its functionalities and how to use it, check {uri-ckan-doc}[the CKAN user guide] for more information.
+
+==== Adding new content
+
+NOTE: To add content to CKAN, first you need to have admin privileges. Ask the portal manager to give your idm admin privileges on the data catalogue. If you are the manager, use the script `datacatalogue/add-admin-user.sh`
+
+Datasets are compilations of files that share common properties (same source, related content, etc), and belongs to an organization. To create a new organization, click `Organizations -> Add Organization` and follow the steps at the screen.
+
+Likewise to create a new Dataset, click `Datasets -> Add Dataset` and follow the steps at the screen. In the first step can be set properties like the title, description, tags, license, or source (a link to reference the data), among others. Then it ask for adding new data (resources). Each resource has a title, a format, and a source (public url, or upload a file).
+
+NOTE: If you set your datasets as _private_, copy your personal api key at the bottom left of the user page (access by clicking your user name at the top right). The key will be needed later at the <<Experiments Tool>> to use the private datasets.
+
+
 === Experiments Tool
 
 This service is in charge of managing the execution workflow of the MSO4SC applications. It is divided in different sections:
 
-* _Settings_: In this view the user is able to see the HPCs he/she has configured, as well as add new ones or delete them. This configuration will be used later when creating a new application instance.
+* _Settings_: In this view the user can its personal api key from <<Data Catalogue>> to have later access to its private datasets. It is also able to see the HPCs it has configured, as well as add new ones or delete them. Tunneled connections are supported by adding new ones and then being referenced when creating a new computing infrastructure. This configuration will be used later when creating a new application instance.
 * _Register/Remove App_: Those sections are meant to registrer/unregister an application in the orchestrator. They are "developer" operations. On them, you can select a product from the marketplace and register the application in the platform with a concrete name, or undo the registration respectively. To upload an application, you will have to have it packaged first: <<Packaging an application>>.
-* _Create/Destroy App Instance_: In here you can create a new _instance_ of an application, that is, an application with a concrete configuration attached. Just select a name, an application, and then the specific inputs. HPC infrastructures can be selected from a combo box, as well as datasets (one file per input). An HPC input starts with the prefix `mso4sc_hpc_`, while a dataset input starts with `mso4sc_dataset_`. List inputs must be written as comma separated list of elements, while dictionary inputs must be written in JSON using `{}`. In the same way, the destroy operation undo the creation step. The logs of the operations can be seen at the screen, as well as a grey/blue/green/light indicating if the operation is not running, running, successful or failed respectively.
+* _Create/Destroy App Instance_: In here you can create a new _instance_ of an application, that is, an application with a concrete configuration attached. Just select a name, an application, and then the specific inputs. HPC infrastructures can be selected from a combo box, as well as datasets (one file per input). An HPC input starts with the prefix `mso4sc_hpc_`, while a dataset input starts with `mso4sc_dataset_` and a dataset output starts with `mso4sc_outdataset_`. Datacatalogue key and entrypoint are set by the inputs `mso4sc_datacatalogue_key` and `mso4sc_datacatalogue_entrypoint` respectively. List inputs must be written as comma separated list of elements, while dictionary inputs must be written in JSON using `{}`. In the same way, the destroy operation undo the creation step. The logs of the operations can be seen at the screen, as well as a grey/blue/green/light indicating if the operation is not running, running, successful or failed respectively.
 * _Run Instance_: Similarly to Create/Destroy operations, in this step is when the application is actually executed, presenting the logs in the same way as before.
 
 ==== Packaging an application
