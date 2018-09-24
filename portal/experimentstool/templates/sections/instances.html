@@ -55,23 +55,22 @@
         <p class="nav-text"></p> 
         <div class="top-nav">        
                 <ul>
-                    <li><a class="tablinks active" onclick="openExperimentsTool(event, 'instances')">Execution Logs</a></li>
-                    <li><a class="tablinks" onclick="openExperimentsTool(event, 'settings')">Application Logs</a></li>                
+                    <li><a class="logMenu tablinks" id="exec_logs" onclick="openLogs(event, 'exec_logs_content')">Execution Logs</a></li>
+                    <li><a class="logMenu tablinks" id="app_logs" onclick="openLogs(event, 'app_logs_content')">Application Logs</a></li>                
                 </ul>            
         </div>
     </nav>
     </div>
 
-    <div class="s-12 m-12 l-12">
+    <div id="exec_logs_content" class="logTab tabcontent s-12 m-12 l-12">
         <div class="l-9" id="deployment_log">
             <textarea rows="20" cols="70" ></textarea>
         </div>
     </div>
 
-    <div class="s-12 m-12 l-12">
-        <object class="l-9" id="application_log"
-            data="http://logging.mso4sc.eu:8080/default/WORKFLOWID">
-            <textarea rows="20" cols="70" ></textarea>
+    <div id="app_logs_content" class="logTab tabcontent s-12 m-12 l-12">
+        <object class="l-9" id="application_log" style="min-height: 100px;"
+            data="">
         </object>
     </div>
-</form>    
+</form>

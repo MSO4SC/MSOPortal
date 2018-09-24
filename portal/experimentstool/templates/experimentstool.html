@@ -9,10 +9,10 @@
     <div class="top-nav">        
             <ul>
                 {% if perms.experimentstool.register_app and perms.experimentstool.remove_app%}
-                    <li class="developer"><a class="tablinks" onclick="openExperimentsTool(event, 'apps')">Applications</a></li>
+                    <li class="developer"><a class="expMenu tablinks" onclick="openExperimentsTool(event, 'apps')">Applications</a></li>
                 {% endif %}
-                <li><a class="tablinks" onclick="openExperimentsTool(event, 'instances')">Instances</a></li>
-                <li class="settings"><a class="tablinks" onclick="openExperimentsTool(event, 'settings')">Settings</a></li>                
+                <li><a id="default_exp_tool" class="expMenu tablinks" onclick="openExperimentsTool(event, 'instances')">Instances</a></li>
+                <li class="expMenu settings"><a class="tablinks" onclick="openExperimentsTool(event, 'settings')">Settings</a></li>                
             </ul>            
     </div>
 </nav>
@@ -21,16 +21,16 @@
 <div id="experiments_notification_container"></div>
 
 {% if perms.experimentstool.register_app and perms.experimentstool.remove_app%}
-<div id="apps" class="tabcontent">
+<div id="apps" class="expTab tabcontent">
     {% include "sections/apps.html" %}
 </div>
 {% endif %}
 
-<div id="instances" class="tabcontent">
+<div id="instances" class="expTab tabcontent active">
     {% include "sections/instances.html" %}
 </div>
 
-<div id="settings" class="tabcontent">
+<div id="settings" class="expTab tabcontent">
     {% include "sections/settings.html" %}
 </div>
 
@@ -38,6 +38,10 @@
 
 {% block javascript %}
 <script>
+
+$( document ).ready(function() {
+    $("#default_exp_tool").click();
+});
 
 function getCookie(name) {
     var cookieValue = null;
@@ -106,14 +110,14 @@ function openExperimentsTool(evt, toolName) {
     // Declare all variables
     var i, tabcontent, tablinks;
 
-    // Get all elements with class="tabcontent" and hide them
-    tabcontent = document.getElementsByClassName("tabcontent");
+    // Get all elements with class="expTab" and hide them
+    tabcontent = document.getElementsByClassName("expTab");
     for (i = 0; i < tabcontent.length; i++) {
         tabcontent[i].style.display = "none";
     }
 
     // Get all elements with class="tablinks" and remove the class "active"
-    tablinks = document.getElementsByClassName("tablinks");
+    tablinks = document.getElementsByClassName("expMenu");
     for (i = 0; i < tablinks.length; i++) {
         tablinks[i].className = tablinks[i].className.replace(" active", "");
     }
@@ -133,8 +137,10 @@ function openExperimentsTool(evt, toolName) {
             renderApplicationData("#application_selector");
             $("#application_inputs").empty();
             renderDeploymentData("#deployment_selector",
-                                 "#deployment_log");
+                                 "#deployment_log",
+                                 "#application_log");
             break;
+
         case "settings":
             renderKeyData("#ckan_key_form");
             renderHPCData("#infrastructure_list", select=false);
@@ -145,7 +151,59 @@ function openExperimentsTool(evt, toolName) {
 
     // Show the current tab, and add an "active" class to the button that opened the tab
     document.getElementById(toolName).style.display = "block";
-    evt.currentTarget.className += " active";
+    if (typeof evt.currentTarget == "undefined") {
+        $("#default_exp_tool").className += "active";
+    } else {
+        evt.currentTarget.className += " active";
+    }
+}
+
+function openLogs(evt, toolName) {
+    // Declare all variables
+    var i, tabcontent, tablinks;
+
+    // Get all elements with class="logMenu" and hide them
+    tabcontent = document.getElementsByClassName("logTab");
+    for (i = 0; i < tabcontent.length; i++) {
+        tabcontent[i].style.display = "none";
+    }
+
+    // Get all elements with class="tablinks" and remove the class "active"
+    tablinks = document.getElementsByClassName("logMenu");
+    for (i = 0; i < tablinks.length; i++) {
+        tablinks[i].className = tablinks[i].className.replace(" active", "");
+    }
+
+    // Stop all log monitoring
+    stop_logs();
+
+    // Clean Up the errors container
+    cleanNotifications();
+
+    switch(toolName) {
+        case "exec_logs_content":
+            renderLogData(
+                "exec_logs",
+                "#deployment_selector",
+                "#deployment_log",
+                "#application_log");
+            break;
+        case "app_logs_content":
+            renderLogData(
+                "app_logs",
+                "#deployment_selector",
+                "#deployment_log",
+                "#application_log");
+            break;
+    }
+
+    // Show the current tab, and add an "active" class to the button that opened the tab
+    document.getElementById(toolName).style.display = "block";
+    if (typeof evt.currentTarget == "undefined") {
+        $("#exec_logs").className += "active";
+    } else {
+        evt.currentTarget.className += " active";
+    }
 }
 
 function renderStockData(selector_id, cleanup=true) {
@@ -967,10 +1025,10 @@ function renderDatasetChoices(selector_id, container_id, group_name){
     }
 }
 
-function renderDeploymentData(selector_id, log_id) {
+function renderDeploymentData(selector_id, log_id, app_log_id) {
     var deployment_selector = $(selector_id).find("select")
     deployment_selector.empty();
-    resetLogBox(log_id);
+    resetLogBox(log_id, app_log_id);
     deployment_selector.append(
         $(document.createElement('option')).attr("value", "-1").text("Loading..")
     );
@@ -997,8 +1055,17 @@ function renderDeploymentData(selector_id, log_id) {
                                 .text(deployment.name)
                         )
                     });
-                    _renderLogData(deployment_selector.val(),
-                                   log_id);
+                    active_id = getActiveLogId();
+                    if (active_id == "") {
+                        //show exec logs by default exec log
+                        $("#exec_logs").click();
+                    } else {
+                        _renderLogData(
+                            active_id,
+                            deployment_selector.val(),
+                            log_id,
+                            app_log_id);
+                    }
                 } else {
                     deployment_selector.append(
                         $(document.createElement('option')).attr("value", "-1").text("No instances found")
@@ -1015,19 +1082,50 @@ function renderDeploymentData(selector_id, log_id) {
     });
 }
 
-function resetLogBox(log_id) {
+function resetLogBox(log_id, app_log_id) {
     $(log_id+"_light").attr("src", "/static/experimentstool/img/light_grey.png");
     $(log_id).find("textarea").val('');
+    $(app_log_id).attr("data", "");
 }
 
-function renderLogData(selector_id, log_id, reset=true) {
+function getActiveLogId() {
+    active = "";
+    tablinks = document.getElementsByClassName("logMenu");
+    for (i = 0; i < tablinks.length; i++) {
+        if (tablinks[i].classList.contains("active")) {
+            active = tablinks[i].id
+            break;
+        }
+    }
+
+    return active;
+}
+
+function renderLogData(log_type, selector_id, log_id, app_log_id, reset=true) {
     var deployment_selector = $(selector_id).find("select")
-    _renderLogData(deployment_selector.val(),
+    _renderLogData(log_type,
+                   deployment_selector.val(),
                    log_id,
+                   app_log_id,
                    reset=reset)
 }
 
-function _renderLogData(instance_id, log_id, reset=true) {
+function _renderLogData(log_type, instance_id, log_id, app_log_id, reset=true) {
+    switch(log_type) {
+        case "exec_logs":
+            _renderExecLogData(instance_id, log_id, reset);
+            break;
+        case "app_logs":
+            _renderAppLogData(instance_id, app_log_id);
+            break;
+        case "":
+            // do nothing
+            break;
+    }
+
+}
+
+function _renderExecLogData(instance_id, log_id, reset=true) {
     var textarea = $(log_id).find("textarea");
     if (reset) {
         textarea.val("");
@@ -1063,7 +1161,7 @@ function _renderLogData(instance_id, log_id, reset=true) {
                 if (!data.events.finished) {
                     $log_timeout = setTimeout(
                         function () {
-                            _renderLogData(instance_id, log_id, reset=false);
+                            _renderExecLogData(instance_id, log_id, reset=false);
                         },
                         3000);
                     if (data.events.status=="prepared") {
@@ -1077,6 +1175,40 @@ function _renderLogData(instance_id, log_id, reset=true) {
                     } else {
                         light.attr("src", "/static/experimentstool/img/light_red.png");
                     }
+                }
+            }
+        },
+        error: function (jqXHR, status, errorThrown) {
+            message = "Couldn't monitor the operation: ";
+            message += jqXHR.status+": "+errorThrown
+            appendNotification(message, error=true);
+        }
+    });
+}
+
+function _renderAppLogData(instance_id, log_id, reset=true) {
+    var textarea = $(log_id).find("textarea");
+    if (reset) {
+        textarea.val("");
+        stop_logs();
+        cleanNotifications();
+    }
+
+    $.ajax({
+        url: '/experimentstool/_get_runjobs_workflowid',
+        data: {
+            'instance_id': instance_id
+        },
+        success: function (data) {
+            if (data.redirect!==undefined && data.redirect!==null) {
+                redirect(data.redirect);
+            } else if (data.error!==undefined && data.error!==null) {
+                appendNotification("Couldn't monitor the operation: "+data.error, error=true);
+            } else {
+                if (data.workflowid !== undefined) {
+                    $(log_id).attr("data", "http://logging.mso4sc.eu:8080/default/"+data.workflowid);
+                } else {
+                    $(log_id).attr("data", "http://logging.mso4sc.eu:8080/default/none");
                 }
             }
         },
@@ -1119,8 +1251,10 @@ function runDeployment(selector_id, log_id, force = false) {
             appendNotification(message, error=true);
         },
         complete: function() {
-            renderLogData("#deployment_selector",
-                          "#deployment_log")
+            renderLogData(getActiveLogId(),
+                          "#deployment_selector",
+                          "#deployment_log",
+                          "#application_log")
         }
     });
 };
@@ -1159,7 +1293,8 @@ function removeDeployment(selector_id, force = false) {
         },
         complete: function() {
             renderDeploymentData("#deployment_selector",
-                                 "#deployment_log");
+                                 "#deployment_log",
+                                 "#application_log");
         }
     });
 };
@@ -1458,14 +1593,17 @@ $("#deploy_form").find("button").on('click', function (event) {
         complete: function() {
             $("#application_inputs").empty()
             renderDeploymentData("#deployment_selector",
-                                 "#deployment_log");
+                                 "#deployment_log",
+                                 "#application_log");
         }
     });
 });
 
 $("#deployment_selector").find("select").on('change', function () {
-    renderLogData("#deployment_selector",
-                  "#deployment_log")
+    renderLogData(getActiveLogId(),
+                  "#deployment_selector",
+                  "#deployment_log",
+                  "#application_log")
 });
 
 $("#run-instance-button").on('click', function (event) {
@@ -1478,7 +1616,8 @@ $("#destroy-instance-button").on('click', function (event) {
     event.preventDefault();
     removeDeployment("#deployment_selector");
     renderDeploymentData("#deployment_selector",
-                         "#deployment_log");
+                         "#deployment_log",
+                         "#application_log");
 });
 
 $("#force-destroy-instance-button").on('click', function (event) {

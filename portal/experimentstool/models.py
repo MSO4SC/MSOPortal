@@ -959,6 +959,32 @@ class AppInstance(models.Model):
             error)
 
     @classmethod
+    def get_instance_runjobs_workflowid(cls, pk, owner, return_dict=False):
+        workflowid = None
+        instance, error = cls.get(pk, owner)
+
+        if error is None:
+            if instance is not None:
+                # executions
+                executions_list, error = WorkflowExecution.list(
+                    instance,
+                    owner)
+                if error is None:
+                    for execution in executions_list:
+                        if execution.workflow == WorkflowExecution.RUN:
+                            workflowid = execution.id_code
+                            break
+                else:
+                    LOGGER.warning("Couldn't get workflow list: "+error)
+        else:
+            error = "Can't get instance workflowid because instance doesn't exist"
+
+        if not return_dict:
+            return (workflowid, error)
+        else:
+            return {'workflowid': workflowid, 'error': error}
+
+    @classmethod
     def remove(cls, pk, owner, return_dict=False, force=False):
         instance, error = cls.get(pk, owner)
 
