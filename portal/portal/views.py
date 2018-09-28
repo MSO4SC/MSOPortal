@@ -77,6 +77,11 @@ def marketplace_logIn(request, *args, **kwargs):
     return redirect(settings.MARKETPLACE_URL + '/login')
 
 
+def marketplace_noLogIn(request, *args, **kwargs):
+    context = {'marketplace_url': settings.MARKETPLACE_URL}
+    return render(request, 'marketplace.html', context)
+
+
 @login_required
 def marketplace_loggedIn(request):
     request.session['marketplace'] = True
@@ -108,6 +113,11 @@ def datacatalogue_logIn(request, *args, **kwargs):
         return redirect('/datacatalogue')
 
     return redirect(settings.DATACATALOGUE_URL + '/user/login')
+
+
+def datacatalogue_noLogIn(request, *args, **kwargs):
+    context = {'datacatalogue_url': settings.DATACATALOGUE_URL}
+    return render(request, 'datacatalogue.html', context)
 
 
 @login_required
