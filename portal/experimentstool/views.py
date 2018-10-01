@@ -617,6 +617,19 @@ def get_executions_events(request):
 
 
 @login_required
+def get_runjobs_workflowid(request):
+    instance_pk = int(request.GET.get('instance_id', -1))
+
+    if instance_pk < 0:
+        return JsonResponse({'error': 'Bad instance provided'})
+
+    return JsonResponse(AppInstance.get_instance_runjobs_workflowid(
+        instance_pk,
+        request.user,
+        return_dict=True))
+
+
+@login_required
 @permission_required('experimentstool.destroy_instance')
 def destroy_deployment(request):
     deployment_id = int(request.POST.get('deployment_id', -1))

@@ -50,9 +50,27 @@
         </div>
     </div>
 
-    <div class="s-12 m-12 l-12">
+    <div class="s-12">
+    <nav class="submenu">
+        <p class="nav-text"></p> 
+        <div class="top-nav">        
+                <ul>
+                    <li><a class="logMenu tablinks" id="exec_logs" onclick="openLogs(event, 'exec_logs_content')">Execution Logs</a></li>
+                    <li><a class="logMenu tablinks" id="app_logs" onclick="openLogs(event, 'app_logs_content')">Application Logs</a></li>                
+                </ul>            
+        </div>
+    </nav>
+    </div>
+
+    <div id="exec_logs_content" class="logTab tabcontent s-12 m-12 l-12">
         <div class="l-9" id="deployment_log">
             <textarea rows="20" cols="70" ></textarea>
         </div>
-    </div>    
-</form>    
+    </div>
+
+    <div id="app_logs_content" class="logTab tabcontent s-12 m-12 l-12">
+        <object class="l-9" id="application_log" style="min-height: 100px;"
+            data="">
+        </object>
+    </div>
+</form>

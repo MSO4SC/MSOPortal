@@ -53,6 +53,7 @@ div.tab button.active {
     from {
         opacity: 0;
     }
+
     to {
         opacity: 1;
     }
@@ -62,6 +63,7 @@ div.tab button.active {
     from {
         opacity: 0;
     }
+
     to {
         opacity: 1;
     }
@@ -178,6 +180,11 @@ span.rdi_label_name {
     border-right: 5px solid white;
 }
 
+.submenu .top-nav li.default {
+    background: none repeat scroll 0 0 rgba(209, 164, 15, 0.8);
+    border-left: 4px solid white;
+}
+
 .submenu .top-nav li.settings {
     background: none repeat scroll 0 0 rgba(209, 164, 15, 0.8);
     border-left: 4px solid white;
@@ -197,6 +204,7 @@ a.disabled {
     0% {
         -webkit-transform: rotate(0deg);
     }
+
     100% {
         -webkit-transform: rotate(360deg);
     }
@@ -206,6 +214,7 @@ a.disabled {
     0% {
         transform: rotate(0deg);
     }
+
     100% {
         transform: rotate(360deg);
     }

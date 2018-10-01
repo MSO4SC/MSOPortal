@@ -26,6 +26,8 @@ urlpatterns = [
         views.execute_deployment, name='_execute_deployment'),
     url(r'^_get_executions_events$',
         views.get_executions_events, name='_get_executions_events'),
+    url(r'^_get_runjobs_workflowid$',
+        views.get_runjobs_workflowid, name='_get_runjobs_workflowid'),
     url(r'^_destroy_deployment$',
         views.destroy_deployment, name='_destroy_deployment'),
     url(r'^_remove_application$',
