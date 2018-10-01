@@ -142,10 +142,7 @@ function openExperimentsTool(evt, toolName) {
             break;
 
         case "settings":
-            renderKeyData("#ckan_key_form");
-            renderHPCData("#infrastructure_list", select=false);
-            renderTunnelData("#add_hpc_tunnel");
-            renderTunnelData("#tunnel_list", select=false);
+            $("#setup_data").click();
             break;
     }
 
@@ -194,6 +191,54 @@ function openLogs(evt, toolName) {
                 "#deployment_selector",
                 "#deployment_log",
                 "#application_log");
+            break;
+    }
+
+    // Show the current tab, and add an "active" class to the button that opened the tab
+    document.getElementById(toolName).style.display = "block";
+    if (typeof evt.currentTarget == "undefined") {
+        $("#exec_logs").className += "active";
+    } else {
+        evt.currentTarget.className += " active";
+    }
+}
+
+function openSetup(evt, toolName) {
+    // Declare all variables
+    var i, tabcontent, tablinks;
+
+    // Get all elements with class="logMenu" and hide them
+    tabcontent = document.getElementsByClassName("setupTab");
+    for (i = 0; i < tabcontent.length; i++) {
+        tabcontent[i].style.display = "none";
+    }
+
+    // Get all elements with class="tablinks" and remove the class "active"
+    tablinks = document.getElementsByClassName("setupMenu");
+    for (i = 0; i < tablinks.length; i++) {
+        tablinks[i].className = tablinks[i].className.replace(" active", "");
+    }
+
+    // Stop all log monitoring
+    stop_logs();
+
+    // Clean Up the errors container
+    cleanNotifications();
+
+    switch(toolName) {
+        case "setup_data_content":
+            renderKeyData("#ckan_key_form");
+            break;
+        case "setup_hpc_content":
+            renderHPCData("#infrastructure_list", select=false);
+            renderTunnelData("#add_hpc_tunnel");
+            break;
+        case "setup_cloud_content":
+            renderHPCData("#infrastructure_list", select=false);
+            renderTunnelData("#add_hpc_tunnel");
+            break;
+        case "setup_tunnel_content":
+            renderTunnelData("#tunnel_list", select=false);
             break;
     }
 
