@@ -1419,6 +1419,9 @@ $("#deploy_form").find("button").on('click', function (event) {
     $('input[name^="resource_"]:checked').each(function(index, input){ // resource inputs
         inputs_dict[$(input).attr('name')] = String($(input).val());
     });
+    $('textarea[id^="input_"]').each(function(index, input){ // online file inputs
+        inputs_dict[$(input).attr('name')] = String($(input).val());
+    });
     var deployment_inputs = JSON.stringify(inputs_dict);
 
     var data = new FormData();
