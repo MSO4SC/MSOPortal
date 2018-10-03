@@ -18,7 +18,7 @@ from portal import settings
 from experimentstool.models import (Application,
                                     AppInstance,
                                     WorkflowExecution,
-                                    HPCInfrastructure,
+                                    HPCInstance,
                                     TunnelConnection,
                                     DataCatalogueKey)
 
@@ -71,7 +71,7 @@ def update_ckan_key(request):
 @login_required
 def get_hpc_list(request):
     return JsonResponse(
-        HPCInfrastructure.list(request.user, return_dict=True),
+        HPCInstance.list(request.user, return_dict=True),
         safe=False)
 
 
@@ -109,17 +109,18 @@ def add_hpc(request):
     if tunnel == -1:
         tunnel = None
     return JsonResponse(
-        HPCInfrastructure.create(name,
-                                 request.user,
-                                 host,
-                                 user,
-                                 key,
-                                 key_password,
-                                 password,
-                                 tz,
-                                 HPCInfrastructure.SLURM,
-                                 tunnel,
-                                 return_dict=True))
+        HPCInstance.create(
+            name,
+            request.user,
+            host,
+            user,
+            key,
+            key_password,
+            password,
+            tz,
+            HPCInstance.SLURM,
+            tunnel,
+            return_dict=True))
 
 
 @login_required
@@ -130,7 +131,7 @@ def delete_hpc(request):
         return JsonResponse({'error': 'No hpc provided'})
 
     return JsonResponse(
-        HPCInfrastructure.remove(pk,
+        HPCInstance.remove(pk,
                                  request.user,
                                  return_dict=True))
 
@@ -184,9 +185,10 @@ def delete_tunnel(request):
         return JsonResponse({'error': 'No hpc provided'})
 
     return JsonResponse(
-        HPCInfrastructure.remove(pk,
-                                 request.user,
-                                 return_dict=True))
+        HPCInstance.remove(
+            pk,
+            request.user,
+            return_dict=True))
 
 
 @token_required
@@ -454,7 +456,7 @@ def create_deployment(request):
     if application_id < 0:
         return JsonResponse({'error': 'No application selected'})
 
-    hpc_list, error = HPCInfrastructure.list(request.user)
+    hpc_list, error = HPCInstance.list(request.user)
     if error is not None:
         return JsonResponse({'error': error})
 
