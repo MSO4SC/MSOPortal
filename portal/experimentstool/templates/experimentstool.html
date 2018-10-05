@@ -229,12 +229,17 @@ function openSetup(evt, toolName) {
         case "setup_data_content":
             renderKeyData("#ckan_key_form");
             break;
+        case "setup_hpc_infra_content":
+            renderHPCInfraData("#hpc_infra_list", select=false);
+            break;
         case "setup_hpc_content":
-            renderHPCData("#infrastructure_list", select=false);
+            renderHPCData("#hpc_instance_list", select=false);
+            renderHPCInfraData("#hpc_infra_selector")
             renderTunnelData("#add_hpc_tunnel");
             break;
         case "setup_cloud_content":
-            renderHPCData("#infrastructure_list", select=false);
+            //TODO: Implement
+            renderHPCData("#hpc_instance_list", select=false);
             renderTunnelData("#add_hpc_tunnel");
             break;
         case "setup_tunnel_content":
@@ -828,6 +833,118 @@ function setTunnelEditButtonsHandler(button_id, pk, refresh_function) {
     });
 }
 
+function renderHPCInfraData(container_id, select=true, clear_notifications=true) {
+    var hpc_container = $(container_id);
+    if (select) {
+        hpc_container = hpc_container.find("select");
+    }
+    hpc_container.empty();
+    if (clear_notifications) {
+        cleanNotifications();
+    }
+
+    $.ajax({
+        url: '/experimentstool/_get_hpc_infra_list',
+        beforeSend: function (xhr, settings) {
+            $.ajaxSettings.beforeSend(xhr, settings);
+            $(".loader").show();
+        },
+        success: function (data) {
+            $(".loader").hide();
+            if (data.redirect!==undefined && data.redirect!==null) {
+                redirect(data.redirect);
+            } else if (data.error!==undefined && data.error!==null) {
+                message = "Couldn't get hpc list: "+data.error;
+                appendNotification(message, error=true);
+            } else {
+                var hpc_list = data.hpc_list;
+                if (hpc_list.length > 0) {
+                    $.each(hpc_list, function (index, hpc) {
+                        if (select) {
+                            hpc_container.append(
+                                $(document.createElement('option'))
+                                    .attr("value", hpc.id)
+                                    .text(hpc.name)
+                            )
+                        } else {
+                            var edit_button;
+                            if (hpc.owned) {
+                                edit_button = $(document.createElement('div')).
+                                    attr("class", "l-3 right").
+                                    append(
+                                        $(document.createElement('button')).
+                                            attr("id", "del_hpc_infra_"+hpc.id).
+                                            text('Delete')
+                                    )
+                            } else {
+                                edit_button = $(document.createElement('div')).
+                                    attr("class", "l-3 right")
+                            }
+                            hpc_container.append(
+                                $(document.createElement('div')).
+                                    attr("id", "hpc_block_"+hpc.id).
+                                    attr("class", "margin hpc_settings_block").
+                                    append(
+                                        $(document.createElement('div')).
+                                            attr("class", "s-12 m-6 l-8").
+                                            append(
+                                                $(document.createElement('div')).
+                                                    attr("class", "l-9 left").
+                                                    append(
+                                                        $(document.createElement('div')).append(
+                                                            $(document.createElement('span')).attr("class", "hpc_label hpc_label_name").text('Name: '),
+                                                            $(document.createElement('a')).attr("href", hpc.about_url).attr("target", "_blank").text(hpc.name),
+                                                        ),
+                                                        $(document.createElement('div')).append(
+                                                            $(document.createElement('span')).attr("class", "hpc_label").text('Host: '),
+                                                            $(document.createElement('span')).text(hpc.host),
+                                                        ),
+                                                        $(document.createElement('div')).append(
+                                                            $(document.createElement('span')).attr("class", "hpc_label").text('WM: '),
+                                                            $(document.createElement('span')).text(hpc.manager),
+                                                        ),
+                                                        $(document.createElement('div')).append(
+                                                            $(document.createElement('span')).attr("class", "hpc_label").text('Time Zone: '),
+                                                            $(document.createElement('span')).text(hpc.time_zone),
+                                                        )
+                                                    ),
+                                                edit_button,
+                                            )
+                                    )
+                            );
+                            if (hpc.owned) {
+                                setHPCEditButtonsHandler(
+                                    '/experimentstool/_delete_hpc_infra',
+                                    "#del_hpc_infra_"+hpc.id,
+                                    hpc.id,
+                                    refresh_function = function() {
+                                        renderHPCInfraData(
+                                            container_id,
+                                            select=false,
+                                            clear_notifications=false); 
+                                    }
+                                );
+                            }
+                        }
+                    });
+                } else {
+                    if (!select) {
+                        hpc_container.append(
+                            $(document.createElement('div')).attr("id", "no_hpc_list").text("No HPC definitions found")
+                        )
+                    }
+                }
+            }
+        },
+        error: function (jqXHR, status, errorThrown) {
+            $(".loader").hide();
+            message = "Couldn't get hpc list: ";
+            message += jqXHR.status+": "+errorThrown
+            appendNotification(message, error=true);
+        }
+    });
+}
+
 function renderHPCData(container_id, select=true, clear_notifications=true) {
     var hpc_container = $(container_id);
     if (select) {
@@ -878,20 +995,12 @@ function renderHPCData(container_id, select=true, clear_notifications=true) {
                                                             $(document.createElement('span')).text(hpc.name),
                                                         ),
                                                         $(document.createElement('div')).append(
-                                                            $(document.createElement('span')).attr("class", "hpc_label").text('Host: '),
-                                                            $(document.createElement('span')).text(hpc.host),
+                                                            $(document.createElement('span')).attr("class", "hpc_label").text('Infrastructure: '),
+                                                            $(document.createElement('span')).text(hpc.infrastructure),
                                                         ),
                                                         $(document.createElement('div')).append(
                                                             $(document.createElement('span')).attr("class", "hpc_label").text('User: '),
                                                             $(document.createElement('span')).text(hpc.user),
-                                                        ),
-                                                        $(document.createElement('div')).append(
-                                                            $(document.createElement('span')).attr("class", "hpc_label").text('WM: '),
-                                                            $(document.createElement('span')).text(hpc.manager),
-                                                        ),
-                                                        $(document.createElement('div')).append(
-                                                            $(document.createElement('span')).attr("class", "hpc_label").text('Time Zone: '),
-                                                            $(document.createElement('span')).text(hpc.time_zone),
                                                         ),
                                                         $(document.createElement('div')).append(
                                                             $(document.createElement('span')).attr("class", "hpc_label").text('Tunnel: '),
@@ -910,6 +1019,7 @@ function renderHPCData(container_id, select=true, clear_notifications=true) {
                                     )
                             );
                             setHPCEditButtonsHandler(
+                                '/experimentstool/_delete_hpc',
                                 "#del_hpc_"+hpc.id,
                                 hpc.id,
                                 refresh_function = function() {
@@ -938,12 +1048,12 @@ function renderHPCData(container_id, select=true, clear_notifications=true) {
     });
 }
 
-function setHPCEditButtonsHandler(button_id, pk, refresh_function) {
+function setHPCEditButtonsHandler(ajax_url, button_id, pk, refresh_function) {
     $(button_id).on('click', function (event) {
         event.preventDefault();
         $.ajax({
             method: "POST",
-            url: '/experimentstool/_delete_hpc',
+            url: ajax_url,
             data: {
                 'pk': pk
             },
@@ -1441,6 +1551,58 @@ $("#add_tunnel").find("button").on('click', function (event) {
     }
 });
 
+$("#add_hpc_infra").find("button").on('click', function (event) {
+    event.preventDefault();
+
+    var name = $("#add_hpc_infra_name").val();
+    var about = $("#add_hpc_about").val();
+    var host = $("#add_hpc_host").val();
+    var timezone = $("#add_hpc_timezone").val();
+    var manager = $("#add_hpc_manager").find("select").val();
+
+    cleanNotifications();
+    if (name != '' && about != '' && timezone != '') {
+        var data = new FormData();
+        data.append('name', name);
+        data.append('about', about);
+        data.append('host', host);
+        data.append('timezone', timezone);
+        data.append('manager', manager);
+        $.ajax({
+            url: '/experimentstool/_add_hpc_infra',
+            type: "POST",
+            data: data,
+            dataType: 'json',
+            contentType: false,
+            processData: false,
+            cache: false,
+            beforeSend: function (xhr, settings) {
+                $.ajaxSettings.beforeSend(xhr, settings);
+                $(".loader").show();
+            },
+            success: function (data) {
+                $(".loader").hide();
+                if (data.redirect!==undefined && data.redirect!==null) {
+                    redirect(data.redirect);
+                } else if (data.error!==undefined && data.error!==null) {
+                    appendNotification("Couldn't add the HPC: "+data.error, error=true);
+                } else {
+                    appendNotification("HPC "+data.hpc.name+" added.");
+                }
+            },
+            error: function (jqXHR, status, errorThrown) {
+                $(".loader").hide();
+                message = "Couldn't add the hpc: ";
+                message += jqXHR.status+": "+errorThrown
+                appendNotification(message, error=true);
+            },
+            complete: function() {
+                renderHPCInfraData("#hpc_infra_list", selector=false, clean=false);
+            }
+        });
+    }
+});
+
 $("#add_hpc").find("button").on('click', function (event) {
     event.preventDefault();
     if (!window.File || !window.FileReader || !window.FileList || !window.Blob) {
@@ -1448,12 +1610,11 @@ $("#add_hpc").find("button").on('click', function (event) {
     }
 
     var name = $("#add_hpc_name").val();
-    var host = $("#add_hpc_host").val();
+    var infra = $("#hpc_infra_selector").find("select").val();
     var user = $("#add_hpc_user").val();
     var key_file = $("#add_hpc_key")[0]
     var key_password = $("#add_hpc_key_password").val();
     var password = $("#add_hpc_password").val();
-    var timezone = $("#add_hpc_timezone").val();
     var tunnel = $("#add_hpc_tunnel").find("select").val();
 
     var key = null
@@ -1463,15 +1624,14 @@ $("#add_hpc").find("button").on('click', function (event) {
     var have_auth = key != null || password != ''
 
     cleanNotifications();
-    if (name != '' && host != '' && user!= '' && timezone != '' && have_auth) {
+    if (infra!= '' && name != '' && user!= '' && have_auth) {
         var data = new FormData();
         data.append('name', name);
-        data.append('host', host);
+        data.append('infra', infra);
         data.append('user', user);
         data.append('key', key);
         data.append('key_password', key_password);
         data.append('password', password);
-        data.append('timezone', timezone);
         data.append('tunnel', tunnel);
         $.ajax({
             url: '/experimentstool/_add_hpc',
@@ -1502,7 +1662,7 @@ $("#add_hpc").find("button").on('click', function (event) {
                 appendNotification(message, error=true);
             },
             complete: function() {
-                renderHPCData("#infrastructure_list", selector=false, clean=false);
+                renderHPCData("#hpc_instance_list", selector=false, clean=false);
             }
         });
     }

@@ -8,6 +8,7 @@
                 <li><a class="setupMenu tablinks" id="setup_data" onclick="openSetup(event, 'setup_data_content')">Data repositories</a></li>
                 <li><a class="setupMenu tablinks" id="setup_hpc" onclick="openSetup(event, 'setup_hpc_content')">HPC Infrastructures</a></li>
                 <li><a class="setupMenu tablinks" id="setup_cloud" onclick="openSetup(event, 'setup_cloud_content')">Cloud Infrastructures</a></li>
+                <li><a class="setupMenu tablinks" id="setup_hpc_infra" onclick="openSetup(event, 'setup_hpc_infra_content')">HPC Definitions</a></li>
                 <li><a class="setupMenu tablinks" id="setup_tunnel" onclick="openSetup(event, 'setup_tunnel_content')">SSH Tunnels</a></li>
             </ul>            
     </div>
@@ -30,52 +31,35 @@
     </form>
 </div>
 
-<div id="setup_hpc_content" class="setupTab tabcontent s-12 m-12 l-12">
+<div id="setup_hpc_infra_content" class="setupTab tabcontent s-12 m-12 l-12">
     <form class="customform">
-        <h2>HPC Computing Infrastructures:</h2>
+        {% csrf_token %}
+        <h2>HPC Definitions:</h2>
         <div class="s-12 m-12 l-12">    
-            <div class="l-8" id="infrastructure_list">
+            <div class="l-8" id="hpc_infra_list">
             </div>
         </div>
         <div style="width: 10px; display: inline-block;"></div>
-        <h3>New HPC infrastructure:</h3>
+        <h3>New HPC definition:</h3>
         <div class="s-12 m-12 l-12"> 
-            <div class="l-8" id="add_hpc">
+            <div class="l-8" id="add_hpc_infra">
                 <div>
-                    <label for="add_hpc_name">Name: *</label>
-                    <input type='text' maxlength="50" id="add_hpc_name" />
+                    <label for="add_hpc_infra_name">Name: *</label>
+                    <input type='text' maxlength="50" id="add_hpc_infra_name" />
+                </div>
+                <div>
+                    <label for="add_hpc_about">About URL: *</label>
+                    <input type='text' maxlength="250" id="add_hpc_about" />
                 </div>
                 <div>
                     <label for="add_hpc_host">Host: *</label>
                     <input type='text' maxlength="50" id="add_hpc_host" />
                 </div>
                 <div>
-                    <label for="add_hpc_user">User: *</label>
-                    <input type='text' maxlength="50" id="add_hpc_user" />
-                </div>
-                <div>
-                    <label for="add_hpc_key">RSA Private Key: </label>
-                    <input type="file" id="add_hpc_key">
-                </div>
-                <div>
-                    <label for="add_hpc_key_password">Private Key password: </label>
-                    <input type='password' maxlength="50" id="add_hpc_key_password" />
-                </div>
-                <div>
-                    <label for="add_hpc_password">Password:</label>
-                    <input type='password' maxlength="50" id="add_hpc_password" />
-                </div>
-                <div>
-                    <label for="add_hpc_tunnel">Tunnel:</label>
-                    <div id="add_hpc_tunnel">
-                        <select></select>
-                    </div>
-                    
-                </div>
-                <div>
                     <label for="add_hpc_manager">Workload Manager: *</label>
                     <select id="add_hpc_manager">
-                        <option>Slurm</option>
+                        <option value="SLURM">Slurm</option>
+                        <option value="TORQUE">Torque</option>
                     </select>
                 </div>
                 <div>
@@ -90,24 +74,25 @@
     </form>
 </div>
 
-<div id="setup_cloud_content" class="setupTab tabcontent s-12 m-12 l-12">
+<div id="setup_hpc_content" class="setupTab tabcontent s-12 m-12 l-12">
     <form class="customform">
-        <h2>Cloud Computing Infrastructures:</h2>
+        {% csrf_token %}
+        <h2>User's HPCs:</h2>
         <div class="s-12 m-12 l-12">    
-            <div class="l-8" id="infrastructure_list">
+            <div class="l-8" id="hpc_instance_list">
             </div>
         </div>
         <div style="width: 10px; display: inline-block;"></div>
-        <h3>New cloud infrastructure:</h3>
+        <h3>New User's HPC:</h3>
         <div class="s-12 m-12 l-12"> 
             <div class="l-8" id="add_hpc">
+                <div id="hpc_infra_selector">
+                    <label for="hpc_infra_selector_aux">Type: *</label>
+                    <select id="hpc_infra_selector_aux"></select>
+                </div>
                 <div>
                     <label for="add_hpc_name">Name: *</label>
                     <input type='text' maxlength="50" id="add_hpc_name" />
-                </div>
-                <div>
-                    <label for="add_hpc_host">Host: *</label>
-                    <input type='text' maxlength="50" id="add_hpc_host" />
                 </div>
                 <div>
                     <label for="add_hpc_user">User: *</label>
@@ -130,17 +115,6 @@
                     <div id="add_hpc_tunnel">
                         <select></select>
                     </div>
-                    
-                </div>
-                <div>
-                    <label for="add_hpc_manager">Workload Manager: *</label>
-                    <select id="add_hpc_manager">
-                        <option>Slurm</option>
-                    </select>
-                </div>
-                <div>
-                    <label for="add_hpc_timezone">Time Zone: *</label>
-                    <input type='text' maxlength="50" id="add_hpc_timezone" value="Europe/Madrid" />
                 </div>
                 <div class="s-12 l-3 center">
                     <button>Add</button>

@@ -18,6 +18,7 @@ from portal import settings
 from experimentstool.models import (Application,
                                     AppInstance,
                                     WorkflowExecution,
+                                    HPCInfrastructure,
                                     HPCInstance,
                                     TunnelConnection,
                                     DataCatalogueKey)
@@ -69,6 +70,20 @@ def update_ckan_key(request):
 
 
 @login_required
+def get_owned_hpc_infra_list(request):
+    return JsonResponse(
+        HPCInfrastructure.list(request.user, return_dict=True),
+        safe=False)
+
+
+@login_required
+def get_hpc_infra_list(request):
+    return JsonResponse(
+        HPCInfrastructure.list_all(request.user, return_dict=True),
+        safe=False)
+
+
+@login_required
 def get_hpc_list(request):
     return JsonResponse(
         HPCInstance.list(request.user, return_dict=True),
@@ -76,16 +91,54 @@ def get_hpc_list(request):
 
 
 @login_required
-def add_hpc(request):
+def add_hpc_infra(request):
     name = request.POST.get('name', None)
     if not name or name == '':
         # TODO validation
         return JsonResponse({'error': 'No name provided'})
+    
+    about_url = request.POST.get('about', None)
+    if not about_url or about_url == '':
+        # TODO validation
+        return JsonResponse({'error': 'No about url provided'})
 
     host = request.POST.get('host', None)
     if not host or host == '':
         # TODO validation
         return JsonResponse({'error': 'No host provided'})
+
+    tz = request.POST.get('timezone', None)
+    if not tz or tz == '':
+        # TODO validation
+        return JsonResponse({'error': 'No time zone provided'})
+
+    wmanager = request.POST.get('manager', None)
+    if not wmanager or wmanager == '':
+        # TODO validation
+        return JsonResponse({'error': 'No workload manager provided'})
+
+    return JsonResponse(
+        HPCInfrastructure.create(
+            name,
+            request.user,
+            about_url,
+            host,
+            tz,
+            wmanager,
+            return_dict=True))
+
+
+@login_required
+def add_hpc(request):
+    infra = request.POST.get('infra', None)
+    if not infra or infra == '':
+        # TODO validation
+        return JsonResponse({'error': 'No hpc infrastructure provided'})
+
+    name = request.POST.get('name', None)
+    if not name or name == '':
+        # TODO validation
+        return JsonResponse({'error': 'No name provided'})
 
     user = request.POST.get('user', None)
     if not user or user == '':
@@ -100,11 +153,6 @@ def add_hpc(request):
     if key == '' and password == '':
         return JsonResponse({'error': 'No authentication (key/password) provided'})
 
-    tz = request.POST.get('timezone', None)
-    if not tz or tz == '':
-        # TODO validation
-        return JsonResponse({'error': 'No time zone provided'})
-
     tunnel = int(request.POST.get('tunnel', -1))
     if tunnel == -1:
         tunnel = None
@@ -112,14 +160,26 @@ def add_hpc(request):
         HPCInstance.create(
             name,
             request.user,
-            host,
+            infra,
             user,
             key,
             key_password,
             password,
-            tz,
-            HPCInstance.SLURM,
             tunnel,
+            return_dict=True))
+
+
+@login_required
+def delete_hpc_infra(request):
+    pk = request.POST.get('pk', None)
+    if not pk or pk == '':
+        # TODO validation
+        return JsonResponse({'error': 'No hpc provided'})
+
+    return JsonResponse(
+        HPCInfrastructure.remove(
+            pk,
+            request.user,
             return_dict=True))
 
 
@@ -131,9 +191,10 @@ def delete_hpc(request):
         return JsonResponse({'error': 'No hpc provided'})
 
     return JsonResponse(
-        HPCInstance.remove(pk,
-                                 request.user,
-                                 return_dict=True))
+        HPCInstance.remove(
+            pk,
+            request.user,
+            return_dict=True))
 
 
 @login_required
