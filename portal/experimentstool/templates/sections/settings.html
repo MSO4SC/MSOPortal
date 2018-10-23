@@ -1,18 +1,19 @@
 <br>
 <br>
 <div class="s-12">
-<nav class="submenu">
-    <p class="nav-text"></p> 
-    <div class="top-nav">        
+    <nav class="submenu">
+        <p class="nav-text"></p>
+        <div class="top-nav">
             <ul>
-                <li><a class="setupMenu tablinks" id="setup_data" onclick="openSetup(event, 'setup_data_content')">Data repositories</a></li>
-                <li><a class="setupMenu tablinks" id="setup_hpc" onclick="openSetup(event, 'setup_hpc_content')">HPC Infrastructures</a></li>
-                <li><a class="setupMenu tablinks" id="setup_cloud" onclick="openSetup(event, 'setup_cloud_content')">Cloud Infrastructures</a></li>
-                <li><a class="setupMenu tablinks" id="setup_hpc_infra" onclick="openSetup(event, 'setup_hpc_infra_content')">HPC Definitions</a></li>
-                <li><a class="setupMenu tablinks" id="setup_tunnel" onclick="openSetup(event, 'setup_tunnel_content')">SSH Tunnels</a></li>
-            </ul>            
-    </div>
-</nav>
+                <li><a class="setupMenu tablinks" id="setup_data" onclick="openSetup(event, 'setup_data_content')">Data
+                        repositories</a></li>
+                <li><a class="setupMenu tablinks" id="setup_computing" onclick="openSetup(event, 'setup_computing_content')">User
+                        Infrastructures</a></li>
+                <li><a class="setupMenu tablinks" id="setup_infra" onclick="openSetup(event, 'setup_infra_content')">Infrastructure
+                        Definitions</a></li>
+            </ul>
+        </div>
+    </nav>
 </div>
 
 <div id="setup_data_content" class="setupTab tabcontent s-12 m-12 l-12">
@@ -26,143 +27,82 @@
             </div>
             <div class="l-1 left">
                 <button>Update</button>
-            </div> 
+            </div>
         </div>
     </form>
 </div>
 
-<div id="setup_hpc_infra_content" class="setupTab tabcontent s-12 m-12 l-12">
+<div id="setup_infra_content" class="setupTab tabcontent s-12 m-12 l-12">
     <form class="customform">
         {% csrf_token %}
-        <h2>HPC Definitions:</h2>
-        <div class="s-12 m-12 l-12">    
-            <div class="l-8" id="hpc_infra_list">
+        <h2>Infrastructure Definitions:</h2>
+        <div class="s-12 m-12 l-12">
+            <div class="l-8" id="infra_list">
             </div>
         </div>
         <div style="width: 10px; display: inline-block;"></div>
-        <h3>New HPC definition:</h3>
-        <div class="s-12 m-12 l-12"> 
-            <div class="l-8" id="add_hpc_infra">
+        <h3>New infrastructure definition:</h3>
+        <div class="s-12 m-12 l-12">
+            <div class="l-8" id="add_infra">
                 <div>
-                    <label for="add_hpc_infra_name">Name: *</label>
-                    <input type='text' maxlength="50" id="add_hpc_infra_name" />
+                    <label for="add_infra_name">Name: *</label>
+                    <input type='text' maxlength="50" id="add_infra_name" />
                 </div>
                 <div>
-                    <label for="add_hpc_about">About URL: *</label>
-                    <input type='text' maxlength="250" id="add_hpc_about" />
+                    <label for="add_infra_about">About URL: *</label>
+                    <input type='text' maxlength="250" id="add_infra_about" />
                 </div>
                 <div>
-                    <label for="add_hpc_host">Host: *</label>
-                    <input type='text' maxlength="50" id="add_hpc_host" />
-                </div>
-                <div>
-                    <label for="add_hpc_manager">Workload Manager: *</label>
-                    <select id="add_hpc_manager">
-                        <option value="SLURM">Slurm</option>
-                        <option value="TORQUE">Torque</option>
+                    <label for="add_infra_type">Type: *</label>
+                    <select id="add_infra_type">
+                        <option value="HPC">HPC</option>
+                        <option value="OPENSTACK">OpenStack</option>
                     </select>
                 </div>
                 <div>
-                    <label for="add_hpc_timezone">Time Zone: *</label>
-                    <input type='text' maxlength="50" id="add_hpc_timezone" value="Europe/Madrid" />
+                    <label for="add_infra_manager">Workload Manager: *</label>
+                    <select id="add_infra_manager">
+                        <option value="SLURM">Slurm</option>
+                        <option value="TORQUE">Torque</option>
+                        <option value="BASH">Bash</option>
+                    </select>
+                </div>
+                <div>
+                    <label for="add_infra_definition">Definition file: </label>
+                    <input type="file" id="add_infra_definition">
                 </div>
                 <div class="s-12 l-3 center">
                     <button>Add</button>
-                </div>    
+                </div>
             </div>
         </div>
     </form>
 </div>
 
-<div id="setup_hpc_content" class="setupTab tabcontent s-12 m-12 l-12">
+<div id="setup_computing_content" class="setupTab tabcontent s-12 m-12 l-12">
     <form class="customform">
         {% csrf_token %}
-        <h2>User's HPCs:</h2>
-        <div class="s-12 m-12 l-12">    
-            <div class="l-8" id="hpc_instance_list">
+        <h2>User's Infrastructures:</h2>
+        <div class="s-12 m-12 l-12">
+            <div class="l-8" id="computing_instance_list">
             </div>
         </div>
         <div style="width: 10px; display: inline-block;"></div>
-        <h3>New User's HPC:</h3>
-        <div class="s-12 m-12 l-12"> 
-            <div class="l-8" id="add_hpc">
-                <div id="hpc_infra_selector">
-                    <label for="hpc_infra_selector_aux">Type: *</label>
-                    <select id="hpc_infra_selector_aux"></select>
-                </div>
+        <h3>New User's Infrastructure:</h3>
+        <div class="s-12 m-12 l-12">
+            <div class="l-8" id="add_computing">
                 <div>
-                    <label for="add_hpc_name">Name: *</label>
-                    <input type='text' maxlength="50" id="add_hpc_name" />
+                    <label for="add_computing_name">Name: *</label>
+                    <input type='text' maxlength="50" id="add_computing_name" />
                 </div>
-                <div>
-                    <label for="add_hpc_user">User: *</label>
-                    <input type='text' maxlength="50" id="add_hpc_user" />
+                <div id="infra_selector">
+                    <label for="infra_selector_aux">Type: *</label>
+                    <select id="infra_selector_aux"></select>
                 </div>
-                <div>
-                    <label for="add_hpc_key">RSA Private Key: </label>
-                    <input type="file" id="add_hpc_key">
-                </div>
-                <div>
-                    <label for="add_hpc_key_password">Private Key password: </label>
-                    <input type='password' maxlength="50" id="add_hpc_key_password" />
-                </div>
-                <div>
-                    <label for="add_hpc_password">Password:</label>
-                    <input type='password' maxlength="50" id="add_hpc_password" />
-                </div>
-                <div>
-                    <label for="add_hpc_tunnel">Tunnel:</label>
-                    <div id="add_hpc_tunnel">
-                        <select></select>
-                    </div>
-                </div>
+                <div id="infra_inputs"></div>
                 <div class="s-12 l-3 center">
                     <button>Add</button>
-                </div>    
-            </div>
-        </div>
-    </form>
-</div>
-
-<div id="setup_tunnel_content" class="setupTab tabcontent s-12 m-12 l-12">
-    <form class="customform">
-        {% csrf_token %}
-        <h2>SSH Tunnels:</h2>
-        <div class="s-12 m-12 l-12">    
-            <div class="l-8" id="tunnel_list">
-            </div>
-        </div>
-        <div style="width: 10px; display: inline-block;"></div>
-        <h3>New ssh tunnel:</h3>
-        <div class="s-12 m-12 l-12"> 
-            <div class="l-8" id="add_tunnel">
-                <div>
-                    <label for="add_tunnel_name">Name: *</label>
-                    <input type='text' maxlength="50" id="add_tunnel_name" />
                 </div>
-                <div>
-                    <label for="add_tunnel_host">Host: *</label>
-                    <input type='text' maxlength="50" id="add_tunnel_host" />
-                </div>
-                <div>
-                    <label for="add_tunnel_user">User: *</label>
-                    <input type='text' maxlength="50" id="add_tunnel_user" />
-                </div>
-                <div>
-                    <label for="add_tunnel_key">RSA Private Key: </label>
-                    <input type="file" id="add_tunnel_key">
-                </div>
-                <div>
-                    <label for="add_tunnel_key_password">Private Key password: </label>
-                    <input type='password' maxlength="50" id="add_tunnel_key_password" />
-                </div>
-                <div>
-                    <label for="add_tunnel_password">Password:</label>
-                    <input type='password' maxlength="50" id="add_tunnel_password" />
-                </div>
-                <div class="s-12 l-3 center">
-                    <button>Add</button>
-                </div>    
             </div>
         </div>
     </form>

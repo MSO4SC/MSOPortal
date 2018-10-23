@@ -118,12 +118,12 @@ div.tab button.active {
     background-color: #ffa7a4;
 }
 
-div.hpc_settings_block {
+div.computing_settings_block {
     padding: 5px;
     border-bottom: 1px solid;
 }
 
-span.hpc_label {
+span.computing_label {
     font-style: italic;
     display: inline-block;
     width: 120px;
@@ -132,7 +132,7 @@ span.hpc_label {
     color: #152732;
 }
 
-span.hpc_label_name {
+span.computing_label_name {
     font-weight: bold;
 }
 

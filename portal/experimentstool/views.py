@@ -2,6 +2,7 @@
 
 import re
 import json
+import yaml
 import time
 import tempfile
 from urllib.parse import urlparse
@@ -18,8 +19,8 @@ from portal import settings
 from experimentstool.models import (Application,
                                     AppInstance,
                                     WorkflowExecution,
-                                    HPCInfrastructure,
-                                    HPCInstance,
+                                    ComputingInfrastructure,
+                                    ComputingInstance,
                                     TunnelConnection,
                                     DataCatalogueKey)
 
@@ -70,28 +71,28 @@ def update_ckan_key(request):
 
 
 @login_required
-def get_owned_hpc_infra_list(request):
+def get_owned_infra_list(request):
     return JsonResponse(
-        HPCInfrastructure.list(request.user, return_dict=True),
+        ComputingInfrastructure.list(request.user, return_dict=True),
         safe=False)
 
 
 @login_required
-def get_hpc_infra_list(request):
+def get_infra_list(request):
     return JsonResponse(
-        HPCInfrastructure.list_all(request.user, return_dict=True),
+        ComputingInfrastructure.list_all(request.user, return_dict=True),
         safe=False)
 
 
 @login_required
-def get_hpc_list(request):
+def get_computing_list(request):
     return JsonResponse(
-        HPCInstance.list(request.user, return_dict=True),
+        ComputingInstance.list(request.user, return_dict=True),
         safe=False)
 
 
 @login_required
-def add_hpc_infra(request):
+def add_infra(request):
     name = request.POST.get('name', None)
     if not name or name == '':
         # TODO validation
@@ -102,99 +103,146 @@ def add_hpc_infra(request):
         # TODO validation
         return JsonResponse({'error': 'No about url provided'})
 
-    host = request.POST.get('host', None)
-    if not host or host == '':
+    infra_type = request.POST.get('infra_type', None)
+    if not infra_type or infra_type == '':
         # TODO validation
-        return JsonResponse({'error': 'No host provided'})
+        return JsonResponse({'error': 'No type provided'})
 
-    tz = request.POST.get('timezone', None)
-    if not tz or tz == '':
-        # TODO validation
-        return JsonResponse({'error': 'No time zone provided'})
-
-    wmanager = request.POST.get('manager', None)
-    if not wmanager or wmanager == '':
+    manager = request.POST.get('manager', None)
+    if not manager or manager == '':
         # TODO validation
         return JsonResponse({'error': 'No workload manager provided'})
 
+    definition = ''
+    if "definition" in request.FILES:
+        definition = str(request.FILES['definition'].read(), "utf-8")
+
     return JsonResponse(
-        HPCInfrastructure.create(
+        ComputingInfrastructure.create(
             name,
             request.user,
             about_url,
-            host,
-            tz,
-            wmanager,
+            infra_type,
+            manager,
+            definition,
             return_dict=True))
 
 
 @login_required
-def add_hpc(request):
-    infra = request.POST.get('infra', None)
-    if not infra or infra == '':
+def add_computing(request):
+    infra_pk = request.POST.get('infra', None)
+    if not infra_pk or infra_pk == '':
         # TODO validation
-        return JsonResponse({'error': 'No hpc infrastructure provided'})
+        return JsonResponse({'error': 'No computing infrastructure provided'})
 
     name = request.POST.get('name', None)
     if not name or name == '':
         # TODO validation
         return JsonResponse({'error': 'No name provided'})
 
-    user = request.POST.get('user', None)
-    if not user or user == '':
+    json_inputs = request.POST.get('inputs', None)
+    if not json_inputs or json_inputs == '':
         # TODO validation
-        return JsonResponse({'error': 'No user provided'})
+        return JsonResponse({'error': 'No inputs provided'})
 
-    key = ''
-    if "key" in request.FILES:
-        key = str(request.FILES['key'].read(), "utf-8")
-    key_password = request.POST.get('key_password', '')
-    password = request.POST.get('password', '')
-    if key == '' and password == '':
-        return JsonResponse({'error': 'No authentication (key/password) provided'})
+    infra, error = ComputingInfrastructure.get(infra_pk)
+    if error is not None:
+        return JsonResponse({'error': error})
 
-    tunnel = int(request.POST.get('tunnel', -1))
-    if tunnel == -1:
-        tunnel = None
+    # TODO check validity (null)
+    definition = yaml.load(infra.definition)
+    inputs = json.loads(json_inputs)
+    for path, value in inputs.items():
+        keys = path[1:].split('.')
+        definition = _update_input(definition, keys, value)
+    yaml_definition = yaml.dump(definition)
+
     return JsonResponse(
-        HPCInstance.create(
+        ComputingInstance.create(
             name,
             request.user,
-            infra,
-            user,
-            key,
-            key_password,
-            password,
-            tunnel,
+            infra_pk,
+            yaml_definition,
             return_dict=True))
 
 
+def _update_input(definition, keys, value):
+    response = definition
+
+    #Check if the key references a list
+    try:
+        key = int(keys[0])
+    except ValueError:
+        key = str(keys[0])
+
+    if len(keys) > 1:
+        response[key] = _update_input(definition[key], keys[1:], value)
+    else:
+        config = definition[key]['INPUT']
+        if config['type'] == 'string' \
+                or config['type'] == 'file':
+            response[key] = str(value)
+        elif config['type'] == 'int':
+            response[key] = int(value)
+        elif config['type'] == 'float':
+            response[key] = float(value)
+        elif config['type'] == 'bool':
+            response[key] = bool(value)
+        else:
+            response[key] = value # lists
+    return response
+
 @login_required
-def delete_hpc_infra(request):
+def delete_infra(request):
     pk = request.POST.get('pk', None)
     if not pk or pk == '':
         # TODO validation
-        return JsonResponse({'error': 'No hpc provided'})
+        return JsonResponse({'error': 'No computing provided'})
 
     return JsonResponse(
-        HPCInfrastructure.remove(
+        ComputingInfrastructure.remove(
             pk,
             request.user,
             return_dict=True))
 
 
 @login_required
-def delete_hpc(request):
+def delete_computing(request):
     pk = request.POST.get('pk', None)
     if not pk or pk == '':
         # TODO validation
-        return JsonResponse({'error': 'No hpc provided'})
+        return JsonResponse({'error': 'No computing provided'})
 
     return JsonResponse(
-        HPCInstance.remove(
+        ComputingInstance.remove(
             pk,
             request.user,
             return_dict=True))
+
+
+@login_required
+def get_inputs(request):
+    data_type = request.POST.get('type', None)
+    if data_type != 'infra' and data_type != 'app':
+        # TODO validation
+        return JsonResponse({'error': 'No valid type "'+data_type+'" provided'})
+    pk = request.POST.get('pk', None)
+    if not pk or pk == '':
+        # TODO validation
+        return JsonResponse({'error': 'No valid object provided'})
+    
+    data = None
+    error = None
+    if data_type == 'infra':
+        infra, error = ComputingInfrastructure.get(pk)
+        if error is None:
+            data = infra.get_inputs_list()
+    else: # app
+        app, error = ComputingInfrastructure.get(pk) # TODO: app
+        if error is None:
+            data = app.get_inputs_list()
+
+    return JsonResponse({'inputs': data, 'error': error})
 
 
 @login_required
@@ -243,10 +291,10 @@ def delete_tunnel(request):
     pk = request.POST.get('pk', None)
     if not pk or pk == '':
         # TODO validation
-        return JsonResponse({'error': 'No hpc provided'})
+        return JsonResponse({'error': 'No computing provided'})
 
     return JsonResponse(
-        HPCInstance.remove(
+        ComputingInstance.remove(
             pk,
             request.user,
             return_dict=True))
@@ -517,7 +565,7 @@ def create_deployment(request):
     if application_id < 0:
         return JsonResponse({'error': 'No application selected'})
 
-    hpc_list, error = HPCInstance.list(request.user)
+    computing_list, error = ComputingInstance.list(request.user)
     if error is not None:
         return JsonResponse({'error': error})
 
@@ -526,30 +574,30 @@ def create_deployment(request):
     if key is not None:
         ckan_key_code = key.code
 
-    hpc_pattern = re.compile('^mso4sc_hpc_(.)*$')
+    computing_pattern = re.compile('^mso4sc_computing_(.)*$')
     dataset_pattern = re.compile('^mso4sc_dataset_(.)*$')
     dataset_resource_pattern = re.compile('^resource_mso4sc_dataset_(.)*$')
     outputdataset_pattern = re.compile('^mso4sc_outdataset_(.)*$')
     datacatalogue_pattern = re.compile('^mso4sc_datacatalogue_(.)*$')
     tosca_inputs = {}
     for _input, value in inputs.items():
-        if hpc_pattern.match(_input):
-            hpc_pk = value
-            if hpc_pk < 0:
-                # the hpc input has no configuration
+        if computing_pattern.match(_input):
+            computing_pk = value
+            if computing_pk < 0:
+                # the computing input has no configuration
                 tosca_inputs[_input] = {}
                 continue
 
-            hpc = None
-            for hpc_item in hpc_list:
-                if hpc_item.id == hpc_pk:
-                    hpc = hpc_item
+            computing = None
+            for computing_item in computing_list:
+                if computing_item.id == computing_pk:
+                    computing = computing_item
                     break
-            if not hpc:
+            if not computing:
                 return JsonResponse({'error': 'Bad HPC provided. Please ' +
                                      'refresh and try again'})
 
-            tosca_inputs[_input] = hpc.to_dict()
+            tosca_inputs[_input] = computing.to_dict()
         elif dataset_pattern.match(_input):
             if 'datasets' not in request.session:
                 return JsonResponse({'error': 'No datasets loaded'})

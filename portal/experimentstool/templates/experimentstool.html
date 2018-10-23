@@ -4,19 +4,19 @@
 {% block content %}
 
 <div class="s-12">
-<nav class="submenu">
-    <p class="nav-text"></p> 
-    <div class="top-nav">        
+    <nav class="submenu">
+        <p class="nav-text"></p>
+        <div class="top-nav">
             <ul>
                 {% if perms.experimentstool.register_app and perms.experimentstool.remove_app%}
-                    <li class="developer"><a class="expMenu tablinks" onclick="openExperimentsTool(event, 'apps')">Applications</a></li>
+                <li class="developer"><a class="expMenu tablinks" onclick="openExperimentsTool(event, 'apps')">Applications</a></li>
                 {% endif %}
                 <li><a id="default_exp_tool" class="expMenu tablinks" onclick="openExperimentsTool(event, 'instances')">Instances</a></li>
-                <li class="expMenu settings"><a class="tablinks" onclick="openExperimentsTool(event, 'settings')">Settings</a></li>                
-            </ul>            
-    </div>
-</nav>
-</div>    
+                <li class="expMenu settings"><a class="tablinks" onclick="openExperimentsTool(event, 'settings')">Settings</a></li>
+            </ul>
+        </div>
+    </nav>
+</div>
 
 <div id="experiments_notification_container"></div>
 
@@ -38,1844 +38,193 @@
 
 {% block javascript %}
 <script>
+    $(document).ready(function () {
+        $("#default_exp_tool").click();
+    });
 
-$( document ).ready(function() {
-    $("#default_exp_tool").click();
-});
+    function getCookie(name) {
+        var cookieValue = null;
+        if (document.cookie && document.cookie != '') {
+            var cookies = document.cookie.split(';');
+            for (var i = 0; i < cookies.length; i++) {
+                var cookie = jQuery.trim(cookies[i]);
+                // Does this cookie string begin with the name we want?
+                if (cookie.substring(0, name.length + 1) == (name + '=')) {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
+                }
+            }
+        }
+        return cookieValue;
+    }
 
-function getCookie(name) {
-    var cookieValue = null;
-    if (document.cookie && document.cookie != '') {
-        var cookies = document.cookie.split(';');
-        for (var i = 0; i < cookies.length; i++) {
-            var cookie = jQuery.trim(cookies[i]);
-            // Does this cookie string begin with the name we want?
-            if (cookie.substring(0, name.length + 1) == (name + '=')) {
-                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+    $.ajaxSetup({
+        beforeSend: function (xhr, settings) {
+            if (!(/^http:.*/.test(settings.url) || /^https:.*/.test(settings.url))) {
+                // Only send the token to relative URLs i.e. locally.
+                xhr.setRequestHeader("X-CSRFToken", getCookie('csrftoken'));
+            }
+        }
+    });
+
+    function redirect(url) {
+        window.location.replace(url);
+    }
+</script>
+<script src="{% static "experimentstool/js/notifications.js" %}"></script>
+<script src="{% static "experimentstool/js/infrastructure.js" %}"></script>
+<script src="{% static "experimentstool/js/user_settings.js" %}"></script>
+<script src="{% static "experimentstool/js/application.js" %}"></script>
+<script src="{% static "experimentstool/js/inputs.js" %}"></script>
+<script src="{% static "experimentstool/js/deployment.js" %}"></script>
+<script src="{% static "experimentstool/js/logs.js" %}"></script>
+<script>
+    function openExperimentsTool(evt, toolName) {
+        // Declare all variables
+        var i, tabcontent, tablinks;
+
+        // Get all elements with class="expTab" and hide them
+        tabcontent = document.getElementsByClassName("expTab");
+        for (i = 0; i < tabcontent.length; i++) {
+            tabcontent[i].style.display = "none";
+        }
+
+        // Get all elements with class="tablinks" and remove the class "active"
+        tablinks = document.getElementsByClassName("expMenu");
+        for (i = 0; i < tablinks.length; i++) {
+            tablinks[i].className = tablinks[i].className.replace(" active", "");
+        }
+
+        // Stop all log monitoring
+        stop_logs();
+
+        // Clean Up the errors container
+        cleanNotifications();
+
+        switch (toolName) {
+            case "apps":
+                renderStockData("#product_selector");
+                renderApplicationData("#remove_application_selector", only_owned = true);
                 break;
-            }
+            case "instances":
+                renderApplicationData("#application_selector");
+                $("#application_inputs").empty();
+                renderDeploymentData("#deployment_selector",
+                    "#deployment_log",
+                    "#application_log");
+                break;
+
+            case "settings":
+                $("#setup_data").click();
+                break;
         }
-    }
-    return cookieValue;
-}
 
-$.ajaxSetup({
-    beforeSend: function(xhr, settings) {
-        if (!(/^http:.*/.test(settings.url) || /^https:.*/.test(settings.url))) {
-            // Only send the token to relative URLs i.e. locally.
-            xhr.setRequestHeader("X-CSRFToken", getCookie('csrftoken'));
-        }
-    }
-});
-
-function redirect(url) {
-    window.location.replace(url);
-}
-
-function cleanNotifications() {
-    $("#experiments_notification_container").empty();
-}
-
-function appendNotification(message, error = false) {
-    var _title = "Success"
-    var _class = "dialog_success";
-    if (error) {
-        _title = "Error"
-        _class = "dialog_failure";
-    }
-
-    message_box = $(document.createElement('div')).text(message)
-
-    $("#experiments_notification_container").append(message_box)
-
-    message_box.dialog({
-        title: _title,
-        dialogClass: _class,
-        position: {
-          my: "center",
-          at: "center"
-        },
-        clickOutside: true
-    })
-}
-
-$log_timeout = null;
-function stop_logs() {
-    if ($log_timeout != null) {
-        clearTimeout($log_timeout);
-    }
-}
-
-function openExperimentsTool(evt, toolName) {
-    // Declare all variables
-    var i, tabcontent, tablinks;
-
-    // Get all elements with class="expTab" and hide them
-    tabcontent = document.getElementsByClassName("expTab");
-    for (i = 0; i < tabcontent.length; i++) {
-        tabcontent[i].style.display = "none";
-    }
-
-    // Get all elements with class="tablinks" and remove the class "active"
-    tablinks = document.getElementsByClassName("expMenu");
-    for (i = 0; i < tablinks.length; i++) {
-        tablinks[i].className = tablinks[i].className.replace(" active", "");
-    }
-
-    // Stop all log monitoring
-    stop_logs();
-
-    // Clean Up the errors container
-    cleanNotifications();
-
-    switch(toolName) {
-        case "apps":
-            renderStockData("#product_selector");
-            renderApplicationData("#remove_application_selector", only_owned=true);
-            break;
-        case "instances":
-            renderApplicationData("#application_selector");
-            $("#application_inputs").empty();
-            renderDeploymentData("#deployment_selector",
-                                 "#deployment_log",
-                                 "#application_log");
-            break;
-
-        case "settings":
-            $("#setup_data").click();
-            break;
-    }
-
-    // Show the current tab, and add an "active" class to the button that opened the tab
-    document.getElementById(toolName).style.display = "block";
-    if (typeof evt.currentTarget == "undefined") {
-        $("#default_exp_tool").className += "active";
-    } else {
-        evt.currentTarget.className += " active";
-    }
-}
-
-function openLogs(evt, toolName) {
-    // Declare all variables
-    var i, tabcontent, tablinks;
-
-    // Get all elements with class="logMenu" and hide them
-    tabcontent = document.getElementsByClassName("logTab");
-    for (i = 0; i < tabcontent.length; i++) {
-        tabcontent[i].style.display = "none";
-    }
-
-    // Get all elements with class="tablinks" and remove the class "active"
-    tablinks = document.getElementsByClassName("logMenu");
-    for (i = 0; i < tablinks.length; i++) {
-        tablinks[i].className = tablinks[i].className.replace(" active", "");
-    }
-
-    // Stop all log monitoring
-    stop_logs();
-
-    // Clean Up the errors container
-    cleanNotifications();
-
-    switch(toolName) {
-        case "exec_logs_content":
-            renderLogData(
-                "exec_logs",
-                "#deployment_selector",
-                "#deployment_log",
-                "#application_log");
-            break;
-        case "app_logs_content":
-            renderLogData(
-                "app_logs",
-                "#deployment_selector",
-                "#deployment_log",
-                "#application_log");
-            break;
-    }
-
-    // Show the current tab, and add an "active" class to the button that opened the tab
-    document.getElementById(toolName).style.display = "block";
-    if (typeof evt.currentTarget == "undefined") {
-        $("#exec_logs").className += "active";
-    } else {
-        evt.currentTarget.className += " active";
-    }
-}
-
-function openSetup(evt, toolName) {
-    // Declare all variables
-    var i, tabcontent, tablinks;
-
-    // Get all elements with class="logMenu" and hide them
-    tabcontent = document.getElementsByClassName("setupTab");
-    for (i = 0; i < tabcontent.length; i++) {
-        tabcontent[i].style.display = "none";
-    }
-
-    // Get all elements with class="tablinks" and remove the class "active"
-    tablinks = document.getElementsByClassName("setupMenu");
-    for (i = 0; i < tablinks.length; i++) {
-        tablinks[i].className = tablinks[i].className.replace(" active", "");
-    }
-
-    // Stop all log monitoring
-    stop_logs();
-
-    // Clean Up the errors container
-    cleanNotifications();
-
-    switch(toolName) {
-        case "setup_data_content":
-            renderKeyData("#ckan_key_form");
-            break;
-        case "setup_hpc_infra_content":
-            renderHPCInfraData("#hpc_infra_list", select=false);
-            break;
-        case "setup_hpc_content":
-            renderHPCData("#hpc_instance_list", select=false);
-            renderHPCInfraData("#hpc_infra_selector")
-            renderTunnelData("#add_hpc_tunnel");
-            break;
-        case "setup_cloud_content":
-            //TODO: Implement
-            renderHPCData("#hpc_instance_list", select=false);
-            renderTunnelData("#add_hpc_tunnel");
-            break;
-        case "setup_tunnel_content":
-            renderTunnelData("#tunnel_list", select=false);
-            break;
-    }
-
-    // Show the current tab, and add an "active" class to the button that opened the tab
-    document.getElementById(toolName).style.display = "block";
-    if (typeof evt.currentTarget == "undefined") {
-        $("#exec_logs").className += "active";
-    } else {
-        evt.currentTarget.className += " active";
-    }
-}
-
-function renderStockData(selector_id, cleanup=true) {
-    var product_selector = $(selector_id).find("select")
-    product_selector.empty();
-    if (cleanup) {
-        cleanNotifications();
-    }
-
-    $.ajax({
-        url: '/experimentstool/_get_new_stock',
-        beforeSend: function (xhr, settings) {
-            $.ajaxSettings.beforeSend(xhr, settings);
-            $(".loader").show();
-        },
-        success: function (products) {
-            $(".loader").hide();
-            if (products.redirect!==undefined && products.redirect!==null) {
-                redirect(products.redirect);
-            } else {
-                product_selector.append(
-                    $(document.createElement('option'))
-                        .attr("value", "-1")
-                        .text("Register for all users")
-                );
-                if (products.length > 0) {
-                    $.each(products, function (index, product) {
-                        product_selector.append(
-                            $(document.createElement('option'))
-                                .attr("value", product.id)
-                                .text(product.name)
-                        )
-                    });
-                }
-            }
-        },
-        error: function (jqXHR, status, errorThrown) {
-            $(".loader").hide();
-            message = "Couldn't get stock list: ";
-            message += jqXHR.status+": "+errorThrown
-            appendNotification(message, error=true);
-        }
-    });
-}
-
-function renderApplicationData(selector_id, only_owned=false) {
-    var application_selector = $(selector_id).find("select")
-    application_selector.empty();
-    application_selector.append(
-        $(document.createElement('option')).attr("value", "-1").text("Loading..")
-    );
-
-    var url = '/experimentstool/_load_applications';
-    if (only_owned) {
-        url = '/experimentstool/_load_owned_applications';
-    }
-
-    $.ajax({
-        url: url,
-        beforeSend: function (xhr, settings) {
-            $.ajaxSettings.beforeSend(xhr, settings);
-            $(".loader").show();
-        },
-        success: function (data) {
-            $(".loader").hide();
-            application_selector.empty();
-            if (data.redirect!==undefined && data.redirect!==null) {
-                redirect(data.redirect);
-            } else if (data.error!==undefined && data.error!==null) {
-                appendNotification("Couldn't read applications: "+data.error, error=true);
-                application_selector.append(
-                    $(document.createElement('option')).attr("value", "-1").text("Error")
-                );
-            } else if (data.app_list.length > 0) {
-                application_selector.append(
-                    $(document.createElement('option')).attr("value", "-1").text("None")
-                );
-                $.each(data.app_list, function (index, application) {
-                    application_selector.append(
-                        $(document.createElement('option')).attr("value", application.id)
-                            .text(application.name)
-                    )
-                });
-            } else {
-                var msg = "No applications found";
-                if (only_owned) {
-                    msg = "No owned applications found";
-                }
-                application_selector.append(
-                    $(document.createElement('option')).attr("value", "-1")
-                        .text(msg)
-                );
-            }
-        },
-        error: function (jqXHR, status, errorThrown) {
-            $(".loader").hide();
-            message = "Couldn't get applications list: ";
-            message += jqXHR.status+": "+errorThrown
-            appendNotification(message, error=true);
-        }
-    });
-}
-
-function renderApplicationInputs(selector_id, container_id) {
-    var application = $(selector_id).find("select").val();
-    var inputs_container = $(container_id);
-    inputs_container.empty();
-
-    var hpc_pattern = new RegExp("^mso4sc_hpc_(.)*$");
-    var dataset_pattern = new RegExp("^mso4sc_dataset_(.)*$");
-    var outputdataset_pattern = new RegExp('^mso4sc_outdataset_(.)*$')
-    var datacatalogue_pattern = new RegExp('^mso4sc_datacatalogue_(.)*$')
-    var file_pattern = new RegExp('^mso4sc_file_(.)*$')
-
-    if (parseInt(application) >= 0) {
-        $.ajax({
-            url: '/experimentstool/_get_application_inputs',
-            data: {
-                'application_id': application
-            },
-            dataType: 'json',
-            beforeSend: function (xhr, settings) {
-                $.ajaxSettings.beforeSend(xhr, settings);
-                $(".loader").show();
-            },
-            success: function (data) {
-                $(".loader").hide();
-                if (data.redirect!==undefined && data.redirect!==null) {
-                    redirect(data.redirect);
-                } else if (data.error!==undefined && data.error!==null) {
-                    appendNotification("Couldn't read the inputs: "+data.error, error=true);
-                } else if (data.inputs.length > 0) {
-                    data.inputs.sort(function(a, b){
-                        var nameA=a.name.toLowerCase(), nameB=b.name.toLowerCase();
-                        if (nameA < nameB) //sort string ascending
-                         return -1;
-                        if (nameA > nameB)
-                         return 1;
-                        return 0; //default return value (no sorting)
-                    });
-                    //First render HPCs inputs
-                    $(data.inputs).each(function (index, input) {
-                        if (hpc_pattern.test(input.name)) {
-                            inputs_container.append( //hpcs
-                                $(document.createElement('div')).attr({
-                                    id: "input_container_" + input.name
-                                }).append(
-                                    $(document.createElement('label')).attr({
-                                        for: "input_" + input.name,
-                                        title: input.description
-                                    }).text('HPC: '+input.name.slice(11)),
-                                    $(document.createElement('select')).attr({
-                                        id: "input_" + input.name,
-                                        name: input.name,
-                                        title: input.description
-                                    }).append(
-                                        $(document.createElement('option'))
-                                            .attr("value", -1)
-                                            .text("None")
-                                    )
-                                )
-                            );
-                            renderHPCData("#input_container_"+input.name);
-                        }
-                        else if (dataset_pattern.test(input.name)) {
-                            inputs_container.append( //datasets
-                                $(document.createElement('div')).attr({
-                                    id: "input_container_" + input.name
-                                }).append(
-                                    $(document.createElement('label')).attr({
-                                        for: "input_" + input.name,
-                                        title: input.description
-                                    }).text('Dataset resource: '+input.name.slice(15)),
-                                    $(document.createElement('select')).attr({
-                                        id: "input_" + input.name,
-                                        name: input.name,
-                                        title: input.description
-                                    }).append(
-                                        $(document.createElement('option')).attr("value", -1).text("None")
-                                    ),
-                                    $(document.createElement('div')).attr({
-                                        id: "choices_" + input.name
-                                    })
-                                )
-                            );
-                            renderDatasetsData("#input_container_"+input.name);
-                            $("#input_container_"+input.name).find("select").on('change', function () {
-                                renderDatasetChoices("#input_container_"+input.name,
-                                                     "#choices_" + input.name,
-                                                     "resource_" + input.name);
-                            });
-                        }
-                        else if (outputdataset_pattern.test(input.name)) {
-                            inputs_container.append( //datasets
-                                $(document.createElement('div')).attr({
-                                    id: "input_container_" + input.name
-                                }).append(
-                                    $(document.createElement('label')).attr({
-                                        for: "input_" + input.name,
-                                        title: input.description
-                                    }).text('Output dataset: '+input.name.slice(18)),
-                                    $(document.createElement('select')).attr({
-                                        id: "input_" + input.name,
-                                        name: input.name,
-                                        title: input.description
-                                    }).append(
-                                        $(document.createElement('option')).attr("value", -1).text("None")
-                                    )
-                                )
-                            );
-                            renderDatasetsData("#input_container_"+input.name);
-                        }
-                        else if (file_pattern.test(input.name)) {
-                            inputs_container.append( //files
-                                $(document.createElement('div')).attr({
-                                    id: "input_container_" + input.name
-                                }).append(
-                                    $(document.createElement('label')).attr({
-                                        for: "input_" + input.name,
-                                        title: input.description,
-                                        class: "toogle"
-                                    }).html('File: '+input.name.slice(12)+' &darr;'),
-                                    $(document.createElement('div')).attr({
-                                        id: "text_container_" + input.name,
-                                        class: "collapsed"
-                                    }).append(
-                                        $(document.createElement('textarea')).attr({
-                                            id: "input_" + input.name,
-                                            name: input.name,
-                                            placeholder: input.description,
-                                            rows: 25,
-                                            cols: 50
-                                        }).text(input.default)
-                                    )
-                                )
-                            );
-                            $("#input_container_" + input.name).find('.toogle').on('click', function (e) {
-                                e.preventDefault();
-                                this.expand = !this.expand;
-                                $(this).html(this.expand?'File: '+input.name.slice(12)+' &uarr;':'File: '+input.name.slice(12)+' &darr;');
-                                $(this).closest("#input_container_" + input.name).find('.collapsed, .expanded').toggleClass('collapsed expanded');
-                            });
-                        }
-                        else if (datacatalogue_pattern.test(input.name)) {
-                            inputs_container.append( //datasets
-                                $(document.createElement('div')).attr({
-                                    id: "input_container_" + input.name
-                                }).append(
-                                    $(document.createElement('input')).attr({
-                                        id: "input_" + input.name,
-                                        value: "",
-                                        type: 'hidden',
-                                        name: input.name,
-                                        title: input.description
-                                    })
-                                )
-                            );
-                        }
-                        else {
-                            inputs_container.append( //other
-                                $(document.createElement('div')).attr({
-                                    id: "input_container_" + input.name
-                                }).append(
-                                    inputToForm(input)
-                                )
-                            );
-                        }
-                    });
-                } else {
-                    inputs_container.append(
-                        $(document.createElement('label')).text("No inputs found")
-                    );
-                }
-            },
-            error: function (jqXHR, status, errorThrown) {
-                $(".loader").hide();
-                message = "Couldn't read the inputs: ";
-                message += jqXHR.status+": "+errorThrown
-                appendNotification(message, error=true);
-            }
-        });
-    }
-}
-
-function inputToForm(input) {
-    if (input.type === "string") {
-        return [
-            $(document.createElement('label')).attr({
-                for: "input_" + input.name,
-                title: input.description
-            }).text(input.name),
-            $(document.createElement('input')).attr({
-                id: "input_" + input.name,
-                value: input.default,
-                type: 'text',
-                name: input.name,
-                title: input.description
-            })
-        ]
-    } else if (input.type === "integer") {
-        return [
-            $(document.createElement('label')).attr({
-                for: "integer_input_" + input.name,
-                title: input.description
-            }).text(input.name),
-            $(document.createElement('input')).attr({
-                id: "integer_input_" + input.name,
-                value: input.default,
-                type: 'text',
-                name: input.name,
-                title: input.description
-            })
-        ]
-    } else if (input.type === "boolean") {
-        if (input.default){
-            true_doc = $(document.createElement('input')).attr({
-                id: "boolean_input_" + input.name + '_true',
-                name: input.name,
-                value: 1,
-                type: 'radio',
-                checked: "checked",
-                title: input.description
-            });
-            false_doc = $(document.createElement('input')).attr({
-                id: "boolean_input_" + input.name + '_false',
-                name: input.name,
-                value: 0,
-                type: 'radio',
-                title: input.description
-            });
+        // Show the current tab, and add an "active" class to the button that opened the tab
+        document.getElementById(toolName).style.display = "block";
+        if (typeof evt.currentTarget == "undefined") {
+            $("#default_exp_tool").className += "active";
         } else {
-            true_doc = $(document.createElement('input')).attr({
-                id: "boolean_input_" + input.name + '_true',
-                name: input.name,
-                value: 1,
-                type: 'radio',
-                title: input.description
-            });
-            false_doc = $(document.createElement('input')).attr({
-                id: "boolean_input_" + input.name + '_false',
-                name: input.name,
-                value: 0,
-                type: 'radio',
-                checked: "checked",
-                title: input.description
-            });
-        }
-        return [
-            $(document.createElement('label')).attr({
-                for: "boolean_input_" + input.name,
-                title: input.description
-            }).text(input.name),
-            $(document.createElement('div')).attr({
-                    id: "boolean_input_" + input.name
-                }).append(
-                    $(document.createElement('label')).attr({
-                        for: "boolean_input_" + input.name + '_true',
-                        title: input.description
-                    }).text("True"),
-                    true_doc,
-                    $(document.createElement('label')).attr({
-                        for: "boolean_input_" + input.name + '_false',
-                        title: input.description
-                    }).text("False"),
-                    false_doc
-                )
-        ]
-    } else if (jQuery.type(input.default)=="array") {
-        return [
-            $(document.createElement('label')).attr({
-                for: "array_input_" + input.name,
-                title: input.description
-            }).text(input.name),
-            $(document.createElement('input')).attr({
-                id: "array_input_" + input.name,
-                value: input.default,
-                type: 'text',
-                name: input.name,
-                title: input.description
-            })
-        ]
-    } else if (jQuery.type(input.default)=="object") {
-        return [
-            $(document.createElement('label')).attr({
-                for: "dict_input_" + input.name,
-                title: input.description
-            }).text(input.name),
-            $(document.createElement('input')).attr({
-                id: "dict_input_" + input.name,
-                value: JSON.stringify(input.default),
-                type: 'text',
-                name: input.name,
-                title: input.description
-            })
-        ]
-    } else {
-        return [
-            $(document.createElement('label')).attr({
-                for: "input_" + input.name,
-                title: input.description
-            }).text(input.name),
-            $(document.createElement('input')).attr({
-                id: "input_" + input.name,
-                value: input.default,
-                type: 'text',
-                name: input.name,
-                title: input.description
-            })
-        ]
-    }
-}
-
-function renderKeyData(container_id) {
-    var key_input = $(container_id).find("input");
-    $.ajax({
-        url: '/experimentstool/_get_ckan_key',
-        success: function (data) {
-            var code = data.key.code
-            var blind_code = ""
-            for (var i=0; i < code.length; i++) {
-                if (i < 4) {
-                    blind_code += code.charAt(i);
-                } else {
-                    blind_code += '*';
-                }
-            }
-            key_input.val(blind_code);
-        },
-        error: function (jqXHR, status, errorThrown) {
-            message = "Couldn't get ckan key: ";
-            message += jqXHR.status+": "+errorThrown+": "+jqXHR.responseText
-            appendNotification(message, error=true);
-        }
-    });
-
-}
-
-function renderTunnelData(container_id, select=true, clear_notifications=true) {
-    var tunnel_container = $(container_id);
-    if (select) {
-        tunnel_container = tunnel_container.find("select");
-    }
-    tunnel_container.empty();
-    if (clear_notifications) {
-        cleanNotifications();
-    }
-
-    $.ajax({
-        url: '/experimentstool/_get_tunnel_list',
-        beforeSend: function (xhr, settings) {
-            $.ajaxSettings.beforeSend(xhr, settings);
-            $(".loader").show();
-        },
-        success: function (data) {
-            $(".loader").hide();
-            if (data.redirect!==undefined && data.redirect!==null) {
-                redirect(data.redirect);
-            } else if (data.error!==undefined && data.error!==null) {
-                message = "Couldn't get tunnel list: "+data.error;
-                appendNotification(message, error=true);
-            } else {
-                if (select) {
-                    tunnel_container.append(
-                        $(document.createElement('option'))
-                            .attr("value", -1)
-                            .text("None")
-                    )
-                }
-                var tunnel_list = data.tunnel_list;
-                if (tunnel_list.length > 0) {
-                    $.each(tunnel_list, function (index, tunnel) {
-                        if (select) {
-                            tunnel_container.append(
-                                $(document.createElement('option'))
-                                    .attr("value", tunnel.id)
-                                    .text(tunnel.name)
-                            )
-                        } else {
-                            tunnel_container.append(
-                                $(document.createElement('div')).
-                                    attr("id", "tunnel_block_"+tunnel.id).
-                                    attr("class", "margin hpc_settings_block").
-                                    append(
-                                        $(document.createElement('div')).
-                                            attr("class", "s-12 m-6 l-8").
-                                            append(
-                                                $(document.createElement('div')).
-                                                    attr("class", "l-9 left").
-                                                    append(
-                                                        $(document.createElement('div')).append(
-                                                            $(document.createElement('span')).attr("class", "hpc_label hpc_label_name").text('Name: '),
-                                                            $(document.createElement('span')).text(tunnel.name),
-                                                        ),
-                                                        $(document.createElement('div')).append(
-                                                            $(document.createElement('span')).attr("class", "hpc_label").text('Host: '),
-                                                            $(document.createElement('span')).text(tunnel.host),
-                                                        ),
-                                                        $(document.createElement('div')).append(
-                                                            $(document.createElement('span')).attr("class", "hpc_label").text('User: '),
-                                                            $(document.createElement('span')).text(tunnel.user),
-                                                        )
-                                                    )
-                                                ,
-                                                $(document.createElement('div')).
-                                                    attr("class", "l-3 right").
-                                                    append(
-                                                        $(document.createElement('button')).
-                                                            attr("id", "del_tunnel_"+tunnel.id).
-                                                            text('Delete')
-                                                    )
-                                            )
-                                    )
-                            );
-                            setTunnelEditButtonsHandler(
-                                "#del_tunnel_"+tunnel.id,
-                                tunnel.id,
-                                refresh_function = function() {
-                                    renderTunnelData(container_id,
-                                                  select=false,
-                                                  clear_notifications=false); 
-                                }
-                            );
-                        }
-                    });
-                } else {
-                    if (!select) {
-                        tunnel_container.append(
-                            $(document.createElement('div'))
-                                .attr("id", "no_tunnel_list")
-                                .text("No Tunnel infrastructures found")
-                        )
-                    }
-                }
-            }
-        },
-        error: function (jqXHR, status, errorThrown) {
-            $(".loader").hide();
-            message = "Couldn't get tunnel list: ";
-            message += jqXHR.status+": "+errorThrown
-            appendNotification(message, error=true);
-        }
-    });
-}
-
-function setTunnelEditButtonsHandler(button_id, pk, refresh_function) {
-    $(button_id).on('click', function (event) {
-        event.preventDefault();
-        $.ajax({
-            method: "POST",
-            url: '/experimentstool/_delete_tunnel',
-            data: {
-                'pk': pk
-            },
-            dataType: 'json',
-            beforeSend: function (xhr, settings) {
-                $.ajaxSettings.beforeSend(xhr, settings);
-                $(".loader").show();
-            },
-            success: function (data) {
-                $(".loader").hide();
-                if (data.redirect!==undefined && data.redirect!==null) {
-                    redirect(data.redirect);
-                } else if (data.error!==undefined && data.error!==null) {
-                    appendNotification("Couldn't delete the tunnel: "+data.error, error=true);
-                } else {
-                    appendNotification("Tunnel "+data.tunnel.name+" removed.");
-                }
-            },
-            error: function (jqXHR, status, errorThrown) {
-                $(".loader").hide();
-                message = "Couldn't remove the tunnel: ";
-                message += jqXHR.status+": "+errorThrown
-                appendNotification(message, error=true);
-            },
-            complete: refresh_function
-        });
-    });
-}
-
-function renderHPCInfraData(container_id, select=true, clear_notifications=true) {
-    var hpc_container = $(container_id);
-    if (select) {
-        hpc_container = hpc_container.find("select");
-    }
-    hpc_container.empty();
-    if (clear_notifications) {
-        cleanNotifications();
-    }
-
-    $.ajax({
-        url: '/experimentstool/_get_hpc_infra_list',
-        beforeSend: function (xhr, settings) {
-            $.ajaxSettings.beforeSend(xhr, settings);
-            $(".loader").show();
-        },
-        success: function (data) {
-            $(".loader").hide();
-            if (data.redirect!==undefined && data.redirect!==null) {
-                redirect(data.redirect);
-            } else if (data.error!==undefined && data.error!==null) {
-                message = "Couldn't get hpc list: "+data.error;
-                appendNotification(message, error=true);
-            } else {
-                var hpc_list = data.hpc_list;
-                if (hpc_list.length > 0) {
-                    $.each(hpc_list, function (index, hpc) {
-                        if (select) {
-                            hpc_container.append(
-                                $(document.createElement('option'))
-                                    .attr("value", hpc.id)
-                                    .text(hpc.name)
-                            )
-                        } else {
-                            var edit_button;
-                            if (hpc.owned) {
-                                edit_button = $(document.createElement('div')).
-                                    attr("class", "l-3 right").
-                                    append(
-                                        $(document.createElement('button')).
-                                            attr("id", "del_hpc_infra_"+hpc.id).
-                                            text('Delete')
-                                    )
-                            } else {
-                                edit_button = $(document.createElement('div')).
-                                    attr("class", "l-3 right")
-                            }
-                            hpc_container.append(
-                                $(document.createElement('div')).
-                                    attr("id", "hpc_block_"+hpc.id).
-                                    attr("class", "margin hpc_settings_block").
-                                    append(
-                                        $(document.createElement('div')).
-                                            attr("class", "s-12 m-6 l-8").
-                                            append(
-                                                $(document.createElement('div')).
-                                                    attr("class", "l-9 left").
-                                                    append(
-                                                        $(document.createElement('div')).append(
-                                                            $(document.createElement('span')).attr("class", "hpc_label hpc_label_name").text('Name: '),
-                                                            $(document.createElement('a')).attr("href", hpc.about_url).attr("target", "_blank").text(hpc.name),
-                                                        ),
-                                                        $(document.createElement('div')).append(
-                                                            $(document.createElement('span')).attr("class", "hpc_label").text('Host: '),
-                                                            $(document.createElement('span')).text(hpc.host),
-                                                        ),
-                                                        $(document.createElement('div')).append(
-                                                            $(document.createElement('span')).attr("class", "hpc_label").text('WM: '),
-                                                            $(document.createElement('span')).text(hpc.manager),
-                                                        ),
-                                                        $(document.createElement('div')).append(
-                                                            $(document.createElement('span')).attr("class", "hpc_label").text('Time Zone: '),
-                                                            $(document.createElement('span')).text(hpc.time_zone),
-                                                        )
-                                                    ),
-                                                edit_button,
-                                            )
-                                    )
-                            );
-                            if (hpc.owned) {
-                                setHPCEditButtonsHandler(
-                                    '/experimentstool/_delete_hpc_infra',
-                                    "#del_hpc_infra_"+hpc.id,
-                                    hpc.id,
-                                    refresh_function = function() {
-                                        renderHPCInfraData(
-                                            container_id,
-                                            select=false,
-                                            clear_notifications=false); 
-                                    }
-                                );
-                            }
-                        }
-                    });
-                } else {
-                    if (!select) {
-                        hpc_container.append(
-                            $(document.createElement('div')).attr("id", "no_hpc_list").text("No HPC definitions found")
-                        )
-                    }
-                }
-            }
-        },
-        error: function (jqXHR, status, errorThrown) {
-            $(".loader").hide();
-            message = "Couldn't get hpc list: ";
-            message += jqXHR.status+": "+errorThrown
-            appendNotification(message, error=true);
-        }
-    });
-}
-
-function renderHPCData(container_id, select=true, clear_notifications=true) {
-    var hpc_container = $(container_id);
-    if (select) {
-        hpc_container = hpc_container.find("select");
-    }
-    hpc_container.empty();
-    if (clear_notifications) {
-        cleanNotifications();
-    }
-
-    $.ajax({
-        url: '/experimentstool/_get_hpc_list',
-        beforeSend: function (xhr, settings) {
-            $.ajaxSettings.beforeSend(xhr, settings);
-            $(".loader").show();
-        },
-        success: function (data) {
-            $(".loader").hide();
-            if (data.redirect!==undefined && data.redirect!==null) {
-                redirect(data.redirect);
-            } else if (data.error!==undefined && data.error!==null) {
-                message = "Couldn't get hpc list: "+data.error;
-                appendNotification(message, error=true);
-            } else {
-                var hpc_list = data.hpc_list;
-                if (hpc_list.length > 0) {
-                    $.each(hpc_list, function (index, hpc) {
-                        if (select) {
-                            hpc_container.append(
-                                $(document.createElement('option'))
-                                    .attr("value", hpc.id)
-                                    .text(hpc.name)
-                            )
-                        } else {
-                            hpc_container.append(
-                                $(document.createElement('div')).
-                                    attr("id", "hpc_block_"+hpc.id).
-                                    attr("class", "margin hpc_settings_block").
-                                    append(
-                                        $(document.createElement('div')).
-                                            attr("class", "s-12 m-6 l-8").
-                                            append(
-                                                $(document.createElement('div')).
-                                                    attr("class", "l-9 left").
-                                                    append(
-                                                        $(document.createElement('div')).append(
-                                                            $(document.createElement('span')).attr("class", "hpc_label hpc_label_name").text('Name: '),
-                                                            $(document.createElement('span')).text(hpc.name),
-                                                        ),
-                                                        $(document.createElement('div')).append(
-                                                            $(document.createElement('span')).attr("class", "hpc_label").text('Infrastructure: '),
-                                                            $(document.createElement('span')).text(hpc.infrastructure),
-                                                        ),
-                                                        $(document.createElement('div')).append(
-                                                            $(document.createElement('span')).attr("class", "hpc_label").text('User: '),
-                                                            $(document.createElement('span')).text(hpc.user),
-                                                        ),
-                                                        $(document.createElement('div')).append(
-                                                            $(document.createElement('span')).attr("class", "hpc_label").text('Tunnel: '),
-                                                            $(document.createElement('span')).text(hpc.tunnel? hpc.tunnel.name : "None"),
-                                                        )
-                                                    )
-                                                ,
-                                                $(document.createElement('div')).
-                                                    attr("class", "l-3 right").
-                                                    append(
-                                                        $(document.createElement('button')).
-                                                            attr("id", "del_hpc_"+hpc.id).
-                                                            text('Delete')
-                                                    )
-                                            )
-                                    )
-                            );
-                            setHPCEditButtonsHandler(
-                                '/experimentstool/_delete_hpc',
-                                "#del_hpc_"+hpc.id,
-                                hpc.id,
-                                refresh_function = function() {
-                                    renderHPCData(container_id,
-                                                  select=false,
-                                                  clear_notifications=false); 
-                                }
-                            );
-                        }
-                    });
-                } else {
-                    if (!select) {
-                        hpc_container.append(
-                            $(document.createElement('div')).attr("id", "no_hpc_list").text("No HPC infrastructures found")
-                        )
-                    }
-                }
-            }
-        },
-        error: function (jqXHR, status, errorThrown) {
-            $(".loader").hide();
-            message = "Couldn't get hpc list: ";
-            message += jqXHR.status+": "+errorThrown
-            appendNotification(message, error=true);
-        }
-    });
-}
-
-function setHPCEditButtonsHandler(ajax_url, button_id, pk, refresh_function) {
-    $(button_id).on('click', function (event) {
-        event.preventDefault();
-        $.ajax({
-            method: "POST",
-            url: ajax_url,
-            data: {
-                'pk': pk
-            },
-            dataType: 'json',
-            beforeSend: function (xhr, settings) {
-                $.ajaxSettings.beforeSend(xhr, settings);
-                $(".loader").show();
-            },
-            success: function (data) {
-                $(".loader").hide();
-                if (data.redirect!==undefined && data.redirect!==null) {
-                    redirect(data.redirect);
-                } else if (data.error!==undefined && data.error!==null) {
-                    appendNotification("Couldn't delete the hpc: "+data.error, error=true);
-                } else {
-                    appendNotification("HPC "+data.hpc.name+" removed.");
-                }
-            },
-            error: function (jqXHR, status, errorThrown) {
-                $(".loader").hide();
-                message = "Couldn't remove the hpc: ";
-                message += jqXHR.status+": "+errorThrown
-                appendNotification(message, error=true);
-            },
-            complete: refresh_function
-        });
-    });
-}
-
-function renderDatasetsData(selector_id) {
-    var dataset_selector = $(selector_id).find("select")
-    dataset_selector.empty();
-    dataset_selector.append(
-        $(document.createElement('option')).attr("value", "-1").text("Loading..")
-    );
-    $.ajax({
-        url: '/experimentstool/_get_datasets',
-        beforeSend: function (xhr, settings) {
-            $.ajaxSettings.beforeSend(xhr, settings);
-            $(".loader").show();
-        },
-        success: function (data) {
-            $(".loader").hide();
-            if (data.error!==undefined && data.error!==null) {
-                appendNotification("Couldn't get datasets: "+data.error, error=true);
-            } else {
-                datasets = data.names;
-                dataset_selector.empty();
-                dataset_selector.append(
-                    $(document.createElement('option')).attr("value", "-1").text("None")
-                );
-                if (datasets.length > 0) {
-                    $.each(datasets, function (index, dataset) {
-                        dataset_selector.append(
-                            $(document.createElement('option')).attr("value", index).text(dataset)
-                        )
-                    });
-                }
-            }
-        },
-        error: function (jqXHR, status, errorThrown) {
-            $(".loader").hide();
-            message = "Couldn't get datasets list: ";
-            message += jqXHR.status+": "+errorThrown
-            appendNotification(message, error=true);
-        }
-    });
-}
-
-function renderDatasetChoices(selector_id, container_id, group_name){
-    var dataset = $(selector_id).find("select").val();
-    var resources_container = $(container_id);
-    resources_container.empty();
-
-    if (parseInt(dataset) >= 0) {
-        $.ajax({
-            url: '/experimentstool/_get_dataset_info',
-            type: "POST",
-            data: {
-                'dataset': dataset
-            },
-            dataType: 'json',
-            beforeSend: function (xhr, settings) {
-                $.ajaxSettings.beforeSend(xhr, settings);
-                $(".loader").show();
-            },
-            success: function (data) {
-                $(".loader").hide();
-                if (data.redirect!==undefined && data.redirect!==null) {
-                    redirect(data.redirect);
-                } else if (data.error!==undefined) {
-                    appendNotification("Couldn't read the dataset info: "+data.error, error=true);
-                } else if (data.num_resources > 0) {
-                    $(data.resources).each(function (index, resource) {
-                        resources_container.append(
-                            $(document.createElement('div')).attr({
-                                id: "resource_choice_" + resource.name
-                            }).append(
-                                $(document.createElement('input')).attr({
-                                    id: "resource_" + resource.name,
-                                    name: group_name,
-                                    value: index,
-                                    type: 'radio'
-                                }),
-                                $(document.createElement('label')).attr({
-                                    for: "resource_" + resource.name
-                                }).text(resource.name)
-                            )
-                        )
-                    });
-                } else {
-                    resources_container.append(
-                        $(document.createElement('label')).text("No resources found")
-                    );
-                }
-            },
-            error: function (jqXHR, status, errorThrown) {
-                $(".loader").hide();
-                message = "Couldn't read the dataset info: ";
-                message += jqXHR.status+": "+errorThrown
-                appendNotification(message, error=true);
-            }
-        });
-    }
-}
-
-function renderDeploymentData(selector_id, log_id, app_log_id) {
-    var deployment_selector = $(selector_id).find("select")
-    deployment_selector.empty();
-    resetLogBox(log_id, app_log_id);
-    deployment_selector.append(
-        $(document.createElement('option')).attr("value", "-1").text("Loading..")
-    );
-
-    $.ajax({
-        url: '/experimentstool/_get_deployments',
-        beforeSend: function (xhr, settings) {
-            $.ajaxSettings.beforeSend(xhr, settings);
-            $(".loader").show();
-        },
-        success: function (data) {
-            $(".loader").hide();
-            if (data.redirect!==undefined && data.redirect!==null) {
-                redirect(data.redirect);
-            } else if (data.error!==undefined && data.error!==null) {
-                appendNotification("Couldn't read the instances: "+data.error, error=true);
-            } else {
-                deployment_selector.empty();
-                if (data.instance_list.length > 0) {
-                    $.each(data.instance_list, function (index, deployment) {
-                        deployment_selector.append(
-                            $(document.createElement('option'))
-                                .attr("value", deployment.id)
-                                .text(deployment.name)
-                        )
-                    });
-                    active_id = getActiveLogId();
-                    if (active_id == "") {
-                        //show exec logs by default exec log
-                        $("#exec_logs").click();
-                    } else {
-                        _renderLogData(
-                            active_id,
-                            deployment_selector.val(),
-                            log_id,
-                            app_log_id);
-                    }
-                } else {
-                    deployment_selector.append(
-                        $(document.createElement('option')).attr("value", "-1").text("No instances found")
-                    );
-                }
-            }
-        },
-        error: function (jqXHR, status, errorThrown) {
-            $(".loader").hide();
-            message = "Couldn't get instances list: ";
-            message += jqXHR.status+": "+errorThrown
-            appendNotification(message, error=true);
-        }
-    });
-}
-
-function resetLogBox(log_id, app_log_id) {
-    $(log_id+"_light").attr("src", "/static/experimentstool/img/light_grey.png");
-    $(log_id).find("textarea").val('');
-    $(app_log_id).attr("data", "");
-}
-
-function getActiveLogId() {
-    active = "";
-    tablinks = document.getElementsByClassName("logMenu");
-    for (i = 0; i < tablinks.length; i++) {
-        if (tablinks[i].classList.contains("active")) {
-            active = tablinks[i].id
-            break;
+            evt.currentTarget.className += " active";
         }
     }
 
-    return active;
-}
+    function openLogs(evt, toolName) {
+        // Declare all variables
+        var i, tabcontent, tablinks;
 
-function renderLogData(log_type, selector_id, log_id, app_log_id, reset=true) {
-    var deployment_selector = $(selector_id).find("select")
-    _renderLogData(log_type,
-                   deployment_selector.val(),
-                   log_id,
-                   app_log_id,
-                   reset=reset)
-}
+        // Get all elements with class="logMenu" and hide them
+        tabcontent = document.getElementsByClassName("logTab");
+        for (i = 0; i < tabcontent.length; i++) {
+            tabcontent[i].style.display = "none";
+        }
 
-function _renderLogData(log_type, instance_id, log_id, app_log_id, reset=true) {
-    switch(log_type) {
-        case "exec_logs":
-            _renderExecLogData(instance_id, log_id, reset);
-            break;
-        case "app_logs":
-            _renderAppLogData(instance_id, app_log_id);
-            break;
-        case "":
-            // do nothing
-            break;
-    }
+        // Get all elements with class="tablinks" and remove the class "active"
+        tablinks = document.getElementsByClassName("logMenu");
+        for (i = 0; i < tablinks.length; i++) {
+            tablinks[i].className = tablinks[i].className.replace(" active", "");
+        }
 
-}
-
-function _renderExecLogData(instance_id, log_id, reset=true) {
-    var textarea = $(log_id).find("textarea");
-    if (reset) {
-        textarea.val("");
+        // Stop all log monitoring
         stop_logs();
+
+        // Clean Up the errors container
         cleanNotifications();
+
+        switch (toolName) {
+            case "exec_logs_content":
+                renderLogData(
+                    "exec_logs",
+                    "#deployment_selector",
+                    "#deployment_log",
+                    "#application_log");
+                break;
+            case "app_logs_content":
+                renderLogData(
+                    "app_logs",
+                    "#deployment_selector",
+                    "#deployment_log",
+                    "#application_log");
+                break;
+        }
+
+        // Show the current tab, and add an "active" class to the button that opened the tab
+        document.getElementById(toolName).style.display = "block";
+        if (typeof evt.currentTarget == "undefined") {
+            $("#exec_logs").className += "active";
+        } else {
+            evt.currentTarget.className += " active";
+        }
     }
 
-    $.ajax({
-        url: '/experimentstool/_get_executions_events',
-        data: {
-            'instance_id': instance_id,
-            'reset': reset
-        },
-        success: function (data) {
-            if (data.redirect!==undefined && data.redirect!==null) {
-                redirect(data.redirect);
-            } else if (data.error!==undefined && data.error!==null) {
-                appendNotification("Couldn't monitor the operation: "+data.error, error=true);
-            } else {
-                if (data.events !== undefined && data.events.logs !== undefined) {
-                    // Write events in the textarea
-                    data.events.logs.forEach(function(event) {
-                        textarea.val(textarea.val()
-                            +"["+event.generated+"] "
-                            +event.message
-                            +'\n');
-                    });
-                    textarea.scrollTop = textarea.scrollHeight;
-                }
+    function openSetup(evt, toolName) {
+        // Declare all variables
+        var i, tabcontent, tablinks;
 
-                // Schedule the next request when the current one's complete
-                var light = $(log_id+"_light");
-                if (!data.events.finished) {
-                    $log_timeout = setTimeout(
-                        function () {
-                            _renderExecLogData(instance_id, log_id, reset=false);
-                        },
-                        3000);
-                    if (data.events.status=="prepared") {
-                        light.attr("src", "/static/experimentstool/img/light_yellow.png");
-                    } else {
-                        light.attr("src", "/static/experimentstool/img/light_blue.png");
-                    }
-                } else {
-                    if (data.events.status=="terminated") {
-                        light.attr("src", "/static/experimentstool/img/light_green.png");
-                    } else {
-                        light.attr("src", "/static/experimentstool/img/light_red.png");
-                    }
-                }
-            }
-        },
-        error: function (jqXHR, status, errorThrown) {
-            message = "Couldn't monitor the operation: ";
-            message += jqXHR.status+": "+errorThrown
-            appendNotification(message, error=true);
+        // Get all elements with class="logMenu" and hide them
+        tabcontent = document.getElementsByClassName("setupTab");
+        for (i = 0; i < tabcontent.length; i++) {
+            tabcontent[i].style.display = "none";
         }
-    });
-}
 
-function _renderAppLogData(instance_id, log_id, reset=true) {
-    var textarea = $(log_id).find("textarea");
-    if (reset) {
-        textarea.val("");
+        // Get all elements with class="tablinks" and remove the class "active"
+        tablinks = document.getElementsByClassName("setupMenu");
+        for (i = 0; i < tablinks.length; i++) {
+            tablinks[i].className = tablinks[i].className.replace(" active", "");
+        }
+
+        // Stop all log monitoring
         stop_logs();
+
+        // Clean Up the errors container
         cleanNotifications();
-    }
 
-    $.ajax({
-        url: '/experimentstool/_get_runjobs_workflowid',
-        data: {
-            'instance_id': instance_id
-        },
-        success: function (data) {
-            if (data.redirect!==undefined && data.redirect!==null) {
-                redirect(data.redirect);
-            } else if (data.error!==undefined && data.error!==null) {
-                appendNotification("Couldn't monitor the operation: "+data.error, error=true);
-            } else {
-                if (data.workflowid !== undefined) {
-                    $(log_id).attr("data", "http://logging.mso4sc.eu:8080/default/"+data.workflowid);
-                } else {
-                    $(log_id).attr("data", "http://logging.mso4sc.eu:8080/default/none");
-                }
-            }
-        },
-        error: function (jqXHR, status, errorThrown) {
-            message = "Couldn't monitor the operation: ";
-            message += jqXHR.status+": "+errorThrown
-            appendNotification(message, error=true);
+        switch (toolName) {
+            case "setup_data_content":
+                renderKeyData("#ckan_key_form");
+                break;
+            case "setup_infra_content":
+                renderInfraData("#infra_list", select = false);
+                break;
+            case "setup_computing_content":
+                renderComputingData("#computing_instance_list", select = false);
+                renderInfraData("#infra_selector")
+                break;
+            case "setup_cloud_content":
+                //TODO: Implement
+                renderComputingData("#computing_instance_list", select = false);
+                break;
+            case "setup_tunnel_content":
+                renderTunnelData("#tunnel_list", select = false);
+                break;
         }
-    });
-}
 
-function runDeployment(selector_id, log_id, force = false) {
-    var deployment_id = $(selector_id).find("select").val();
-    resetLogBox(log_id);
-    cleanNotifications();
-
-    $.ajax({
-        method: "POST",
-        url: "/experimentstool/_execute_deployment",
-        data: {
-            'deployment_id': deployment_id
-        },
-        dataType: 'json',
-        beforeSend: function (xhr, settings) {
-            $.ajaxSettings.beforeSend(xhr, settings);
-            $(".loader").show();
-        },
-        success: function (data) {
-            $(".loader").hide();
-            if (data.redirect!==undefined && data.redirect!==null) {
-                redirect(data.redirect);
-            } else if (data.error!==undefined && data.error!==null) {
-                appendNotification("Run error: "+data.error, error=true);
-            }
-        },
-        error: function (jqXHR, status, errorThrown) {
-            $(".loader").hide();
-            message = "Couldn't run the instance: ";
-            message += jqXHR.status+": "+errorThrown
-            appendNotification(message, error=true);
-        },
-        complete: function() {
-            renderLogData(getActiveLogId(),
-                          "#deployment_selector",
-                          "#deployment_log",
-                          "#application_log")
+        // Show the current tab, and add an "active" class to the button that opened the tab
+        document.getElementById(toolName).style.display = "block";
+        if (typeof evt.currentTarget == "undefined") {
+            $("#exec_logs").className += "active";
+        } else {
+            evt.currentTarget.className += " active";
         }
-    });
-};
-
-function removeDeployment(selector_id, force = false) {
-    var deployment_id = $(selector_id).find("select").val();
-    cleanNotifications();
-
-    $.ajax({
-        method: "POST",
-        url: "/experimentstool/_destroy_deployment",
-        data: {
-            'deployment_id': deployment_id,
-            'force': force
-        },
-        dataType: 'json',
-        beforeSend: function (xhr, settings) {
-            $.ajaxSettings.beforeSend(xhr, settings);
-            $(".loader").show();
-        },
-        success: function (data) {
-            $(".loader").hide();
-            if (data.redirect!==undefined && data.redirect!==null) {
-                redirect(data.redirect);
-            } else if (data.error!==undefined && data.error!==null) {
-                appendNotification("Removing error: "+data.error, error=true);
-            } else {
-                appendNotification("Operation successful.");
-            }
-        },
-        error: function (jqXHR, status, errorThrown) {
-            $(".loader").hide();
-            message = "Couldn't remove the instance: ";
-            message += jqXHR.status+": "+errorThrown
-            appendNotification(message, error=true);
-        },
-        complete: function() {
-            renderDeploymentData("#deployment_selector",
-                                 "#deployment_log",
-                                 "#application_log");
-        }
-    });
-};
-
-$("#ckan_key_form").find("button").on('click', function (event) {
-    event.preventDefault();
-    var ckan_key = $("#ckan_key").val();
-
-    cleanNotifications();
-    $.ajax({
-        url: '/experimentstool/_update_ckan_key',
-        type: "POST",
-        data: {
-            'ckan_key': ckan_key,
-        },
-        dataType: 'json',
-        beforeSend: function (xhr, settings) {
-            $.ajaxSettings.beforeSend(xhr, settings);
-            $(".loader").show();
-        },
-        success: function (data) {
-            $(".loader").hide();
-            if (data.error!==undefined && data.error!==null) {
-                appendNotification("Couldn't update the key: "+data.error, error=true);
-            } else {
-                appendNotification("Key updated.");
-            }
-        },
-        error: function (jqXHR, status, errorThrown) {
-            $(".loader").hide();
-            message = "Couldn't update the key: ";
-            message += jqXHR.status+": "+errorThrown+": "+jqXHR.responseText
-            appendNotification(message, error=true);
-        }
-    });
-});
-
-$("#add_tunnel").find("button").on('click', function (event) {
-    event.preventDefault();
-    if (!window.File || !window.FileReader || !window.FileList || !window.Blob) {
-        appendNotification('The File APIs are not fully supported in this browser.', error=true);
     }
-
-    var name = $("#add_tunnel_name").val();
-    var host = $("#add_tunnel_host").val();
-    var user = $("#add_tunnel_user").val();
-    var key_file = $("#add_tunnel_key")[0]
-    var key_password = $("#add_tunnel_key_password").val();
-    var password = $("#add_tunnel_password").val();
-
-    var key = null
-    if (key_file && key_file.files && key_file.files[0]) {
-        key = key_file.files[0]
-    }
-    var have_auth = key != null || password != ''
-
-    cleanNotifications();
-    if (name != '' && host != '' && user!= '' && have_auth) {
-        var data = new FormData();
-        data.append('name', name);
-        data.append('host', host);
-        data.append('user', user);
-        data.append('key', key);
-        data.append('key_password', key_password);
-        data.append('password', password);
-        $.ajax({
-            url: '/experimentstool/_add_tunnel',
-            type: "POST",
-            data: data,
-            dataType: 'json',
-            contentType: false,
-            processData: false,
-            cache: false,
-            beforeSend: function (xhr, settings) {
-                $.ajaxSettings.beforeSend(xhr, settings);
-                $(".loader").show();
-            },
-            success: function (data) {
-                $(".loader").hide();
-                if (data.redirect!==undefined && data.redirect!==null) {
-                    redirect(data.redirect);
-                } else if (data.error!==undefined && data.error!==null) {
-                    appendNotification("Couldn't add the tunnel: "+data.error, error=true);
-                } else {
-                    appendNotification("Tunnel "+data.tunnel.name+" added.");
-                }
-            },
-            error: function (jqXHR, status, errorThrown) {
-                $(".loader").hide();
-                message = "Couldn't add the tunnel: ";
-                message += jqXHR.status+": "+errorThrown
-                appendNotification(message, error=true);
-            },
-            complete: function() {
-                renderTunnelData("#add_hpc_tunnel");
-                renderTunnelData("#tunnel_list", selector=false, clean=false);
-            }
-        });
-    }
-});
-
-$("#add_hpc_infra").find("button").on('click', function (event) {
-    event.preventDefault();
-
-    var name = $("#add_hpc_infra_name").val();
-    var about = $("#add_hpc_about").val();
-    var host = $("#add_hpc_host").val();
-    var timezone = $("#add_hpc_timezone").val();
-    var manager = $("#add_hpc_manager").find("select").val();
-
-    cleanNotifications();
-    if (name != '' && about != '' && timezone != '') {
-        var data = new FormData();
-        data.append('name', name);
-        data.append('about', about);
-        data.append('host', host);
-        data.append('timezone', timezone);
-        data.append('manager', manager);
-        $.ajax({
-            url: '/experimentstool/_add_hpc_infra',
-            type: "POST",
-            data: data,
-            dataType: 'json',
-            contentType: false,
-            processData: false,
-            cache: false,
-            beforeSend: function (xhr, settings) {
-                $.ajaxSettings.beforeSend(xhr, settings);
-                $(".loader").show();
-            },
-            success: function (data) {
-                $(".loader").hide();
-                if (data.redirect!==undefined && data.redirect!==null) {
-                    redirect(data.redirect);
-                } else if (data.error!==undefined && data.error!==null) {
-                    appendNotification("Couldn't add the HPC: "+data.error, error=true);
-                } else {
-                    appendNotification("HPC "+data.hpc.name+" added.");
-                }
-            },
-            error: function (jqXHR, status, errorThrown) {
-                $(".loader").hide();
-                message = "Couldn't add the hpc: ";
-                message += jqXHR.status+": "+errorThrown
-                appendNotification(message, error=true);
-            },
-            complete: function() {
-                renderHPCInfraData("#hpc_infra_list", selector=false, clean=false);
-            }
-        });
-    }
-});
-
-$("#add_hpc").find("button").on('click', function (event) {
-    event.preventDefault();
-    if (!window.File || !window.FileReader || !window.FileList || !window.Blob) {
-        appendNotification('The File APIs are not fully supported in this browser.', error=true);
-    }
-
-    var name = $("#add_hpc_name").val();
-    var infra = $("#hpc_infra_selector").find("select").val();
-    var user = $("#add_hpc_user").val();
-    var key_file = $("#add_hpc_key")[0]
-    var key_password = $("#add_hpc_key_password").val();
-    var password = $("#add_hpc_password").val();
-    var tunnel = $("#add_hpc_tunnel").find("select").val();
-
-    var key = null
-    if (key_file && key_file.files && key_file.files[0]) {
-        key = key_file.files[0]
-    }
-    var have_auth = key != null || password != ''
-
-    cleanNotifications();
-    if (infra!= '' && name != '' && user!= '' && have_auth) {
-        var data = new FormData();
-        data.append('name', name);
-        data.append('infra', infra);
-        data.append('user', user);
-        data.append('key', key);
-        data.append('key_password', key_password);
-        data.append('password', password);
-        data.append('tunnel', tunnel);
-        $.ajax({
-            url: '/experimentstool/_add_hpc',
-            type: "POST",
-            data: data,
-            dataType: 'json',
-            contentType: false,
-            processData: false,
-            cache: false,
-            beforeSend: function (xhr, settings) {
-                $.ajaxSettings.beforeSend(xhr, settings);
-                $(".loader").show();
-            },
-            success: function (data) {
-                $(".loader").hide();
-                if (data.redirect!==undefined && data.redirect!==null) {
-                    redirect(data.redirect);
-                } else if (data.error!==undefined && data.error!==null) {
-                    appendNotification("Couldn't add the HPC: "+data.error, error=true);
-                } else {
-                    appendNotification("HPC "+data.hpc.name+" added.");
-                }
-            },
-            error: function (jqXHR, status, errorThrown) {
-                $(".loader").hide();
-                message = "Couldn't add the hpc: ";
-                message += jqXHR.status+": "+errorThrown
-                appendNotification(message, error=true);
-            },
-            complete: function() {
-                renderHPCData("#hpc_instance_list", selector=false, clean=false);
-            }
-        });
-    }
-});
-
-$("#upload").find("button").on('click', function (event) {
-    event.preventDefault();
-    if (!window.File || !window.FileReader || !window.FileList || !window.Blob) {
-        appendNotification('The File APIs are not fully supported in this browser.', error=true);
-        return
-    }
-
-    var product = $("#product_selector").find("select").val();
-    var mso_id = $("#mso4sc_id").find("input").val();
-    var blueprint_package = $("#blueprint_package").find("input")[0];
-
-    cleanNotifications();
-    var blueprint = null
-    if (blueprint_package && blueprint_package.files && blueprint_package.files[0]) {
-        blueprint = blueprint_package.files[0]
-    } else {
-        appendNotification('No package provided', error=true);
-        return
-    }
-    
-    var data = new FormData();
-    data.append('product', product);
-    data.append('mso_id', mso_id);
-    data.append('blueprint_package', blueprint);
-    $.ajax({
-        url: '/experimentstool/_upload_application',
-        type: "POST",
-        data: data,
-        dataType: 'json',
-        contentType: false,
-        processData: false,
-        cache: false,
-        beforeSend: function (xhr, settings) {
-            $.ajaxSettings.beforeSend(xhr, settings);
-            $(".loader").show();
-        },
-        success: function (data) {
-            $(".loader").hide();
-            if (data.redirect!==undefined && data.redirect!==null) {
-                redirect(data.redirect);
-            } else if (data.error!==undefined && data.error!==null) {
-                appendNotification("Couldn't register the app: "+data.error, error=true);
-            } else {
-                appendNotification("App "+data.app.name+" registered.");
-            }
-        },
-        error: function (jqXHR, status, errorThrown) {
-            $(".loader").hide();
-            message = "Couldn't register the app: ";
-            message += jqXHR.status+": "+errorThrown
-            appendNotification(message, error=true);
-        },
-        complete: function() {
-            renderStockData("#product_selector", cleanup=false);
-            renderApplicationData("#remove_application_selector", only_owned=true);
-        }
-    });
-});
-
-$("#application_selector").find("select").on('change', function () {
-    renderApplicationInputs("#application_selector", "#application_inputs")
-});
-
-$("#deploy_form").find("button").on('click', function (event) {
-    event.preventDefault();
-
-    var deployment_id = $("#deployment_id").find("input").val();
-    var application_id = $("#application_selector").find("select").val();
-    
-    var inputs_dict = {};
-    $('input[id^="input_"]').each(function(index, input){ // text inputs
-        inputs_dict[$(input).attr('name')] = String($(input).val());
-    });
-    $('input[id^="integer_input_"]').each(function(index, input){ // integer inputs
-        inputs_dict[$(input).attr('name')] = parseInt($(input).val());
-    });
-    $('input[id^="boolean_input_"]:checked').each(function(index, input){ // boolean inputs
-        inputs_dict[$(input).attr('name')] = 1 === parseInt($(input).val());
-    });
-    $('input[id^="array_input_"]').each(function(index, input){ // array inputs
-        inputs_dict[$(input).attr('name')] = String($(input).val()).split(",");
-    });
-    $('input[id^="dict_input_"]').each(function(index, input){ // dict inputs
-        inputs_dict[$(input).attr('name')] = JSON.parse($(input).val());
-    });
-    $('select[id^="input_"]').each(function(index, input){ // hpc inputs
-        inputs_dict[$(input).attr('name')] = parseInt($(input).val());
-    });
-    $('input[name^="resource_"]:checked').each(function(index, input){ // resource inputs
-        inputs_dict[$(input).attr('name')] = String($(input).val());
-    });
-    $('textarea[id^="input_"]').each(function(index, input){ // online file inputs
-        inputs_dict[$(input).attr('name')] = String($(input).val());
-    });
-    var deployment_inputs = JSON.stringify(inputs_dict);
-
-    var data = new FormData();
-    data.append('deployment_id', deployment_id);
-    data.append('application_id', application_id);
-    data.append('deployment_inputs', deployment_inputs);
-
-    cleanNotifications();
-    $.ajax({
-        method: "POST",
-        url: '/experimentstool/_deploy_application',
-        data: data,
-        dataType: 'json',
-        contentType: false,
-        processData: false,
-        cache: false,
-        beforeSend: function (xhr, settings) {
-            $.ajaxSettings.beforeSend(xhr, settings);
-            $(".loader").show();
-        },
-        success: function (data) {
-            $(".loader").hide();
-            if (data.redirect!==undefined && data.redirect!==null) {
-                redirect(data.redirect);
-            } else if (data.error!==undefined && data.error!==null) {
-                appendNotification("Couldn't create the instance: "+data.error, error=true);
-            } else {
-                appendNotification("App instance "+ data.instance +" created.");
-            }
-        },
-        error: function (jqXHR, status, errorThrown) {
-            $(".loader").hide();
-            message = "Couldn't create the instance: ";
-            message += jqXHR.status+": "+errorThrown
-            appendNotification(message, error=true);
-        },
-        complete: function() {
-            $("#application_inputs").empty()
-            renderDeploymentData("#deployment_selector",
-                                 "#deployment_log",
-                                 "#application_log");
-        }
-    });
-});
-
-$("#deployment_selector").find("select").on('change', function () {
-    renderLogData(getActiveLogId(),
-                  "#deployment_selector",
-                  "#deployment_log",
-                  "#application_log")
-});
-
-$("#run-instance-button").on('click', function (event) {
-    event.preventDefault();
-    runDeployment("#deployment_selector",
-                  "#deployment_log")
-});
-
-$("#destroy-instance-button").on('click', function (event) {
-    event.preventDefault();
-    removeDeployment("#deployment_selector");
-    renderDeploymentData("#deployment_selector",
-                         "#deployment_log",
-                         "#application_log");
-});
-
-$("#force-destroy-instance-button").on('click', function (event) {
-    event.preventDefault();
-    removeDeployment("#deployment_selector", force=true);
-});
-
-$("#remove").find("button").on('click', function (event) {
-    event.preventDefault();
-    var application_id = $("#remove_application_selector").find("select").val();
-
-    $.ajax({
-        url: '/experimentstool/_remove_application',
-        data: {
-            'application_id': application_id
-        },
-        dataType: 'json',
-        beforeSend: function (xhr, settings) {
-            $.ajaxSettings.beforeSend(xhr, settings);
-            $(".loader").show();
-        },
-        success: function (data) {
-            $(".loader").hide();
-            if (data.redirect!==undefined && data.redirect!==null) {
-                redirect(data.redirect);
-            } else if (data.error!==undefined && data.error!==null) {
-                appendNotification("Couldn't remove the app: "+data.error, error=true);
-            } else {
-                appendNotification("App "+data.app.name+" removed.");
-            }
-        },
-        error: function (jqXHR, status, errorThrown) {
-            $(".loader").hide();
-            message = "Couldn't remove the app: ";
-            message += jqXHR.status+": "+errorThrown
-            appendNotification(message, error=true);
-        },
-        complete: function() {
-            renderStockData("#product_selector", cleanup=false);
-            renderApplicationData("#remove_application_selector", only_owned=true);
-        }
-    });
-});
-
-$('.wrapper').find('.toogle').on('click', function (e) {
-    e.preventDefault();
-    this.expand = !this.expand;
-    $(this).html(this.expand?"&uarr; Add a new one:":"&rarr; Add a new one");
-    $(this).closest('.wrapper').find('.collapsed, .expanded').toggleClass('collapsed expanded');
-});
-
 </script>
 {% endblock %}
