@@ -138,7 +138,7 @@ function removeDeployment(selector_id, force = false) {
 };
 
 $("#application_selector").find("select").on('change', function () {
-    renderApplicationInputs("#application_selector", "#application_inputs")
+    renderInputsData("#application_selector", "#application_inputs", "app")
 });
 
 $("#deploy_form").find("button").on('click', function (event) {
@@ -148,25 +148,25 @@ $("#deploy_form").find("button").on('click', function (event) {
     var application_id = $("#application_selector").find("select").val();
 
     var inputs_dict = {};
-    $('input[id^="string_input_"]').each(function (index, input) { // text inputs
+    $('#application_inputs').find('input[id^="string_input_"]').each(function (index, input) { // text inputs
         inputs_dict[$(input).attr('name')] = String($(input).val());
     });
-    $('input[id^="int_input_"]').each(function (index, input) { // integer inputs
+    $('#application_inputs').find('input[id^="int_input_"]').each(function (index, input) { // integer inputs
         inputs_dict[$(input).attr('name')] = parseInt($(input).val());
     });
-    $('input[id^="float_input_"]').each(function (index, input) { // integer inputs
+    $('#application_inputs').find('input[id^="float_input_"]').each(function (index, input) { // integer inputs
         inputs_dict[$(input).attr('name')] = parseFloat($(input).val());
     });
-    $('input[id^="boolean_input_"]:checked').each(function (index, input) { // boolean inputs
+    $('#application_inputs').find('input[id^="boolean_input_"]:checked').each(function (index, input) { // boolean inputs
         inputs_dict[$(input).attr('name')] = 1 === parseInt($(input).val());
     });
-    $('select[id^="input_"]').each(function (index, input) { // list inputs
+    $('#application_inputs').find('select[id^="input_"]').each(function (index, input) { // list inputs
         inputs_dict[$(input).attr('name')] = parseInt($(input).val());
     });
-    $('input[name^="resource_"]:checked').each(function (index, input) { // resource inputs
+    $('#application_inputs').find('input[name^="resource_"]:checked').each(function (index, input) { // resource inputs
         inputs_dict[$(input).attr('name')] = String($(input).val());
     });
-    $('textarea[id^="input_"]').each(function (index, input) { // online file inputs
+    $('#application_inputs').find('textarea[id^="input_"]').each(function (index, input) { // online file inputs
         inputs_dict[$(input).attr('name')] = String($(input).val());
     });
     var deployment_inputs = JSON.stringify(inputs_dict);

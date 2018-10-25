@@ -1,434 +1,3 @@
-function renderDatasetChoices(selector_id, container_id, group_name) {
-    var dataset = $(selector_id).find("select").val();
-    var resources_container = $(container_id);
-    resources_container.empty();
-
-    if (parseInt(dataset) >= 0) {
-        $.ajax({
-            url: '/experimentstool/_get_dataset_info',
-            type: "POST",
-            data: {
-                'dataset': dataset
-            },
-            dataType: 'json',
-            beforeSend: function (xhr, settings) {
-                $.ajaxSettings.beforeSend(xhr, settings);
-                $(".loader").show();
-            },
-            success: function (data) {
-                $(".loader").hide();
-                if (data.redirect !== undefined && data.redirect !== null) {
-                    redirect(data.redirect);
-                } else if (data.error !== undefined) {
-                    appendNotification("Couldn't read the dataset info: " + data.error, error =
-                        true);
-                } else if (data.num_resources > 0) {
-                    $(data.resources).each(function (index, resource) {
-                        resources_container.append(
-                            $(document.createElement('div')).attr({
-                                id: "resource_choice_" + resource.name
-                            }).append(
-                                $(document.createElement('input')).attr({
-                                    id: "resource_" + resource.name,
-                                    name: group_name,
-                                    value: index,
-                                    type: 'radio'
-                                }),
-                                $(document.createElement('label')).attr({
-                                    for: "resource_" + resource.name
-                                }).text(resource.name)
-                            )
-                        )
-                    });
-                } else {
-                    resources_container.append(
-                        $(document.createElement('label')).text("No resources found")
-                    );
-                }
-            },
-            error: function (jqXHR, status, errorThrown) {
-                $(".loader").hide();
-                message = "Couldn't read the dataset info: ";
-                message += jqXHR.status + ": " + errorThrown
-                appendNotification(message, error = true);
-            }
-        });
-    }
-}
-
-function renderApplicationData(selector_id, only_owned = false) {
-    var application_selector = $(selector_id).find("select")
-    application_selector.empty();
-    application_selector.append(
-        $(document.createElement('option')).attr("value", "-1").text("Loading..")
-    );
-
-    var url = '/experimentstool/_load_applications';
-    if (only_owned) {
-        url = '/experimentstool/_load_owned_applications';
-    }
-
-    $.ajax({
-        url: url,
-        beforeSend: function (xhr, settings) {
-            $.ajaxSettings.beforeSend(xhr, settings);
-            $(".loader").show();
-        },
-        success: function (data) {
-            $(".loader").hide();
-            application_selector.empty();
-            if (data.redirect !== undefined && data.redirect !== null) {
-                redirect(data.redirect);
-            } else if (data.error !== undefined && data.error !== null) {
-                appendNotification("Couldn't read applications: " + data.error, error = true);
-                application_selector.append(
-                    $(document.createElement('option')).attr("value", "-1").text("Error")
-                );
-            } else if (data.app_list.length > 0) {
-                application_selector.append(
-                    $(document.createElement('option')).attr("value", "-1").text("None")
-                );
-                $.each(data.app_list, function (index, application) {
-                    application_selector.append(
-                        $(document.createElement('option')).attr("value", application.id)
-                        .text(application.name)
-                    )
-                });
-            } else {
-                var msg = "No applications found";
-                if (only_owned) {
-                    msg = "No owned applications found";
-                }
-                application_selector.append(
-                    $(document.createElement('option')).attr("value", "-1")
-                    .text(msg)
-                );
-            }
-        },
-        error: function (jqXHR, status, errorThrown) {
-            $(".loader").hide();
-            message = "Couldn't get applications list: ";
-            message += jqXHR.status + ": " + errorThrown
-            appendNotification(message, error = true);
-        }
-    });
-}
-
-function renderApplicationInputs(selector_id, container_id) {
-    var application = $(selector_id).find("select").val();
-    var inputs_container = $(container_id);
-    inputs_container.empty();
-
-    var computing_pattern = new RegExp("^mso4sc_wm_(.)*$");
-    var dataset_pattern = new RegExp("^mso4sc_dataset_(.)*$");
-    var outputdataset_pattern = new RegExp('^mso4sc_outdataset_(.)*$')
-    var datacatalogue_pattern = new RegExp('^mso4sc_datacatalogue_(.)*$')
-    var file_pattern = new RegExp('^mso4sc_file_(.)*$')
-
-    if (parseInt(application) >= 0) {
-        $.ajax({
-            url: '/experimentstool/_get_application_inputs',
-            data: {
-                'application_id': application
-            },
-            dataType: 'json',
-            beforeSend: function (xhr, settings) {
-                $.ajaxSettings.beforeSend(xhr, settings);
-                $(".loader").show();
-            },
-            success: function (data) {
-                $(".loader").hide();
-                if (data.redirect !== undefined && data.redirect !== null) {
-                    redirect(data.redirect);
-                } else if (data.error !== undefined && data.error !== null) {
-                    appendNotification("Couldn't read the inputs: " + data.error, error = true);
-                } else if (data.inputs.length > 0) {
-                    data.inputs.sort(function (a, b) {
-                        var nameA = a.name.toLowerCase(),
-                            nameB = b.name.toLowerCase();
-                        if (nameA < nameB) //sort string ascending
-                            return -1;
-                        if (nameA > nameB)
-                            return 1;
-                        return 0; //default return value (no sorting)
-                    });
-                    //First render HPCs inputs
-                    $(data.inputs).each(function (index, input) {
-                        if (computing_pattern.test(input.name)) {
-                            inputs_container.append( //computings
-                                $(document.createElement('div')).attr({
-                                    id: "input_container_" + input.name
-                                }).append(
-                                    $(document.createElement('label')).attr({
-                                        for: "input_" + input.name,
-                                        title: input.description
-                                    }).text('HPC: ' + input.name.slice(11)),
-                                    $(document.createElement('select')).attr({
-                                        id: "input_" + input.name,
-                                        name: input.name,
-                                        title: input.description
-                                    }).append(
-                                        $(document.createElement('option'))
-                                        .attr("value", -1)
-                                        .text("None")
-                                    )
-                                )
-                            );
-                            renderComputingData("#input_container_" + input.name);
-                        } else if (dataset_pattern.test(input.name)) {
-                            inputs_container.append( //datasets
-                                $(document.createElement('div')).attr({
-                                    id: "input_container_" + input.name
-                                }).append(
-                                    $(document.createElement('label')).attr({
-                                        for: "input_" + input.name,
-                                        title: input.description
-                                    }).text('Dataset resource: ' + input.name.slice(15)),
-                                    $(document.createElement('select')).attr({
-                                        id: "input_" + input.name,
-                                        name: input.name,
-                                        title: input.description
-                                    }).append(
-                                        $(document.createElement('option')).attr("value", -
-                                            1).text("None")
-                                    ),
-                                    $(document.createElement('div')).attr({
-                                        id: "choices_" + input.name
-                                    })
-                                )
-                            );
-                            renderDatasetsData("#input_container_" + input.name);
-                            $("#input_container_" + input.name).find("select").on('change',
-                                function () {
-                                    renderDatasetChoices("#input_container_" + input.name,
-                                        "#choices_" + input.name,
-                                        "resource_" + input.name);
-                                });
-                        } else if (outputdataset_pattern.test(input.name)) {
-                            inputs_container.append( //datasets
-                                $(document.createElement('div')).attr({
-                                    id: "input_container_" + input.name
-                                }).append(
-                                    $(document.createElement('label')).attr({
-                                        for: "input_" + input.name,
-                                        title: input.description
-                                    }).text('Output dataset: ' + input.name.slice(18)),
-                                    $(document.createElement('select')).attr({
-                                        id: "input_" + input.name,
-                                        name: input.name,
-                                        title: input.description
-                                    }).append(
-                                        $(document.createElement('option')).attr("value", -
-                                            1).text("None")
-                                    )
-                                )
-                            );
-                            renderDatasetsData("#input_container_" + input.name);
-                        } else if (file_pattern.test(input.name)) {
-                            inputs_container.append( //files
-                                $(document.createElement('div')).attr({
-                                    id: "input_container_" + input.name
-                                }).append(
-                                    $(document.createElement('label')).attr({
-                                        for: "input_" + input.name,
-                                        title: input.description,
-                                        class: "toogle"
-                                    }).html('File: ' + input.name.slice(12) + ' &darr;'),
-                                    $(document.createElement('div')).attr({
-                                        id: "text_container_" + input.name,
-                                        class: "collapsed"
-                                    }).append(
-                                        $(document.createElement('textarea')).attr({
-                                            id: "input_" + input.name,
-                                            name: input.name,
-                                            placeholder: input.description,
-                                            rows: 25,
-                                            cols: 50
-                                        }).text(input.default)
-                                    )
-                                )
-                            );
-                            $("#input_container_" + input.name).find('.toogle').on('click',
-                                function (e) {
-                                    e.preventDefault();
-                                    this.expand = !this.expand;
-                                    $(this).html(this.expand ? 'File: ' + input.name.slice(
-                                        12) + ' &uarr;' : 'File: ' + input.name.slice(
-                                        12) + ' &darr;');
-                                    $(this).closest("#input_container_" + input.name).find(
-                                        '.collapsed, .expanded').toggleClass(
-                                        'collapsed expanded');
-                                });
-                        } else if (datacatalogue_pattern.test(input.name)) {
-                            inputs_container.append( //datasets
-                                $(document.createElement('div')).attr({
-                                    id: "input_container_" + input.name
-                                }).append(
-                                    $(document.createElement('input')).attr({
-                                        id: "input_" + input.name,
-                                        value: "",
-                                        type: 'hidden',
-                                        name: input.name,
-                                        title: input.description
-                                    })
-                                )
-                            );
-                        } else {
-                            inputs_container.append( //other
-                                $(document.createElement('div')).attr({
-                                    id: "input_container_" + input.name
-                                }).append(
-                                    inputToForm(input)
-                                )
-                            );
-                        }
-                    });
-                } else {
-                    inputs_container.append(
-                        $(document.createElement('label')).text("No inputs found")
-                    );
-                }
-            },
-            error: function (jqXHR, status, errorThrown) {
-                $(".loader").hide();
-                message = "Couldn't read the inputs: ";
-                message += jqXHR.status + ": " + errorThrown
-                appendNotification(message, error = true);
-            }
-        });
-    }
-}
-
-function inputToForm(input) {
-    if (input.type === "string") {
-        return [
-            $(document.createElement('label')).attr({
-                for: "input_" + input.name,
-                title: input.description
-            }).text(input.name),
-            $(document.createElement('input')).attr({
-                id: "input_" + input.name,
-                value: input.default,
-                type: 'text',
-                name: input.name,
-                title: input.description
-            })
-        ]
-    } else if (input.type === "integer") {
-        return [
-            $(document.createElement('label')).attr({
-                for: "integer_input_" + input.name,
-                title: input.description
-            }).text(input.name),
-            $(document.createElement('input')).attr({
-                id: "integer_input_" + input.name,
-                value: input.default,
-                type: 'text',
-                name: input.name,
-                title: input.description
-            })
-        ]
-    } else if (input.type === "boolean") {
-        if (input.default) {
-            true_doc = $(document.createElement('input')).attr({
-                id: "boolean_input_" + input.name + '_true',
-                name: input.name,
-                value: 1,
-                type: 'radio',
-                checked: "checked",
-                title: input.description
-            });
-            false_doc = $(document.createElement('input')).attr({
-                id: "boolean_input_" + input.name + '_false',
-                name: input.name,
-                value: 0,
-                type: 'radio',
-                title: input.description
-            });
-        } else {
-            true_doc = $(document.createElement('input')).attr({
-                id: "boolean_input_" + input.name + '_true',
-                name: input.name,
-                value: 1,
-                type: 'radio',
-                title: input.description
-            });
-            false_doc = $(document.createElement('input')).attr({
-                id: "boolean_input_" + input.name + '_false',
-                name: input.name,
-                value: 0,
-                type: 'radio',
-                checked: "checked",
-                title: input.description
-            });
-        }
-        return [
-            $(document.createElement('label')).attr({
-                for: "boolean_input_" + input.name,
-                title: input.description
-            }).text(input.name),
-            $(document.createElement('div')).attr({
-                id: "boolean_input_" + input.name
-            }).append(
-                $(document.createElement('label')).attr({
-                    for: "boolean_input_" + input.name + '_true',
-                    title: input.description
-                }).text("True"),
-                true_doc,
-                $(document.createElement('label')).attr({
-                    for: "boolean_input_" + input.name + '_false',
-                    title: input.description
-                }).text("False"),
-                false_doc
-            )
-        ]
-    } else if (jQuery.type(input.default) == "array") {
-        return [
-            $(document.createElement('label')).attr({
-                for: "array_input_" + input.name,
-                title: input.description
-            }).text(input.name),
-            $(document.createElement('input')).attr({
-                id: "array_input_" + input.name,
-                value: input.default,
-                type: 'text',
-                name: input.name,
-                title: input.description
-            })
-        ]
-    } else if (jQuery.type(input.default) == "object") {
-        return [
-            $(document.createElement('label')).attr({
-                for: "dict_input_" + input.name,
-                title: input.description
-            }).text(input.name),
-            $(document.createElement('input')).attr({
-                id: "dict_input_" + input.name,
-                value: JSON.stringify(input.default),
-                type: 'text',
-                name: input.name,
-                title: input.description
-            })
-        ]
-    } else {
-        return [
-            $(document.createElement('label')).attr({
-                for: "input_" + input.name,
-                title: input.description
-            }).text(input.name),
-            $(document.createElement('input')).attr({
-                id: "input_" + input.name,
-                value: input.default,
-                type: 'text',
-                name: input.name,
-                title: input.description
-            })
-        ]
-    }
-}
-
-
-
 function renderInputsData(selector_id, container_id, type) {
     var pk = $(selector_id).find("select").val();
 
@@ -452,7 +21,7 @@ function renderInputsData(selector_id, container_id, type) {
                 } else if (data.error !== null && data.error !== undefined) {
                     appendNotification("Couldn't read input data: " + data.error, error = true);
                 } else {
-                    _renderInputsData(container_id, data.inputs)
+                    _renderInputsData(container_id, data.inputs, data.infra_config, data.user_config)
                 }
             },
             error: function (jqXHR, status, errorThrown) {
@@ -462,12 +31,17 @@ function renderInputsData(selector_id, container_id, type) {
                 appendNotification(message, error = true);
             }
         });
+    } else {
+        $(container_id).empty();
     }
 }
 
-function _renderInputsData(container_id, inputs) {
+function _renderInputsData(container_id, inputs, infra_config, user_config) {
     var inputs_container = $(container_id);
     inputs_container.empty();
+
+    dependencies = {}
+    onchange = {}
 
     $(inputs).each(function (index, tuple) {
         var input_id = tuple[0]
@@ -478,12 +52,107 @@ function _renderInputsData(container_id, inputs) {
         var advanced = (('advanced' in input) ? input.advanced : false);
         var can_be_null = (('null' in input) ? input.null : false);
 
-        //TODO: REPLACE
+        var register_onchange = false;
 
         switch (type) {
             case "list":
+                var error = ""
+                //copy the choices object
+                var choices = JSON.parse(JSON.stringify(input.choices));
+                if (!Array.isArray(choices)) {
+                    if ($.isPlainObject(choices) && 'REPLACE' in choices) {
+                        response = replaceTag(choices, infra_config, user_config, dependencies)
+                        choices = response[0]
+                        register_onchange = response[1]
+                    } else {
+                        error = "Error parsing input data!";
+                    }
+                }
+
+                var select = $(document.createElement('select'))
+                    .attr({
+                        id: "list_" + input_id,
+                        name: input_id,
+                        title: description
+                    });
+
+                inputs_container.append( //list select box
+                    $(document.createElement('div')).attr({
+                        id: "input_container_" + input_id
+                    }).append(
+                        $(document.createElement('label'))
+                        .attr({
+                            for: "list_" + input_id,
+                            title: description
+                        })
+                        .text(name),
+                        select
+                    )
+                );
+
+                if (error == "") {
+                    options_list = []
+                    if (can_be_null) {
+                        options_list.push(
+                            $(document.createElement('option'))
+                            .attr("value", -1)
+                            .text("None"))
+                    }
+
+                    for (let i = 0; i < choices.length; i++) {
+                        opt = $(document.createElement('option'))
+                            .attr("value", i)
+                            .text(choices[i].name)
+                        if ("default" in choices[i] && choices[i].default) {
+                            opt.attr("selected", true)
+                        }
+                        options_list.push(opt)
+                    }
+
+                    select.append(options_list)
+
+                    dependencies[input_id] = input
+                    dependencies[input_id]['dom'] = select
+                    dependencies[input_id]['options'] = choices
+                    if (register_onchange) {
+                        register_on_change(input.choices, select, can_be_null, onchange);
+                    }
+                } else {
+                    select.append(
+                        $(document.createElement('option'))
+                        .attr("value", -1)
+                        .text(error));
+                }
                 break;
             case "resource_list":
+                var error = "";
+                var register_onchange = false;
+                //copy the storage object
+                var storage = JSON.parse(JSON.stringify(input.storage));
+                if ($.isPlainObject(storage)) {
+                    if ('REPLACE' in storage) {
+                        response = replaceTag(storage, infra_config, user_config, dependencies)
+                        storage = response[0]
+                        register_onchange = response[1]
+                    } else if (!'type' in storage) {
+                        error = "storage doesn't have the 'type' tag";
+                    } else if (!'config' in storage) {
+                        error = "storage doesn't have the 'config' tag";
+                    }
+                } else {
+                    error = "storage is malformed";
+                }
+
+                var select = $(document.createElement('select')).attr({
+                    id: "resource_list_" + input_id,
+                    name: input_id,
+                    title: description
+                });
+
+                var choices = $(document.createElement('div')).attr({
+                    id: "choices_" + input_id
+                })
+
                 inputs_container.append( //datasets resources
                     $(document.createElement('div')).attr({
                         id: "input_container_" + input_id
@@ -492,28 +161,55 @@ function _renderInputsData(container_id, inputs) {
                             for: "resource_list_" + input_id,
                             title: description
                         }).text(name),
-                        $(document.createElement('select')).attr({
-                            id: "resource_list_" + input_id,
-                            name: input_id,
-                            title: description
-                        }).append(
-                            $(document.createElement('option')).attr("value", -
-                                1).text("None")
-                        ),
-                        $(document.createElement('div')).attr({
-                            id: "choices_" + input.name
-                        })
+                        select,
+                        choices
                     )
                 );
-                renderDatasetsData("#input_container_" + input_id);
-                $("#input_container_" + input_id).find("select").on('change',
-                    function () {
-                        renderDatasetChoices("#input_container_" + input_id,
-                            "#choices_" + input_id,
-                            "resource_" + input_id);
-                    });
+
+                if (error == "") {
+                    renderDatasetsData(select, storage);
+                    select.on('change',
+                        function () {
+                            buildDatasetChoicesCall(
+                                select,
+                                choices,
+                                "resource_" + input_id);
+                        });
+                    if (register_onchange) {
+                        register_on_change(input.storage, select, can_be_null, onchange);
+                    }
+                } else {
+                    select.append(
+                        $(document.createElement('option'))
+                        .attr("value", -1)
+                        .text(error));
+                }
                 break;
             case "dataset_list":
+                var error = "";
+                var register_onchange = false;
+                //copy the storage object
+                var storage = JSON.parse(JSON.stringify(input.storage));
+                if ($.isPlainObject(storage)) {
+                    if ('REPLACE' in storage) {
+                        response = replaceTag(storage, infra_config, user_config, dependencies)
+                        storage = response[0]
+                        register_onchange = response[1]
+                    } else if (!'type' in storage) {
+                        error = "storage doesn't have the 'type' tag";
+                    } else if (!'config' in storage) {
+                        error = "storage doesn't have the 'config' tag";
+                    }
+                } else {
+                    error = "storage is malformed";
+                }
+
+                var select = $(document.createElement('select')).attr({
+                    id: "input_" + input_id,
+                    name: input_id,
+                    title: description
+                })
+
                 inputs_container.append( //datasets
                     $(document.createElement('div')).attr({
                         id: "input_container_" + input_id
@@ -522,17 +218,21 @@ function _renderInputsData(container_id, inputs) {
                             for: "input_" + input_id,
                             title: description
                         }).text(name),
-                        $(document.createElement('select')).attr({
-                            id: "input_" + input_id,
-                            name: input_id,
-                            title: description
-                        }).append(
-                            $(document.createElement('option')).attr("value", -1)
-                            .text("None")
-                        )
+                        select
                     )
                 );
-                renderDatasetsData("#input_container_" + input_id);
+
+                if (error == "") {
+                    renderDatasetsData(select, storage);
+                    if (register_onchange) {
+                        register_on_change(input.storage, dom, can_be_null, onchange);
+                    }
+                } else {
+                    select.append(
+                        $(document.createElement('option'))
+                        .attr("value", -1)
+                        .text(error));
+                }
                 break;
             case "file":
                 var default_value = (('default' in input) ? input.default : '');
@@ -643,7 +343,7 @@ function _renderInputsData(container_id, inputs) {
                             title: description
                         }).text(name),
                         $(document.createElement('input')).attr({
-                            id: type + "_input_" + input.name,
+                            id: type + "_input_" + input.id,
                             value: default_value,
                             type: 'text',
                             name: input_id,
@@ -653,16 +353,175 @@ function _renderInputsData(container_id, inputs) {
                 );
         }
     });
+
+    for (var key in onchange) {
+        if (key in dependencies) {
+            dependencies[key].dom.on('change', buildOnChangeCall(key));
+        } else {
+            // The dependency is not available
+            for (let onchange_index = 0; onchange_index < onchange[key].length; onchange_index++) {
+                item = onchange[key][onchange_index]
+                item.dom.empty().append(
+                    $(document.createElement('option'))
+                    .attr("value", -1)
+                    .text("No data available"));
+            }
+        }
+
+    }
 }
 
-function renderDatasetsData(selector_id) {
-    var dataset_selector = $(selector_id).find("select")
+function replaceTag(tag, infra_config, user_config, dependencies) {
+    var register_on_change = false
+    keys = tag.REPLACE.split(".");
+    if (keys[0] == 'INFRA_CONFIG') {
+        tag = infra_config
+        for (i = 1; i < keys.length; i++) {
+            if (keys[i] in tag) {
+                tag = tag[keys[i]];
+            } else {
+                error = "No user infrastructure defined";
+                break;
+            }
+        }
+    } else if (keys[0] == 'USER_CONFIG') {
+        tag = user_config
+        for (i = 1; i < keys.length; i++) {
+            if (keys[i] in tag) {
+                tag = tag[keys[i]];
+            } else {
+                error = "No user config defined";
+                break;
+            }
+        }
+    } else {
+        dependency_id = "." + keys[0];
+        if (dependency_id in dependencies) {
+            dependency = dependencies[dependency_id];
+            index = dependency.dom.val();
+            if (index != -1) {
+                tag = dependency.options[index]
+                for (i = 1; i < keys.length; i++) {
+                    if (keys[i] in tag) {
+                        tag = tag[keys[i]];
+                    } else {
+                        error = "No user config defined";
+                        break;
+                    }
+                }
+            } else {
+                tag = []
+            }
+        } else {
+            tag = []
+        }
+        register_onchange = true;
+    }
+    return [tag, register_on_change]
+}
+
+function register_on_change(tag, dom, can_be_null, onchange) {
+    keys = tag.REPLACE.split(".");
+    dependency_id = "." + keys[0];
+    if (dependency_id in onchange) {
+        onchange[dependency_id].push({
+            'dom': dom,
+            'replace_key': tag.REPLACE,
+            'can_be_null': can_be_null
+        })
+    } else {
+        onchange[dependency_id] = [{
+            'dom': dom,
+            'replace_key': tag.REPLACE,
+            'can_be_null': can_be_null
+        }]
+    }
+}
+
+function buildDatasetChoicesCall(selector, container, group_name) {
+    var selector_obj = selector;
+    var container_obj = container;
+    var group_name_obj = group_name;
+
+    function onDatasetCall() {
+        renderDatasetChoices(
+            selector_obj,
+            container_obj,
+            group_name_obj);
+    }
+
+    return onDatasetCall();
+}
+
+function buildOnChangeCall(trigger_key) {
+    var key = trigger_key
+
+    function onChangeCall() {
+        index = $(this).val();
+        for (let onchange_index = 0; onchange_index < onchange[key].length; onchange_index++) {
+            item = onchange[key][onchange_index]
+            // Get choices
+            var error = "";
+            var choices = []
+            if (index != -1) {
+                keys = item.replace_key.split(".");
+                // Copy the choices object
+                choices = JSON.parse(JSON.stringify(dependencies[key].options[index]));
+                for (i = 1; i < keys.length; i++) {
+                    if (keys[i] in choices) {
+                        choices = choices[keys[i]];
+                    } else {
+                        error = "No user config defined";
+                        break;
+                    }
+                }
+            }
+
+            // Render the options
+            if (error == "") {
+                options_list = []
+                if (item.can_be_null) {
+                    options_list.push(
+                        $(document.createElement('option'))
+                        .attr("value", -1)
+                        .text("None"))
+                }
+
+                for (i = 0; i < choices.length; i++) {
+                    opt = $(document.createElement('option'))
+                        .attr("value", i)
+                        .text(choices[i].name)
+                    if ("default" in choices[i] && choices[i].default) {
+                        opt.attr("selected", true)
+                    }
+                    options_list.push(opt)
+                }
+
+                item.dom.empty().append(options_list);
+            } else {
+                item.dom.empty().append(
+                    $(document.createElement('option'))
+                    .attr("value", -1)
+                    .text("No data available"));
+            }
+        }
+    }
+
+    return onChangeCall;
+}
+
+function renderDatasetsData(dataset_selector, storage) {
     dataset_selector.empty();
     dataset_selector.append(
         $(document.createElement('option')).attr("value", "-1").text("Loading..")
     );
     $.ajax({
+        method: "POST",
+        dataType: "json",
         url: '/experimentstool/_get_datasets',
+        data: {
+            'storage': JSON.stringify(storage)
+        },
         beforeSend: function (xhr, settings) {
             $.ajaxSettings.beforeSend(xhr, settings);
             $(".loader").show();
@@ -694,4 +553,61 @@ function renderDatasetsData(selector_id) {
             appendNotification(message, error = true);
         }
     });
+}
+
+function renderDatasetChoices(selector, resources_container, group_name) {
+    var dataset = selector.val();
+    resources_container.empty();
+
+    if (parseInt(dataset) >= 0) {
+        $.ajax({
+            url: '/experimentstool/_get_dataset_info',
+            type: "POST",
+            data: {
+                'dataset': dataset
+            },
+            dataType: 'json',
+            beforeSend: function (xhr, settings) {
+                $.ajaxSettings.beforeSend(xhr, settings);
+                $(".loader").show();
+            },
+            success: function (data) {
+                $(".loader").hide();
+                if (data.redirect !== undefined && data.redirect !== null) {
+                    redirect(data.redirect);
+                } else if (data.error !== undefined) {
+                    appendNotification("Couldn't read the dataset info: " + data.error, error =
+                        true);
+                } else if (data.num_resources > 0) {
+                    $(data.resources).each(function (index, resource) {
+                        resources_container.append(
+                            $(document.createElement('div')).attr({
+                                id: "resource_choice_" + resource.name
+                            }).append(
+                                $(document.createElement('input')).attr({
+                                    id: "resource_" + resource.name,
+                                    name: group_name,
+                                    value: index,
+                                    type: 'radio'
+                                }),
+                                $(document.createElement('label')).attr({
+                                    for: "resource_" + resource.name
+                                }).text(resource.name)
+                            )
+                        )
+                    });
+                } else {
+                    resources_container.append(
+                        $(document.createElement('label')).text("No resources found")
+                    );
+                }
+            },
+            error: function (jqXHR, status, errorThrown) {
+                $(".loader").hide();
+                message = "Couldn't read the dataset info: ";
+                message += jqXHR.status + ": " + errorThrown
+                appendNotification(message, error = true);
+            }
+        });
+    }
 }

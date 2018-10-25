@@ -1,150 +1,3 @@
-function renderTunnelData(container_id, select = true, clear_notifications = true) {
-    var tunnel_container = $(container_id);
-    if (select) {
-        tunnel_container = tunnel_container.find("select");
-    }
-    tunnel_container.empty();
-    if (clear_notifications) {
-        cleanNotifications();
-    }
-
-    $.ajax({
-        url: '/experimentstool/_get_tunnel_list',
-        beforeSend: function (xhr, settings) {
-            $.ajaxSettings.beforeSend(xhr, settings);
-            $(".loader").show();
-        },
-        success: function (data) {
-            $(".loader").hide();
-            if (data.redirect !== undefined && data.redirect !== null) {
-                redirect(data.redirect);
-            } else if (data.error !== undefined && data.error !== null) {
-                message = "Couldn't get tunnel list: " + data.error;
-                appendNotification(message, error = true);
-            } else {
-                if (select) {
-                    tunnel_container.append(
-                        $(document.createElement('option'))
-                        .attr("value", -1)
-                        .text("None")
-                    )
-                }
-                var tunnel_list = data.tunnel_list;
-                if (tunnel_list.length > 0) {
-                    $.each(tunnel_list, function (index, tunnel) {
-                        if (select) {
-                            tunnel_container.append(
-                                $(document.createElement('option'))
-                                .attr("value", tunnel.id)
-                                .text(tunnel.name)
-                            )
-                        } else {
-                            tunnel_container.append(
-                                $(document.createElement('div')).attr("id", "tunnel_block_" +
-                                    tunnel.id).attr("class",
-                                    "margin computing_settings_block").append(
-                                    $(document.createElement('div')).attr("class",
-                                        "s-12 m-6 l-8").append(
-                                        $(document.createElement('div')).attr("class",
-                                            "l-9 left").append(
-                                            $(document.createElement('div')).append(
-                                                $(document.createElement('span')).attr(
-                                                    "class",
-                                                    "computing_label computing_label_name")
-                                                .text('Name: '),
-                                                $(document.createElement('span')).text(
-                                                    tunnel.name),
-                                            ),
-                                            $(document.createElement('div')).append(
-                                                $(document.createElement('span')).attr(
-                                                    "class", "computing_label").text(
-                                                    'Host: '),
-                                                $(document.createElement('span')).text(
-                                                    tunnel.host),
-                                            ),
-                                            $(document.createElement('div')).append(
-                                                $(document.createElement('span')).attr(
-                                                    "class", "computing_label").text(
-                                                    'User: '),
-                                                $(document.createElement('span')).text(
-                                                    tunnel.user),
-                                            )
-                                        ),
-                                        $(document.createElement('div')).attr("class",
-                                            "l-3 right").append(
-                                            $(document.createElement('button')).attr("id",
-                                                "del_tunnel_" + tunnel.id).text('Delete')
-                                        )
-                                    )
-                                )
-                            );
-                            setTunnelEditButtonsHandler(
-                                "#del_tunnel_" + tunnel.id,
-                                tunnel.id,
-                                refresh_function = function () {
-                                    renderTunnelData(container_id,
-                                        select = false,
-                                        clear_notifications = false);
-                                }
-                            );
-                        }
-                    });
-                } else {
-                    if (!select) {
-                        tunnel_container.append(
-                            $(document.createElement('div'))
-                            .attr("id", "no_tunnel_list")
-                            .text("No Tunnel infrastructures found")
-                        )
-                    }
-                }
-            }
-        },
-        error: function (jqXHR, status, errorThrown) {
-            $(".loader").hide();
-            message = "Couldn't get tunnel list: ";
-            message += jqXHR.status + ": " + errorThrown
-            appendNotification(message, error = true);
-        }
-    });
-}
-
-function setTunnelEditButtonsHandler(button_id, pk, refresh_function) {
-    $(button_id).on('click', function (event) {
-        event.preventDefault();
-        $.ajax({
-            method: "POST",
-            url: '/experimentstool/_delete_tunnel',
-            data: {
-                'pk': pk
-            },
-            dataType: 'json',
-            beforeSend: function (xhr, settings) {
-                $.ajaxSettings.beforeSend(xhr, settings);
-                $(".loader").show();
-            },
-            success: function (data) {
-                $(".loader").hide();
-                if (data.redirect !== undefined && data.redirect !== null) {
-                    redirect(data.redirect);
-                } else if (data.error !== undefined && data.error !== null) {
-                    appendNotification("Couldn't delete the tunnel: " + data.error, error =
-                        true);
-                } else {
-                    appendNotification("Tunnel " + data.tunnel.name + " removed.");
-                }
-            },
-            error: function (jqXHR, status, errorThrown) {
-                $(".loader").hide();
-                message = "Couldn't remove the tunnel: ";
-                message += jqXHR.status + ": " + errorThrown
-                appendNotification(message, error = true);
-            },
-            complete: refresh_function
-        });
-    });
-}
-
 function renderInfraData(container_id, select = true, clear_notifications = true) {
     var infra_container = $(container_id);
     if (select) {
@@ -308,7 +161,6 @@ function renderComputingData(container_id, select = true, clear_notifications = 
                                 .text(computing.name)
                             )
                         } else {
-                            console.log(computing[0]);
                             computing_container.append(
                                 $(document.createElement('div')).attr("id",
                                     "computing_block_" + computing.id).attr("class",
@@ -495,25 +347,25 @@ $("#add_computing").find("button").on('click', function (event) {
     var infra = $("#infra_selector").find("select").val();
 
     var inputs_dict = {};
-    $('input[id^="string_input_"]').each(function (index, input) { // text inputs
+    $('#setup_computing_content').find('input[id^="string_input_"]').each(function (index, input) { // text inputs
         inputs_dict[$(input).attr('name')] = String($(input).val());
     });
-    $('input[id^="int_input_"]').each(function (index, input) { // integer inputs
+    $('#setup_computing_content').find('input[id^="int_input_"]').each(function (index, input) { // integer inputs
         inputs_dict[$(input).attr('name')] = parseInt($(input).val());
     });
-    $('input[id^="float_input_"]').each(function (index, input) { // integer inputs
+    $('#setup_computing_content').find('input[id^="float_input_"]').each(function (index, input) { // integer inputs
         inputs_dict[$(input).attr('name')] = parseFloat($(input).val());
     });
-    $('input[id^="boolean_input_"]:checked').each(function (index, input) { // boolean inputs
+    $('#setup_computing_content').find('input[id^="boolean_input_"]:checked').each(function (index, input) { // boolean inputs
         inputs_dict[$(input).attr('id')] = 1 === parseInt($(input).val());
     });
-    $('select[id^="input_"]').each(function (index, input) { // list inputs
+    $('#setup_computing_content').find('select[id^="input_"]').each(function (index, input) { // list inputs
         inputs_dict[$(input).attr('name')] = parseInt($(input).val());
     });
-    $('input[name^="resource_"]:checked').each(function (index, input) { // resource inputs
+    $('#setup_computing_content').find('input[name^="resource_"]:checked').each(function (index, input) { // resource inputs
         inputs_dict[$(input).attr('name')] = String($(input).val());
     });
-    $('textarea[id^="input_"]').each(function (index, input) { // online file inputs
+    $('#setup_computing_content').find('textarea[id^="input_"]').each(function (index, input) { // online file inputs
         inputs_dict[$(input).attr('name')] = String($(input).val());
     });
     var json_inputs = JSON.stringify(inputs_dict);

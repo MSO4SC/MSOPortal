@@ -41,6 +41,64 @@ function renderStockData(selector_id, cleanup = true) {
     });
 }
 
+function renderApplicationData(selector_id, only_owned = false) {
+    var application_selector = $(selector_id).find("select")
+    application_selector.empty();
+    application_selector.append(
+        $(document.createElement('option')).attr("value", "-1").text("Loading..")
+    );
+
+    var url = '/experimentstool/_load_applications';
+    if (only_owned) {
+        url = '/experimentstool/_load_owned_applications';
+    }
+
+    $.ajax({
+        url: url,
+        beforeSend: function (xhr, settings) {
+            $.ajaxSettings.beforeSend(xhr, settings);
+            $(".loader").show();
+        },
+        success: function (data) {
+            $(".loader").hide();
+            application_selector.empty();
+            if (data.redirect !== undefined && data.redirect !== null) {
+                redirect(data.redirect);
+            } else if (data.error !== undefined && data.error !== null) {
+                appendNotification("Couldn't read applications: " + data.error, error = true);
+                application_selector.append(
+                    $(document.createElement('option')).attr("value", "-1").text("Error")
+                );
+            } else if (data.app_list.length > 0) {
+                application_selector.append(
+                    $(document.createElement('option')).attr("value", "-1").text("None")
+                );
+                $.each(data.app_list, function (index, application) {
+                    application_selector.append(
+                        $(document.createElement('option')).attr("value", application.id)
+                        .text(application.name)
+                    )
+                });
+            } else {
+                var msg = "No applications found";
+                if (only_owned) {
+                    msg = "No owned applications found";
+                }
+                application_selector.append(
+                    $(document.createElement('option')).attr("value", "-1")
+                    .text(msg)
+                );
+            }
+        },
+        error: function (jqXHR, status, errorThrown) {
+            $(".loader").hide();
+            message = "Couldn't get applications list: ";
+            message += jqXHR.status + ": " + errorThrown
+            appendNotification(message, error = true);
+        }
+    });
+}
+
 $("#upload").find("button").on('click', function (event) {
     event.preventDefault();
     if (!window.File || !window.FileReader || !window.FileList || !window.Blob) {

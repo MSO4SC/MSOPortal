@@ -21,7 +21,6 @@ from experimentstool.models import (Application,
                                     WorkflowExecution,
                                     ComputingInfrastructure,
                                     ComputingInstance,
-                                    TunnelConnection,
                                     DataCatalogueKey)
 
 
@@ -97,7 +96,7 @@ def add_infra(request):
     if not name or name == '':
         # TODO validation
         return JsonResponse({'error': 'No name provided'})
-    
+
     about_url = request.POST.get('about', None)
     if not about_url or about_url == '':
         # TODO validation
@@ -231,73 +230,55 @@ def get_inputs(request):
         # TODO validation
         return JsonResponse({'error': 'No valid object provided'})
     
+    infra_config = None
+    user_config = None
     data = None
     error = None
     if data_type == 'infra':
         infra, error = ComputingInfrastructure.get(pk)
         if error is None:
-            data = infra.get_inputs_list()
+            data, error = infra.get_inputs_list()
     else: # app
-        app, error = ComputingInfrastructure.get(pk) # TODO: app
+        app, error = Application.get(pk)
         if error is None:
-            data = app.get_inputs_list()
+            data, error = app.get_inputs_list()
+    
+    if error is None:
+        infra_config, error = _get_infra_config(request.user)
+        user_config = _get_user_config(request.user)
 
-    return JsonResponse({'inputs': data, 'error': error})
-
-
-@login_required
-def get_tunnel_list(request):
-    return JsonResponse(
-        TunnelConnection.list(request.user, return_dict=True),
-        safe=False)
-
-
-@login_required
-def add_tunnel(request):
-    name = request.POST.get('name', None)
-    if not name or name == '':
-        # TODO validation
-        return JsonResponse({'error': 'No name provided'})
-
-    host = request.POST.get('host', None)
-    if not host or host == '':
-        # TODO validation
-        return JsonResponse({'error': 'No host provided'})
-
-    user = request.POST.get('user', None)
-    if not user or user == '':
-        # TODO validation
-        return JsonResponse({'error': 'No user provided'})
-
-    key = str(request.FILES['key'].read(), "utf-8")
-    key_password = request.POST.get('key_password', '')
-    password = request.POST.get('password', '')
-    if key == '' and password == '':
-        return JsonResponse({'error': 'No authentication (key/password) provided'})
-
-    return JsonResponse(
-        TunnelConnection.create(name,
-                                request.user,
-                                host,
-                                user,
-                                key,
-                                key_password,
-                                password,
-                                return_dict=True))
+    return JsonResponse({
+        'inputs': data,
+        'infra_config': infra_config,
+        'user_config': user_config,
+        'error': error})
 
 
-@login_required
-def delete_tunnel(request):
-    pk = request.POST.get('pk', None)
-    if not pk or pk == '':
-        # TODO validation
-        return JsonResponse({'error': 'No computing provided'})
+def _get_infra_config(owner):
+    infra_list, error = ComputingInstance.list(owner)
+    if error is None:
+        infra_config = {}
+        for item in infra_list:
+            key = item.infrastructure.infra_type.lower()+'_list'
+            if key in infra_config:
+                infra_config[key].append(item.to_dict())
+            else:
+                infra_config[key] = [item.to_dict()]
+    return (infra_config, error)
 
-    return JsonResponse(
-        ComputingInstance.remove(
-            pk,
-            request.user,
-            return_dict=True))
+
+def _get_user_config(owner):
+    ckan_entrypoint = settings.DATACATALOGUE_URL
+    ckan_key = DataCatalogueKey.get(owner)
+    return {
+        'storage_list': [{
+            'type': 'ckan',
+            'config': {
+                'entrypoint': ckan_entrypoint,
+                'key': ckan_key.code
+            }
+        }]
+    }
 
 
 @token_required
@@ -483,10 +464,16 @@ def remove_application(request):
 
 @login_required
 def get_datasets(request):
-    url = settings.DATACATALOGUE_URL + \
+    storage_str = request.POST.get('storage', "{}")
+    storage = json.loads(storage_str)
+
+    if (storage['type'] != "ckan"):
+        return JsonResponse({"error": "Storage type '"+storage['type']+"' not supported"})
+
+    url = storage['config']['entrypoint'] + \
         "/api/3/action/package_search"
 
-    key = DataCatalogueKey.get(request.user)
+    key = storage['config']['key']
 
     names = []
     datasets = []
@@ -516,7 +503,7 @@ def _get_datasets(url, key, offset):
 
     headers = {}
     if key is not None:
-        headers = {'Authorization': key.code}
+        headers = {'Authorization': key}
         url += "&include_private=True"
 
     text_data = requests.request("GET", url, headers=headers).text
@@ -558,7 +545,9 @@ def create_deployment(request):
     deployment_id = request.POST.get('deployment_id', None)
     application_id = int(request.POST.get('application_id', -1))
     inputs_str = request.POST.get('deployment_inputs', "{}")
-    inputs = json.loads(inputs_str)
+    print(inputs_str)
+    return JsonResponse({'error': 'Under construction...'})
+    inputs = json.loads(inputs_str) # TODO build inputs
 
     if not deployment_id or deployment_id is '':
         return JsonResponse({'error': 'No instance name provided'})

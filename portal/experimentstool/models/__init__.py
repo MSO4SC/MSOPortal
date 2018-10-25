@@ -6,7 +6,6 @@ from .infrastructure import (
     ComputingInfrastructure,
     ComputingInstance
 )
-from .connection import TunnelConnection
 from .application import (
     Application,
     AppInstance,

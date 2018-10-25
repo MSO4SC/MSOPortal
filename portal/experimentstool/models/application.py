@@ -14,7 +14,7 @@ from cloudify_rest_client import CloudifyClient
 from cloudify_rest_client.executions import Execution
 from cloudify_rest_client.exceptions import CloudifyClientError
 
-from .common import backend, _to_dict
+from .common import backend, _to_dict, get_inputs_list, delete_secrets, NAME_TAG, ORDER_TAG
 
 # Get an instance of a logger
 LOGGER = logging.getLogger(__name__)
@@ -135,7 +135,7 @@ class Application(models.Model):
         app = cls._get(pk)
 
         if app is not None:
-            inputs, error = cls._get_inputs(app.name)
+            inputs, error = app._get_inputs()
         else:
             error = "Can't get app inputs because it doesn't exists"
 
@@ -150,7 +150,7 @@ class Application(models.Model):
 
         if error is None:
             if app is not None:
-                _, error = cls._remove_blueprint(app.name)
+                _, error = app._remove_blueprint()
                 if error is None:
                     app.delete()
             else:
@@ -160,11 +160,30 @@ class Application(models.Model):
             return (app, error)
         else:
             return {'app': _to_dict(app), 'error': error}
+    
+    def get_inputs_definition(self):
+        definition = None
+        inputs, error = self._get_inputs()
+        if error is None:
+            definition = {}
+            for item in inputs:
+                definition[item['name']] = item['default']
+        return (definition, error)
+
+    def get_inputs_list(self):
+        # TODO results of this method could be saved
+        #   only when definition chages
+        data = None
+        definition, error = self.get_inputs_definition()
+        if error is None:
+            data = get_inputs_list(definition)
+        
+        return (data, error)
 
     def __str__(self):
         return "Application {0} from {1}".format(
             self.name,
-            self.owner.username)
+            self.owner.username) 
 
     @staticmethod
     def _upload_blueprint(path, blueprint_id):
@@ -198,13 +217,12 @@ class Application(models.Model):
 
         return (blueprints, error)
 
-    @staticmethod
-    def _get_inputs(app_id):
+    def _get_inputs(self):
         error = None
         data = None
         client = _get_client()
         try:
-            blueprint_dict = client.blueprints.get(app_id)
+            blueprint_dict = client.blueprints.get(self.name)
             inputs = blueprint_dict['plan']['inputs']
             data = [{'name': name,
                      'type': input.get('type', '-'),
@@ -217,13 +235,12 @@ class Application(models.Model):
 
         return (data, error)
 
-    @staticmethod
-    def _remove_blueprint(app_id):
+    def _remove_blueprint(self):
         error = None
         blueprint = None
         client = _get_client()
         try:
-            blueprint = client.blueprints.delete(app_id)
+            blueprint = client.blueprints.delete(self.name)
         except CloudifyClientError as err:
             LOGGER.exception(err)
             error = str(err)

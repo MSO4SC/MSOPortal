@@ -9,7 +9,6 @@ from django.db import models
 from django.db.utils import IntegrityError
 
 from .common import _to_dict, get_inputs_list, delete_secrets, NAME_TAG, ORDER_TAG
-from .connection import TunnelConnection
 
 # Get an instance of a logger
 LOGGER = logging.getLogger(__name__)
@@ -225,17 +224,17 @@ class ComputingInfrastructure(models.Model):
         else:
             return {'infra': _to_dict(infra), 'error': error}
 
+    def get_inputs_list(self):
+        # TODO results of this method could be saved
+        #   only when definition chages
+        return (get_inputs_list(yaml.load(self.definition)), None)
+
     def __str__(self):
         return "{0}: {1} from {2}({3})".format(
             self.name,
             self.infra_type,
             self.owner.username,
             self.manager)
-
-    def get_inputs_list(self):
-        # TODO results of this method could be calculated
-        #   only when definition chages
-        return get_inputs_list(yaml.load(self.definition))
 
 
 class ComputingInstance(models.Model):
@@ -290,8 +289,9 @@ class ComputingInstance(models.Model):
         if not return_dict:
             return (computing_list, error)
         else:
-            return {'computing_list':  [computing.to_dict() for computing in computing_list],
-                    'error': error}
+            return {
+                'computing_list':  [computing.to_dict() for computing in computing_list],
+                'error': error}
 
     @classmethod
     def create(cls,
@@ -363,10 +363,13 @@ class ComputingInstance(models.Model):
 
         computing_dict = _to_dict(self)
         if not secrets:
-            computing_dict['definition'] = yaml.dump(
+            computing_dict['definition'] = \
                 delete_secrets(
                     yaml.load(self.infrastructure.definition),
-                    yaml.load(self.definition)))
+                    yaml.load(self.definition))
+        else:
+            computing_dict['definition'] = \
+                yaml.load(self.definition)
         computing_dict["infrastructure"] = \
             self.infrastructure.name + \
             " ("+self.infrastructure.infra_type+")"
