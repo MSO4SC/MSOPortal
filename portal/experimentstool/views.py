@@ -547,21 +547,21 @@ def create_deployment(request):
     inputs_str = request.POST.get('deployment_inputs', "{}")
     print(inputs_str)
     return JsonResponse({'error': 'Under construction...'})
-    inputs = json.loads(inputs_str) # TODO build inputs
 
     if not deployment_id or deployment_id is '':
         return JsonResponse({'error': 'No instance name provided'})
     if application_id < 0:
         return JsonResponse({'error': 'No application selected'})
 
-    computing_list, error = ComputingInstance.list(request.user)
-    if error is not None:
-        return JsonResponse({'error': error})
+    inputs = json.loads(inputs_str)
+    definition = Application.get_inputs(application_id,
+                                        return_dict=True)
+    if not 'error' in definition or definition['error'] is None:
+        definition = definition['inputs']
+    else:
+        return JsonResponse({'error': definition['error']})
 
-    ckan_key_code = ""
-    key = DataCatalogueKey.get(request.user)
-    if key is not None:
-        ckan_key_code = key.code
+    # TODO build inputs
 
     computing_pattern = re.compile('^mso4sc_computing_(.)*$')
     dataset_pattern = re.compile('^mso4sc_dataset_(.)*$')

@@ -396,6 +396,7 @@ function replaceTag(tag, infra_config, user_config, dependencies) {
         }
     } else {
         dependency_id = "." + keys[0];
+        register_on_change = true;
         if (dependency_id in dependencies) {
             dependency = dependencies[dependency_id];
             index = dependency.dom.val();
