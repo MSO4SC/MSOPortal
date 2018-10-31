@@ -4,7 +4,9 @@ from threading import Thread
 from typing import Dict, List
 from django.forms.models import model_to_dict
 
+
 INPUT_TAG = 'INPUT'
+REPLACE_TAG = 'REPLACE'
 SECRET_TAG = 'secret'
 NAME_TAG = 'name'
 ORDER_TAG = 'order'

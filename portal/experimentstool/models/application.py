@@ -130,7 +130,7 @@ class Application(models.Model):
 
     @classmethod
     def get_inputs(cls, pk, return_dict=False):
-        """ Returns a list of dict with inputs, and a string error """
+        """ Returns a list of dict with application inputs, and a string error """
         inputs = None
         app = cls._get(pk)
 
@@ -143,6 +143,32 @@ class Application(models.Model):
             return (inputs, error)
         else:
             return {'inputs': inputs, 'error': error}
+    
+    def get_inputs_list(self):
+        """ Returns an ordered list of inputs to be rendered """
+        # TODO results of this method could be saved
+        #   only when definition chages
+        data = None
+        definition, error = self._get_inputs_definition()
+        if error is None:
+            data = get_inputs_list(definition)
+        
+        return (data, error)
+    
+    @classmethod
+    def get_inputs_definition(cls, pk, return_dict=False):
+        app = cls._get(pk)
+        definition = None
+
+        if app is not None:
+            definition, error = app._get_inputs_definition()
+        else:
+            error = "Can't get app inputs because it doesn't exists"        
+        
+        if not return_dict:
+            return (definition, error)
+        else:
+            return {'definition': definition, 'error': error}
 
     @classmethod
     def remove(cls, pk, owner, return_dict=False):
@@ -160,25 +186,6 @@ class Application(models.Model):
             return (app, error)
         else:
             return {'app': _to_dict(app), 'error': error}
-    
-    def get_inputs_definition(self):
-        definition = None
-        inputs, error = self._get_inputs()
-        if error is None:
-            definition = {}
-            for item in inputs:
-                definition[item['name']] = item['default']
-        return (definition, error)
-
-    def get_inputs_list(self):
-        # TODO results of this method could be saved
-        #   only when definition chages
-        data = None
-        definition, error = self.get_inputs_definition()
-        if error is None:
-            data = get_inputs_list(definition)
-        
-        return (data, error)
 
     def __str__(self):
         return "Application {0} from {1}".format(
@@ -234,6 +241,16 @@ class Application(models.Model):
             error = str(err)
 
         return (data, error)
+    
+    def _get_inputs_definition(self):
+        definition = None
+        inputs, error = self._get_inputs()
+        if error is None:
+            definition = {}
+            for item in inputs:
+                definition[item['name']] = item['default']
+        
+        return (definition, error)
 
     def _remove_blueprint(self):
         error = None

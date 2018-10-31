@@ -163,7 +163,7 @@ $("#deploy_form").find("button").on('click', function (event) {
     $('#application_inputs').find('select[id^="input_"]').each(function (index, input) { // list inputs
         inputs_dict[$(input).attr('name')] = parseInt($(input).val());
     });
-    $('#application_inputs').find('input[name^="resource_"]:checked').each(function (index, input) { // resource inputs
+    $('#application_inputs').find('input[id^="resource_"]:checked').each(function (index, input) { // resource inputs
         inputs_dict[$(input).attr('name')] = String($(input).val());
     });
     $('#application_inputs').find('textarea[id^="input_"]').each(function (index, input) { // online file inputs

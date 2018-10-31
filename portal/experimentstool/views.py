@@ -7,6 +7,7 @@ import time
 import tempfile
 from urllib.parse import urlparse
 import requests
+from typing import Dict, List
 
 from django.contrib.auth.decorators import login_required, permission_required
 from django.shortcuts import render
@@ -470,32 +471,37 @@ def get_datasets(request):
     if (storage['type'] != "ckan"):
         return JsonResponse({"error": "Storage type '"+storage['type']+"' not supported"})
 
-    url = storage['config']['entrypoint'] + \
-        "/api/3/action/package_search"
-
-    key = storage['config']['key']
+    datasets, error = _get_ckan_datasets(storage)
 
     names = []
-    datasets = []
-    left = True
-    offset = 0
-    error = None
-    while error is None and left:
-        names_chunk, datasets_chunk, left, error = \
-            _get_datasets(url, key, offset)
-        names += names_chunk
-        datasets += datasets_chunk
-        offset += len(names_chunk)
+    for dataset in datasets:
+        names.append(dataset["name"])
 
     request.session['datasets'] = datasets
     request.session.modified = True
 
     return JsonResponse({'names': names, 'error': error})
 
+def _get_ckan_datasets(storage):
+    url = storage['config']['entrypoint'] + \
+        "/api/3/action/package_search"
 
-def _get_datasets(url, key, offset):
+    key = storage['config']['key']
+
     datasets = []
-    names = []
+    left = True
+    offset = 0
+    error = None
+    while error is None and left:
+        datasets_chunk, left, error = \
+            _get_ckan_datasets_offset(url, key, offset)
+        datasets += datasets_chunk
+        offset += len(datasets_chunk)
+
+    return (datasets, error)
+
+def _get_ckan_datasets_offset(url, key, offset):
+    datasets = []
     left = False
     error = None
 
@@ -514,15 +520,13 @@ def _get_datasets(url, key, offset):
     if error is None:
         if "result" in json_data and "results" in json_data["result"]:
             datasets = json_data["result"]["results"]
-            for dataset in json_data["result"]["results"]:
-                names.append(dataset["name"])
         else:
             error = "Could not get datasets: No results"
 
     if error is None:
-        left = (int(json_data["result"]["count"]) - offset + len(names)) > 0
+        left = (int(json_data["result"]["count"]) - offset + len(datasets)) > 0
 
-    return (names, datasets, left, error)
+    return (datasets, left, error)
 
 
 @login_required
@@ -539,120 +543,189 @@ def get_dataset_info(request):
     return JsonResponse(datasets[dataset_index], safe=False)
 
 
+def _replace_tag(path, infra_config, user_config, dependencies):
+    value = None
+    error = None
+    postpone = False
+    keys = path.split('.')
+    if keys[0] == 'INFRA_CONFIG':
+        value = infra_config
+    elif keys[0] == 'USER_CONFIG':
+        value = user_config
+    else:
+        if keys[0] in dependencies:
+            value = dependencies[keys[0]]
+        else:
+            postpone = True
+    
+    if not postpone:
+        for key in keys[1:]:
+            if isinstance(value, Dict):
+                if key in value:
+                    value = value[key]
+                else:
+                    error = str(key)+" in path "+path+" does not exist"
+                    break
+            elif isinstance(value, List):
+                if len(value) > int(key):
+                    value = value[int(key)]
+                else:
+                    error = "List in path "+path+" does not have enough items"
+                    break
+
+    return (value, postpone, error)
+
+def _get_input_value(input_id, input_def, inputs_values, infra_config, user_config, dependencies, parent_key=''):
+    if isinstance(input_def, Dict):
+        if 'INPUT' in input_def:
+            data = input_def['INPUT']
+            if data['type'] == "list":
+                choices = data['choices']
+                postpone = False
+                error = None
+                if 'REPLACE' in data['choices']:
+                    choices, postpone, error = _replace_tag(
+                        data['choices']['REPLACE'],
+                        infra_config,
+                        user_config,
+                        dependencies)
+                if error is not None:
+                    return (None, False, error)
+                elif postpone:
+                    return (None, True, None)
+                else:
+                    return (choices[int(inputs_values[parent_key+'.'+input_id])], False, None)
+            elif data['type'] == "resource_list" or data['type'] == "dataset_list":
+                storage_def = {**data['storage']}
+                postpone = False
+                error = None
+                if 'REPLACE' in storage_def:
+                    storage_def, postpone, error = _replace_tag(
+                        data['storage']['REPLACE'],
+                        infra_config,
+                        user_config,
+                        dependencies)
+                if error is not None:
+                    return (None, False, error)
+                elif postpone:
+                    return (None, True, None)
+                else:
+                    if (storage_def['type'] != "ckan"):
+                        return (None, False, "Storage type '"+storage_def['type']+"' not supported")
+                    datasets, error = _get_ckan_datasets(storage_def)
+                    dataset = datasets[int(inputs_values[parent_key+'.'+input_id])]
+                    storage = {**storage_def}
+                    storage['dataset'] = dataset
+                    if data['type'] == "resource_list":
+                        if int(dataset["num_resources"]) > 0:
+                            storage['resource'] = dataset['resources'][int(inputs_values[parent_key+'.'+input_id+":resource"])]
+                        else:
+                            return (None, False, "Dataset "+dataset['name']+" does not have resources")
+                    return (storage, False, None)
+            elif data['type'] == "file" or data['type'] == "string":
+                return (inputs_values[parent_key+'.'+input_id], False, None)
+            elif data['type'] == "bool":
+                return (bool(inputs_values[parent_key+'.'+input_id]), False, None)
+            elif data['type'] == "int":
+                return (int(inputs_values[parent_key+'.'+input_id]), False, None)
+            elif data['type'] == "float":
+                return (float(inputs_values[parent_key+'.'+input_id]), False, None)
+            else:
+                return (None, False, "Type '"+data['type']+"' not supported")
+        elif 'REPLACE' in input_def:
+            return _replace_tag(input_def['REPLACE'], infra_config, user_config, dependencies)
+        else:
+            # recursive iteration over the dictionary
+            value = {}
+            for key, data in input_def.items():
+                value_data, postpone, error = _get_input_value(
+                    key,
+                    data,
+                    inputs_values,
+                    infra_config,
+                    user_config,
+                    dependencies,
+                    parent_key=parent_key+'.'+input_id)
+                if error is not None:
+                    return (None, False, error)
+                elif postpone:
+                    return (None, True, None)
+                else:
+                    value[key] = value_data
+            return (value, False, None)
+    elif isinstance(input_def, List):
+        # recursive iteration over the list
+        value = []
+        for index, data in enumerate(input_def):
+            value_data, postpone, error = _get_input_value(
+                str(index),
+                data,
+                inputs_values,
+                infra_config,
+                user_config,
+                dependencies,
+                parent_key=parent_key+'.'+input_id)
+            if error is not None:
+                return (None, False, error)
+            elif postpone:
+                return (None, True, None)
+            else:
+                value.append(value_data)
+        return value
+    else:
+        return (input_def, False, None) # This is not managed by the portal, leave as it is
+
 @login_required
 @permission_required('experimentstool.create_instance')
 def create_deployment(request):
     deployment_id = request.POST.get('deployment_id', None)
     application_id = int(request.POST.get('application_id', -1))
     inputs_str = request.POST.get('deployment_inputs', "{}")
-    print(inputs_str)
-    return JsonResponse({'error': 'Under construction...'})
 
     if not deployment_id or deployment_id is '':
         return JsonResponse({'error': 'No instance name provided'})
     if application_id < 0:
         return JsonResponse({'error': 'No application selected'})
 
-    inputs = json.loads(inputs_str)
-    definition = Application.get_inputs(application_id,
-                                        return_dict=True)
-    if not 'error' in definition or definition['error'] is None:
-        definition = definition['inputs']
-    else:
-        return JsonResponse({'error': definition['error']})
+    inputs_values = json.loads(inputs_str)
+    definition, error = Application.get_inputs_definition(application_id)
+    if error is not None:
+        return JsonResponse({'error': error})
+    
+    infra_config, error = _get_infra_config(request.user)
+    user_config = _get_user_config(request.user)
+    processed_inputs = {}
 
-    # TODO build inputs
-
-    computing_pattern = re.compile('^mso4sc_computing_(.)*$')
-    dataset_pattern = re.compile('^mso4sc_dataset_(.)*$')
-    dataset_resource_pattern = re.compile('^resource_mso4sc_dataset_(.)*$')
-    outputdataset_pattern = re.compile('^mso4sc_outdataset_(.)*$')
-    datacatalogue_pattern = re.compile('^mso4sc_datacatalogue_(.)*$')
-    tosca_inputs = {}
-    for _input, value in inputs.items():
-        if computing_pattern.match(_input):
-            computing_pk = value
-            if computing_pk < 0:
-                # the computing input has no configuration
-                tosca_inputs[_input] = {}
-                continue
-
-            computing = None
-            for computing_item in computing_list:
-                if computing_item.id == computing_pk:
-                    computing = computing_item
-                    break
-            if not computing:
-                return JsonResponse({'error': 'Bad HPC provided. Please ' +
-                                     'refresh and try again'})
-
-            tosca_inputs[_input] = computing.to_dict()
-        elif dataset_pattern.match(_input):
-            if 'datasets' not in request.session:
-                return JsonResponse({'error': 'No datasets loaded'})
-            datasets = request.session['datasets']
-
-            # get the dataset
-            dataset_index = value
-            if dataset_index >= len(datasets) or dataset_index < 0:
-                # the dataset input has no configuration
-                tosca_inputs[_input] = ""
-                continue
-            dataset = datasets[dataset_index]
-            if 'error' in dataset:
-                return JsonResponse(dataset)
-
-            # get the resource
-            if "resource_" + _input in inputs:
-                dataset_resource_index = int(inputs["resource_" + _input])
+    to_process = {**definition}
+    condition = True
+    while condition:
+        postponed = {}
+        for input_id, input_def in to_process.items():
+            value, postpone, error = _get_input_value(
+                input_id,
+                input_def,
+                inputs_values,
+                infra_config,
+                user_config,
+                processed_inputs)
+            if error is not None:
+                 return JsonResponse({'error': error})
+            elif postpone:
+                postponed[input_id] = input_def
             else:
-                # the dataset input has no configuration
-                tosca_inputs[_input] = ""
-                continue
+                processed_inputs[input_id] = value
+        condition = len(postponed) < len(to_process)
+        to_process = {**postponed}
+    
+    print(json.dumps(processed_inputs))
+    if len(processed_inputs) != len(definition):
+        return JsonResponse({'error': "Dependency loop in blueprint, couldn't generate inputs"})
 
-            if dataset_resource_index >= dataset["num_resources"] or \
-                    dataset_resource_index < 0:
-                return JsonResponse(
-                    {'error': 'Bad dataset resource provided. Please ' +
-                              'refresh and try again'})
-            dataset_resource = dataset["resources"][dataset_resource_index]
-
-            # finally put the url of the resource
-            tosca_inputs[_input] = dataset_resource["url"]
-        elif dataset_resource_pattern.match(_input):
-            # Resources are managed in the dataset section above
-            pass
-        elif outputdataset_pattern.match(_input):
-            if 'datasets' not in request.session:
-                return JsonResponse({'error': 'No datasets loaded'})
-            datasets = request.session['datasets']
-
-            # get the dataset
-            dataset_index = value
-            if dataset_index >= len(datasets) or dataset_index < 0:
-                # the dataset input has no configuration
-                tosca_inputs[_input] = ""
-                continue
-            dataset = datasets[dataset_index]
-            if 'error' in dataset:
-                return JsonResponse(dataset)
-
-            tosca_inputs[_input] = dataset["id"]
-        elif datacatalogue_pattern.match(_input):
-            ckan_value = ""
-            if _input.endswith("entrypoint"):
-                ckan_value = settings.DATACATALOGUE_URL
-            elif _input.endswith("key"):
-                ckan_value = ckan_key_code
-
-            tosca_inputs[_input] = ckan_value
-        else:
-            tosca_inputs[_input] = value
-
-    instance, error = AppInstance.create(application_id,
-                                         deployment_id,
-                                         tosca_inputs,
-                                         request.user)
+    instance, error = AppInstance.create(
+        application_id,
+        deployment_id,
+        processed_inputs,
+        request.user)
 
     return JsonResponse({
         "instance": instance.name if instance is not None else None,

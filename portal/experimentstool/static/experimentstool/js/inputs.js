@@ -71,7 +71,7 @@ function _renderInputsData(container_id, inputs, infra_config, user_config) {
 
                 var select = $(document.createElement('select'))
                     .attr({
-                        id: "list_" + input_id,
+                        id: "input_" + input_id,
                         name: input_id,
                         title: description
                     });
@@ -82,7 +82,7 @@ function _renderInputsData(container_id, inputs, infra_config, user_config) {
                     }).append(
                         $(document.createElement('label'))
                         .attr({
-                            for: "list_" + input_id,
+                            for: "input_" + input_id,
                             title: description
                         })
                         .text(name),
@@ -144,21 +144,19 @@ function _renderInputsData(container_id, inputs, infra_config, user_config) {
                 }
 
                 var select = $(document.createElement('select')).attr({
-                    id: "resource_list_" + input_id,
+                    id: "input_" + input_id,
                     name: input_id,
                     title: description
                 });
 
-                var choices = $(document.createElement('div')).attr({
-                    id: "choices_" + input_id
-                })
+                var choices = $(document.createElement('div'));
 
                 inputs_container.append( //datasets resources
                     $(document.createElement('div')).attr({
                         id: "input_container_" + input_id
                     }).append(
                         $(document.createElement('label')).attr({
-                            for: "resource_list_" + input_id,
+                            for: "input_" + input_id,
                             title: description
                         }).text(name),
                         select,
@@ -173,7 +171,7 @@ function _renderInputsData(container_id, inputs, infra_config, user_config) {
                             buildDatasetChoicesCall(
                                 select,
                                 choices,
-                                "resource_" + input_id);
+                                input_id + ":resource");
                         });
                     if (register_onchange) {
                         register_on_change(input.storage, select, can_be_null, onchange);
@@ -380,7 +378,7 @@ function replaceTag(tag, infra_config, user_config, dependencies) {
             if (keys[i] in tag) {
                 tag = tag[keys[i]];
             } else {
-                error = "No user infrastructure defined";
+                error = "'" + keys[i] + "' not defined in user infrastructures";
                 break;
             }
         }
@@ -390,7 +388,7 @@ function replaceTag(tag, infra_config, user_config, dependencies) {
             if (keys[i] in tag) {
                 tag = tag[keys[i]];
             } else {
-                error = "No user config defined";
+                error = "'" + keys[i] + "' not defined in user config";
                 break;
             }
         }
@@ -406,7 +404,7 @@ function replaceTag(tag, infra_config, user_config, dependencies) {
                     if (keys[i] in tag) {
                         tag = tag[keys[i]];
                     } else {
-                        error = "No user config defined";
+                        error = "'" + keys[i] + "' not defined";
                         break;
                     }
                 }
