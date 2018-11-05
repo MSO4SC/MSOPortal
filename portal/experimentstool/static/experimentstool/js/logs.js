@@ -88,13 +88,11 @@ function _renderExecLogData(instance_id, log_id, reset = true) {
                             _renderExecLogData(instance_id, log_id, reset = false);
                         },
                         3000);
-                    if (data.events.status == "prepared") {
-                        light.attr("src", "/static/experimentstool/img/light_yellow.png");
-                    } else {
-                        light.attr("src", "/static/experimentstool/img/light_blue.png");
-                    }
+                    light.attr("src", "/static/experimentstool/img/light_blue.png");
                 } else {
-                    if (data.events.status == "terminated") {
+                    if (data.events.status == "ready") {
+                        light.attr("src", "/static/experimentstool/img/light_yellow.png");
+                    } else if (data.events.status == "terminated") {
                         light.attr("src", "/static/experimentstool/img/light_green.png");
                     } else {
                         light.attr("src", "/static/experimentstool/img/light_red.png");

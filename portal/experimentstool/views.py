@@ -1,13 +1,11 @@
 """ Experiments Tool views module """
 
-import re
 import json
-import yaml
-import time
 import tempfile
 from urllib.parse import urlparse
-import requests
 from typing import Dict, List
+import requests
+import yaml
 
 from django.contrib.auth.decorators import login_required, permission_required
 from django.shortcuts import render
@@ -17,12 +15,12 @@ import sso
 from sso.utils import token_required
 from portal import settings
 
-from experimentstool.models import (Application,
-                                    AppInstance,
-                                    WorkflowExecution,
-                                    ComputingInfrastructure,
-                                    ComputingInstance,
-                                    DataCatalogueKey)
+from experimentstool.models import (
+    Application,
+    AppInstance,
+    ComputingInfrastructure,
+    ComputingInstance,
+    DataCatalogueKey)
 
 
 @login_required
@@ -255,16 +253,16 @@ def get_inputs(request):
         'error': error})
 
 
-def _get_infra_config(owner):
+def _get_infra_config(owner, secrets=False):
     infra_list, error = ComputingInstance.list(owner)
     if error is None:
         infra_config = {}
         for item in infra_list:
             key = item.infrastructure.infra_type.lower()+'_list'
             if key in infra_config:
-                infra_config[key].append(item.to_dict())
+                infra_config[key].append(item.to_dict(secrets=secrets))
             else:
-                infra_config[key] = [item.to_dict()]
+                infra_config[key] = [item.to_dict(secrets=secrets)]
     return (infra_config, error)
 
 
@@ -615,7 +613,7 @@ def _get_input_value(input_id, input_def, inputs_values, infra_config, user_conf
                     datasets, error = _get_ckan_datasets(storage_def)
                     dataset = datasets[int(inputs_values[parent_key+'.'+input_id])]
                     storage = {**storage_def}
-                    storage['dataset'] = dataset
+                    storage['dataset'] = _escape_strings(dataset)
                     if data['type'] == "resource_list":
                         if int(dataset["num_resources"]) > 0:
                             storage['resource'] = dataset['resources'][int(inputs_values[parent_key+'.'+input_id+":resource"])]
@@ -675,6 +673,21 @@ def _get_input_value(input_id, input_def, inputs_values, infra_config, user_conf
     else:
         return (input_def, False, None) # This is not managed by the portal, leave as it is
 
+def _escape_strings(data):
+    if isinstance(data, Dict):
+        escaped_dict = {}
+        for key, value in data.items():
+            escaped_dict[key] = _escape_strings(value)
+    elif isinstance(data, List):
+        escaped_list = []
+        for item in data:
+            escaped_list.append(_escape_strings(item))
+        return escaped_list
+    elif isinstance(data, str):
+        return data.encode('unicode-escape')
+    else:
+        return data
+
 @login_required
 @permission_required('experimentstool.create_instance')
 def create_deployment(request):
@@ -692,7 +705,7 @@ def create_deployment(request):
     if error is not None:
         return JsonResponse({'error': error})
     
-    infra_config, error = _get_infra_config(request.user)
+    infra_config, error = _get_infra_config(request.user, secrets=True)
     user_config = _get_user_config(request.user)
     processed_inputs = {}
 
@@ -717,10 +730,9 @@ def create_deployment(request):
         condition = len(postponed) < len(to_process)
         to_process = {**postponed}
     
-    print(json.dumps(processed_inputs))
     if len(processed_inputs) != len(definition):
         return JsonResponse({'error': "Dependency loop in blueprint, couldn't generate inputs"})
-
+    print(yaml.dump(processed_inputs))
     instance, error = AppInstance.create(
         application_id,
         deployment_id,
@@ -753,10 +765,7 @@ def execute_deployment(request):
 
     instance, error = AppInstance.get(deployment_id, request.user)
     if error is None:
-        error = instance.reset_execution(request.user)
-        time.sleep(1)
-        if error is None:
-            instance.run_workflows(request.user)
+        error = instance.execute()
 
     return JsonResponse({
         "instance": instance.name,

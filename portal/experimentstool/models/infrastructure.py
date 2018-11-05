@@ -370,16 +370,10 @@ class ComputingInstance(models.Model):
         else:
             computing_dict['definition'] = \
                 yaml.load(self.definition)
+        computing_dict['definition']['wm_config']['workload_manager'] = \
+            self.infrastructure.manager
         computing_dict["infrastructure"] = \
             self.infrastructure.name + \
             " ("+self.infrastructure.infra_type+")"
 
         return computing_dict
-
-    def to_blueprint(self):
-        computing_dict = self.to_dict(secrets=True)
-
-        data = computing_dict["definition"]
-        data['wm_config']['credentials']['workload_manager'] = self.infrastructure.manager
-
-        return data

@@ -4,6 +4,7 @@ import time
 import json
 import logging
 from urllib.parse import urlparse
+import yaml
 
 from django.conf import settings
 
@@ -275,7 +276,7 @@ class AppInstance(models.Model):
     description = models.CharField(max_length=256, null=True)
     inputs = models.CharField(max_length=256, null=True)
 
-    PREPARED = 'prepared'
+    READY = 'ready'
     TERMINATED = 'terminated'
     FAILED = 'failed'
     CANCELLED = 'cancelled'
@@ -284,7 +285,7 @@ class AppInstance(models.Model):
     CANCELLING = 'cancelling'
     FORCE_CANCELLING = 'force_cancelling'
     STATUS_CHOICES = (
-        (PREPARED, 'prepared'),
+        (READY, 'ready'),
         (TERMINATED, 'terminated'),
         (FAILED, 'failed'),
         (CANCELLED, 'cancelled'),
@@ -296,7 +297,7 @@ class AppInstance(models.Model):
     status = models.CharField(
         max_length=5,
         choices=STATUS_CHOICES,
-        default=PREPARED,
+        default=READY,
         blank=True
     )
 
@@ -361,6 +362,7 @@ class AppInstance(models.Model):
                         inputs,
                         ensure_ascii=False,
                         separators=(',', ':')),
+                    status=cls.READY,
                     owner=owner)
             except Exception as err:
                 LOGGER.exception(err)
@@ -371,52 +373,57 @@ class AppInstance(models.Model):
         else:
             return {'instance': _to_dict(instance), 'error': error}
 
+    def execute(self):
+        """ Reset execution, create a new deployment and start the workflows """
+        error = self.reset_execution()
+
+        if error is None:
+            # Create cfy deployment
+            _, error = self.__class__._create_deployment(
+                self.app.name,
+                self.name,
+                json.loads(self.inputs))
+
+            if error is None:
+                self._run_workflows()
+        
+        return error
+
     @backend
-    def reset_execution(self, owner):
-        self._update_status(AppInstance.PREPARED)
+    def reset_execution(self):
+        self._update_status(AppInstance.READY)
 
         # logs
         logs_list, error = ApplicationInstanceLog.list(
             self,
-            owner,
+            self.owner,
             offset=0
         )
         if error is None:
             for log in logs_list:
                 log.delete()
-        else:
-            LOGGER.warning("Couldn't clean up logs: "+error)
 
-        # executions
-        executions_list, error = WorkflowExecution.list(
-            self,
-            owner)
-        if error is None:
-            for execution in executions_list:
-                execution.delete()
-        else:
-            LOGGER.warning("Couldn't clean up executions: "+error)
+            # executions
+            executions_list, error = WorkflowExecution.list(self)
+            if error is None:
+                for execution in executions_list:
+                    execution.delete()
+            
+            time.sleep(1) # database syncronization
 
         return error
 
     @backend
-    def run_workflows(self, owner):
-
-        # Create cfy deployment
-        _, error = self.__class__._create_deployment(
-            self.app.name,
-            self.name,
-            json.loads(self.inputs))
-
+    def _run_workflows(self):
         self._update_status(Execution.STARTED)
 
-        status = self.run_workflow(WorkflowExecution.INSTALL, owner)
+        status = self._run_workflow(WorkflowExecution.INSTALL)
         if WorkflowExecution.is_execution_finished(status) and \
                 not WorkflowExecution.is_execution_wrong(status):
-            status = self.run_workflow(WorkflowExecution.RUN, owner)
+            status = self._run_workflow(WorkflowExecution.RUN)
             if WorkflowExecution.is_execution_finished(status) and \
                     not WorkflowExecution.is_execution_wrong(status):
-                status = self.run_workflow(WorkflowExecution.UNINSTALL, owner)
+                status = self._run_workflow(WorkflowExecution.UNINSTALL)
 
         if not WorkflowExecution.is_execution_finished(status):
             # TODO: cancel execution
@@ -432,14 +439,14 @@ class AppInstance(models.Model):
 
         return status
 
-    def run_workflow(self, workflow, owner):
+    def _run_workflow(self, workflow):
         error = None
         execution = None
 
         execution, error = WorkflowExecution.create(
             self,
             workflow,
-            owner,
+            self.owner,
             force=False)
 
         if error is not None:
@@ -494,10 +501,13 @@ class AppInstance(models.Model):
             self.save()
 
     def is_finished(self):
-        return self.status in Execution.END_STATES
+        return self.status in Execution.END_STATES \
+            or self.status == AppInstance.READY
 
     def is_wrong(self):
-        return self.is_finished() and self.status != Execution.TERMINATED
+        return self.is_finished() \
+            and self.status != Execution.TERMINATED \
+            and self.status != AppInstance.READY
 
     def append_logs(self, events_list):
         for event in events_list:
@@ -579,9 +589,7 @@ class AppInstance(models.Model):
         if error is None:
             if instance is not None:
                 # executions
-                executions_list, error = WorkflowExecution.list(
-                    instance,
-                    owner)
+                executions_list, error = WorkflowExecution.list(instance)
                 if error is None:
                     for execution in executions_list:
                         if execution.workflow == WorkflowExecution.RUN:
@@ -743,12 +751,11 @@ class WorkflowExecution(models.Model):
             return {'execution': execution, 'error': error}
 
     @classmethod
-    def list(cls, instance, owner, return_dict=False):
+    def list(cls, instance, return_dict=False):
         error = None
         execution_list = []
         try:
             execution_list = cls.objects.filter(
-                owner=owner,
                 app_instance=instance)
         except cls.DoesNotExist:
             pass
