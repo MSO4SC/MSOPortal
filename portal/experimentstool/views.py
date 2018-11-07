@@ -608,12 +608,12 @@ def _get_input_value(input_id, input_def, inputs_values, infra_config, user_conf
                 elif postpone:
                     return (None, True, None)
                 else:
-                    if (storage_def['type'] != "ckan"):
+                    if (storage_def['type'].upper() != "CKAN"):
                         return (None, False, "Storage type '"+storage_def['type']+"' not supported")
                     datasets, error = _get_ckan_datasets(storage_def)
                     dataset = datasets[int(inputs_values[parent_key+'.'+input_id])]
                     storage = {**storage_def}
-                    storage['dataset'] = _escape_strings(dataset)
+                    storage['dataset'] = _to_ascii(dataset)
                     if data['type'] == "resource_list":
                         if int(dataset["num_resources"]) > 0:
                             storage['resource'] = dataset['resources'][int(inputs_values[parent_key+'.'+input_id+":resource"])]
@@ -669,22 +669,23 @@ def _get_input_value(input_id, input_def, inputs_values, infra_config, user_conf
                 return (None, True, None)
             else:
                 value.append(value_data)
-        return value
+        return (value, False, None)
     else:
         return (input_def, False, None) # This is not managed by the portal, leave as it is
 
-def _escape_strings(data):
+def _to_ascii(data):
     if isinstance(data, Dict):
         escaped_dict = {}
         for key, value in data.items():
-            escaped_dict[key] = _escape_strings(value)
+            escaped_dict[key] = _to_ascii(value)
+        return escaped_dict
     elif isinstance(data, List):
         escaped_list = []
         for item in data:
-            escaped_list.append(_escape_strings(item))
+            escaped_list.append(_to_ascii(item))
         return escaped_list
     elif isinstance(data, str):
-        return data.encode('unicode-escape')
+        return data.encode('ascii', 'ignore').decode('ascii')
     else:
         return data
 
@@ -732,7 +733,7 @@ def create_deployment(request):
     
     if len(processed_inputs) != len(definition):
         return JsonResponse({'error': "Dependency loop in blueprint, couldn't generate inputs"})
-    print(yaml.dump(processed_inputs))
+    # print(yaml.dump(processed_inputs))  # FIXME remove
     instance, error = AppInstance.create(
         application_id,
         deployment_id,
