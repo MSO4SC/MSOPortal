@@ -136,56 +136,51 @@ class ComputingInfrastructure(models.Model):
         if error is None:
             if 'wm_config' not in dict_def:
                 error = '"wm_config" key not found in definition file'
-            elif 'credentials' not in dict_def['wm_config']:
-                error = '"credentials" key not found in definition file under "wm_config"'
-            elif not isinstance(dict_def['wm_config']['credentials'], Dict):
-                error = '"wm_config.credentials" key does not define a dictionary'
-            if error is None:
-                if infra_type == cls.HPC:
-                    if 'country_tz' not in dict_def['wm_config']:
-                        error = '"country_tz" key not found in definition file under "wm_config"'
-                    elif 'partitions' not in dict_def:
-                        error = '"partitions" key not found in definition file'
-                    elif not isinstance(dict_def['partitions'], List) \
-                            and dict_def['partitions'] != 'None':
-                        error = '"partitions" key does not define a list or "None" value'
-                    elif 'mpi_versions' not in dict_def:
-                        error = '"mpi_versions" key not found in definition file'
-                    elif not isinstance(dict_def['mpi_versions'], List) \
-                            and dict_def['mpi_versions'] != 'None':
-                        error = '"mpi_versions" key does not define a list or "None" value'
-                    elif 'singularity_versions' not in dict_def:
-                        error = '"singularity_versions" key not found in definition file'
-                    elif not isinstance(dict_def['singularity_versions'], List) \
-                            and dict_def['singularity_versions'] != 'None':
-                        error = '"singularity_versions" key does not define a list or "None" value'
-                elif infra_type == cls.OPENSTACK:
-                    if 'openstack_config' not in dict_def:
-                        error = '"openstack_config" key not found in definition file'
-                    elif not isinstance(dict_def['openstack_config'], Dict):
-                        error = '"openstack_config" key does not define a dictionary'
-                    elif 'openstack_flavors' not in dict_def:
-                        error = '"openstack_flavors" key not found in definition file'
-                    elif not isinstance(dict_def['openstack_flavors'], List) \
-                            and dict_def['openstack_flavors'] != 'None':
-                        error = '"openstack_flavors" key does not define a list or "None" value'
-                    elif 'openstack_images' not in dict_def:
-                        error = '"openstack_images" key not found in definition file'
-                    elif not isinstance(dict_def['openstack_images'], List) \
-                            and dict_def['openstack_images'] != 'None':
-                        error = '"openstack_images" key does not define a list or "None" value'
-                    elif 'openstack_networks' not in dict_def:
-                        error = '"openstack_networks" key not found in definition file'
-                    elif not isinstance(dict_def['openstack_networks'], List) \
-                            and dict_def['openstack_networks'] != 'None':
-                        error = '"openstack_networks" key does not define a list or "None" value'
-                    elif 'openstack_volumes' not in dict_def:
-                        error = '"openstack_volumes" key not found in definition file'
-                    elif not isinstance(dict_def['openstack_volumes'], List) \
-                            and dict_def['openstack_volumes'] != 'None':
-                        error = '"openstack_volumes" key does not define a list or "None" value'
-                else:
-                    error = 'unsopported type: "'+infra_type+'"'
+            elif infra_type == cls.HPC:
+                if 'country_tz' not in dict_def['wm_config']:
+                    error = '"country_tz" key not found in definition file under "wm_config"'
+                elif 'partitions' not in dict_def:
+                    error = '"partitions" key not found in definition file'
+                elif not isinstance(dict_def['partitions'], List) \
+                        and dict_def['partitions'] != 'None':
+                    error = '"partitions" key does not define a list or "None" value'
+                elif 'mpi_versions' not in dict_def:
+                    error = '"mpi_versions" key not found in definition file'
+                elif not isinstance(dict_def['mpi_versions'], List) \
+                        and dict_def['mpi_versions'] != 'None':
+                    error = '"mpi_versions" key does not define a list or "None" value'
+                elif 'singularity_versions' not in dict_def:
+                    error = '"singularity_versions" key not found in definition file'
+                elif not isinstance(dict_def['singularity_versions'], List) \
+                        and dict_def['singularity_versions'] != 'None':
+                    error = '"singularity_versions" key does not define a list or "None" value'
+            elif infra_type == cls.OPENSTACK:
+                if 'openstack_config' not in dict_def:
+                    error = '"openstack_config" key not found in definition file'
+                elif not isinstance(dict_def['openstack_config'], Dict):
+                    error = '"openstack_config" key does not define a dictionary'
+                elif 'openstack_flavors' not in dict_def:
+                    error = '"openstack_flavors" key not found in definition file'
+                elif not isinstance(dict_def['openstack_flavors'], List) \
+                        and dict_def['openstack_flavors'] != 'None':
+                    error = '"openstack_flavors" key does not define a list or "None" value'
+                elif 'openstack_images' not in dict_def:
+                    error = '"openstack_images" key not found in definition file'
+                elif not isinstance(dict_def['openstack_images'], List) \
+                        and dict_def['openstack_images'] != 'None':
+                    error = '"openstack_images" key does not define a list or "None" value'
+                elif 'openstack_networks' not in dict_def:
+                    error = '"openstack_networks" key not found in definition file'
+                elif not isinstance(dict_def['openstack_networks'], List) \
+                        and dict_def['openstack_networks'] != 'None':
+                    error = '"openstack_networks" key does not define a list or "None" value'
+                elif 'openstack_volumes' not in dict_def:
+                    error = '"openstack_volumes" key not found in definition file'
+                elif not isinstance(dict_def['openstack_volumes'], List) \
+                        and dict_def['openstack_volumes'] != 'None':
+                    error = '"openstack_volumes" key does not define a list or "None" value'
+            else:
+                error = 'unsopported type: "'+infra_type+'"'
 
         if error is None:
             try:
@@ -370,6 +365,8 @@ class ComputingInstance(models.Model):
         else:
             computing_dict['definition'] = \
                 yaml.load(self.definition)
+        if computing_dict['definition']['wm_config'] is None:
+            computing_dict['definition']['wm_config'] = {}
         computing_dict['definition']['wm_config']['workload_manager'] = \
             self.infrastructure.manager
         computing_dict["infrastructure"] = \

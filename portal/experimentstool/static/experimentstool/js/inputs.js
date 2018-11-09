@@ -61,7 +61,11 @@ function _renderInputsData(container_id, inputs, infra_config, user_config) {
                 var choices = JSON.parse(JSON.stringify(input.choices));
                 if (!Array.isArray(choices)) {
                     if ($.isPlainObject(choices) && 'REPLACE' in choices) {
-                        response = replaceTag(choices, infra_config, user_config, dependencies)
+                        response = replaceTag(
+                            choices,
+                            infra_config,
+                            user_config,
+                            dependencies)
                         choices = response[0]
                         register_onchange = response[1]
                     } else {

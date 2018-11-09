@@ -59,24 +59,29 @@ def get_inputs_list(definition, parent_key=''):
 
 
 def delete_secrets(definition, instance):
-    if isinstance(definition, Dict):
-        # For each key, process if it is an input, or call recursively if not
-        no_secrets_instance: Dict = {}
-        for key, value in definition.items():
-            if _is_input(value):
-                # if it is not secret put instance value, else dont't put anything
-                if not _is_input_secret(value):
-                    no_secrets_instance[key] = instance[key]
-            else:
-                # if it is no input, call recursively
-                no_secrets_instance[key] = delete_secrets(value, instance[key])
-        return no_secrets_instance
-    if isinstance(definition, List):
-        # Call recursively for each item in the list
-        no_secrets_instance: List = []
-        for defn, inst in zip(definition, instance):
-            no_secrets_instance.append(delete_secrets(defn, inst))
-        return no_secrets_instance
+    if instance is not None:
+        if isinstance(definition, Dict):
+            # For each key, process if it is an input, or call recursively if not
+            no_secrets_instance: Dict = {}
+            for key, value in definition.items():
+                if _is_input(value):
+                    # if it is not secret put instance value, else dont't put anything
+                    if not _is_input_secret(value):
+                        no_secrets_instance[key] = instance[key]
+                elif _is_replacement(value):
+                    # Don't know if it is a secret, removing for safety
+                    pass
+                else:
+                    # if it is no input, call recursively
+                    no_secrets_instance[key] = delete_secrets(
+                        value, instance[key])
+            return no_secrets_instance
+        if isinstance(definition, List):
+            # Call recursively for each item in the list
+            no_secrets_instance: List = []
+            for defn, inst in zip(definition, instance):
+                no_secrets_instance.append(delete_secrets(defn, inst))
+            return no_secrets_instance
 
     # The item can be processed anymore, return the instance value
     return instance
@@ -86,6 +91,11 @@ def _is_input(entry):
     return isinstance(entry, Dict) \
         and INPUT_TAG in entry \
         and isinstance(entry[INPUT_TAG], Dict)
+
+
+def _is_replacement(entry):
+    return isinstance(entry, Dict) \
+        and REPLACE_TAG in entry
 
 
 def _is_input_secret(entry):

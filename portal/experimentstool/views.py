@@ -1,26 +1,23 @@
 """ Experiments Tool views module """
 
+import datetime
 import json
 import tempfile
-from urllib.parse import urlparse
 from typing import Dict, List
+from urllib.parse import urlparse
+
 import requests
 import yaml
-
 from django.contrib.auth.decorators import login_required, permission_required
-from django.shortcuts import render
 from django.http import JsonResponse
+from django.shortcuts import render
 
 import sso
-from sso.utils import token_required
+from experimentstool.models import (AppInstance, Application,
+                                    ComputingInfrastructure, ComputingInstance,
+                                    DataCatalogueKey)
 from portal import settings
-
-from experimentstool.models import (
-    Application,
-    AppInstance,
-    ComputingInfrastructure,
-    ComputingInstance,
-    DataCatalogueKey)
+from sso.utils import token_required
 
 
 @login_required
@@ -138,8 +135,8 @@ def add_computing(request):
         # TODO validation
         return JsonResponse({'error': 'No name provided'})
 
-    json_inputs = request.POST.get('inputs', None)
-    if not json_inputs or json_inputs == '':
+    inputs_str = request.POST.get('inputs', None)
+    if not inputs_str or inputs_str == '':
         # TODO validation
         return JsonResponse({'error': 'No inputs provided'})
 
@@ -147,48 +144,20 @@ def add_computing(request):
     if error is not None:
         return JsonResponse({'error': error})
 
-    # TODO check validity (null)
     definition = yaml.load(infra.definition)
-    inputs = json.loads(json_inputs)
-    for path, value in inputs.items():
-        keys = path[1:].split('.')
-        definition = _update_input(definition, keys, value)
-    yaml_definition = yaml.dump(definition)
+    inputs_values = json.loads(inputs_str)
+    processed_inputs, error = _process_inputs(definition, inputs_values)
 
+    if error is not None:
+        return JsonResponse({'error': error})
     return JsonResponse(
         ComputingInstance.create(
             name,
             request.user,
             infra_pk,
-            yaml_definition,
+            yaml.dump(processed_inputs),
             return_dict=True))
 
-
-def _update_input(definition, keys, value):
-    response = definition
-
-    #Check if the key references a list
-    try:
-        key = int(keys[0])
-    except ValueError:
-        key = str(keys[0])
-
-    if len(keys) > 1:
-        response[key] = _update_input(definition[key], keys[1:], value)
-    else:
-        config = definition[key]['INPUT']
-        if config['type'] == 'string' \
-                or config['type'] == 'file':
-            response[key] = str(value)
-        elif config['type'] == 'int':
-            response[key] = int(value)
-        elif config['type'] == 'float':
-            response[key] = float(value)
-        elif config['type'] == 'bool':
-            response[key] = bool(value)
-        else:
-            response[key] = value # lists
-    return response
 
 @login_required
 def delete_infra(request):
@@ -541,7 +510,7 @@ def get_dataset_info(request):
     return JsonResponse(datasets[dataset_index], safe=False)
 
 
-def _replace_tag(path, infra_config, user_config, dependencies):
+def _replace_tag(path, infra_config, user_config, instance_config, dependencies):
     value = None
     error = None
     postpone = False
@@ -550,19 +519,21 @@ def _replace_tag(path, infra_config, user_config, dependencies):
         value = infra_config
     elif keys[0] == 'USER_CONFIG':
         value = user_config
+    elif keys[0] == 'INSTANCE_CONFIG':
+        value = instance_config
     else:
         if keys[0] in dependencies:
             value = dependencies[keys[0]]
         else:
             postpone = True
-    
+
     if not postpone:
         for key in keys[1:]:
             if isinstance(value, Dict):
                 if key in value:
                     value = value[key]
                 else:
-                    error = str(key)+" in path "+path+" does not exist"
+                    error = path+" does not exist in " + keys[0]
                     break
             elif isinstance(value, List):
                 if len(value) > int(key):
@@ -570,10 +541,22 @@ def _replace_tag(path, infra_config, user_config, dependencies):
                 else:
                     error = "List in path "+path+" does not have enough items"
                     break
+            else:
+                # Data is not completely ready yet, postponing
+                postpone = True
+                break
 
     return (value, postpone, error)
 
-def _get_input_value(input_id, input_def, inputs_values, infra_config, user_config, dependencies, parent_key=''):
+def _get_input_value(
+        input_id,
+        input_def,
+        inputs_values,
+        infra_config,
+        user_config,
+        instance_config,
+        dependencies,
+        parent_key=''):
     if isinstance(input_def, Dict):
         if 'INPUT' in input_def:
             data = input_def['INPUT']
@@ -586,13 +569,17 @@ def _get_input_value(input_id, input_def, inputs_values, infra_config, user_conf
                         data['choices']['REPLACE'],
                         infra_config,
                         user_config,
+                        instance_config,
                         dependencies)
                 if error is not None:
                     return (None, False, error)
                 elif postpone:
                     return (None, True, None)
                 else:
-                    return (choices[int(inputs_values[parent_key+'.'+input_id])], False, None)
+                    return (
+                        choices[int(inputs_values[parent_key+'.'+input_id])],
+                        False,
+                        None)
             elif data['type'] == "resource_list" or data['type'] == "dataset_list":
                 storage_def = {**data['storage']}
                 postpone = False
@@ -602,6 +589,7 @@ def _get_input_value(input_id, input_def, inputs_values, infra_config, user_conf
                         data['storage']['REPLACE'],
                         infra_config,
                         user_config,
+                        instance_config,
                         dependencies)
                 if error is not None:
                     return (None, False, error)
@@ -609,16 +597,25 @@ def _get_input_value(input_id, input_def, inputs_values, infra_config, user_conf
                     return (None, True, None)
                 else:
                     if (storage_def['type'].upper() != "CKAN"):
-                        return (None, False, "Storage type '"+storage_def['type']+"' not supported")
+                        return (
+                            None,
+                            False,
+                            "Storage type '"+storage_def['type']+"' not supported")
                     datasets, error = _get_ckan_datasets(storage_def)
                     dataset = datasets[int(inputs_values[parent_key+'.'+input_id])]
                     storage = {**storage_def}
                     storage['dataset'] = _to_ascii(dataset)
                     if data['type'] == "resource_list":
                         if int(dataset["num_resources"]) > 0:
-                            storage['resource'] = dataset['resources'][int(inputs_values[parent_key+'.'+input_id+":resource"])]
+                            storage['resource'] = \
+                                dataset['resources']\
+                                    [int(inputs_values\
+                                        [parent_key+'.'+input_id+":resource"])]
                         else:
-                            return (None, False, "Dataset "+dataset['name']+" does not have resources")
+                            return (
+                                None,
+                                False,
+                                "Dataset "+dataset['name']+" does not have resources")
                     return (storage, False, None)
             elif data['type'] == "file" or data['type'] == "string":
                 return (inputs_values[parent_key+'.'+input_id], False, None)
@@ -631,10 +628,16 @@ def _get_input_value(input_id, input_def, inputs_values, infra_config, user_conf
             else:
                 return (None, False, "Type '"+data['type']+"' not supported")
         elif 'REPLACE' in input_def:
-            return _replace_tag(input_def['REPLACE'], infra_config, user_config, dependencies)
+            return _replace_tag(
+                input_def['REPLACE'],
+                infra_config,
+                user_config,
+                instance_config,
+                dependencies)
         else:
             # recursive iteration over the dictionary
             value = {}
+            need_reprocessing = False
             for key, data in input_def.items():
                 value_data, postpone, error = _get_input_value(
                     key,
@@ -642,18 +645,18 @@ def _get_input_value(input_id, input_def, inputs_values, infra_config, user_conf
                     inputs_values,
                     infra_config,
                     user_config,
+                    instance_config,
                     dependencies,
                     parent_key=parent_key+'.'+input_id)
                 if error is not None:
-                    return (None, False, error)
-                elif postpone:
-                    return (None, True, None)
-                else:
-                    value[key] = value_data
-            return (value, False, None)
+                    break
+                need_reprocessing = need_reprocessing or postpone
+                value[key] = value_data
+            return (value, need_reprocessing, error)
     elif isinstance(input_def, List):
         # recursive iteration over the list
         value = []
+        need_reprocessing = False
         for index, data in enumerate(input_def):
             value_data, postpone, error = _get_input_value(
                 str(index),
@@ -661,15 +664,14 @@ def _get_input_value(input_id, input_def, inputs_values, infra_config, user_conf
                 inputs_values,
                 infra_config,
                 user_config,
+                instance_config,
                 dependencies,
                 parent_key=parent_key+'.'+input_id)
             if error is not None:
-                return (None, False, error)
-            elif postpone:
-                return (None, True, None)
-            else:
-                value.append(value_data)
-        return (value, False, None)
+                break
+            need_reprocessing = need_reprocessing or postpone
+            value.append(value_data)
+        return (value, need_reprocessing, error)
     else:
         return (input_def, False, None) # This is not managed by the portal, leave as it is
 
@@ -689,6 +691,42 @@ def _to_ascii(data):
     else:
         return data
 
+def _process_inputs(
+        definition,
+        inputs_values,
+        infra_config=None,
+        user_config=None,
+        instance_config=None):
+    processed_inputs = {}
+    error = None
+
+    to_process = {**definition}
+    condition = True
+    while condition:
+        postponed = {}
+        for input_id, input_def in to_process.items():
+            value, postpone, error = _get_input_value(
+                input_id,
+                input_def,
+                inputs_values,
+                infra_config,
+                user_config,
+                instance_config,
+                processed_inputs)
+            if error is not None:
+                break
+            if postpone:
+                postponed[input_id] = input_def
+            processed_inputs[input_id] = value
+        condition = error is None and len(postponed) < len(to_process) and postponed
+        to_process = {**postponed}
+
+    if error is None and len(processed_inputs) != len(definition):
+        error = "Dependency loop, couldn't process inputs"
+
+    return (processed_inputs, error)
+
+
 @login_required
 @permission_required('experimentstool.create_instance')
 def create_deployment(request):
@@ -705,34 +743,23 @@ def create_deployment(request):
     definition, error = Application.get_inputs_definition(application_id)
     if error is not None:
         return JsonResponse({'error': error})
-    
+
     infra_config, error = _get_infra_config(request.user, secrets=True)
     user_config = _get_user_config(request.user)
-    processed_inputs = {}
-
-    to_process = {**definition}
-    condition = True
-    while condition:
-        postponed = {}
-        for input_id, input_def in to_process.items():
-            value, postpone, error = _get_input_value(
-                input_id,
-                input_def,
-                inputs_values,
-                infra_config,
-                user_config,
-                processed_inputs)
-            if error is not None:
-                 return JsonResponse({'error': error})
-            elif postpone:
-                postponed[input_id] = input_def
-            else:
-                processed_inputs[input_id] = value
-        condition = len(postponed) < len(to_process)
-        to_process = {**postponed}
+    instance_config = {
+        "id": deployment_id + "_" + \
+            datetime.datetime.now().strftime("%y%m%dT%H%M%S")
+    }
+    processed_inputs, error = _process_inputs(
+        definition,
+        inputs_values,
+        infra_config,
+        user_config,
+        instance_config)
     
-    if len(processed_inputs) != len(definition):
-        return JsonResponse({'error': "Dependency loop in blueprint, couldn't generate inputs"})
+    if error is not None:
+        return JsonResponse({'error': error})
+
     # print(yaml.dump(processed_inputs))  # FIXME remove
     instance, error = AppInstance.create(
         application_id,
