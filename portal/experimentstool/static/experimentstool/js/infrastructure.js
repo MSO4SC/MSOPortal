@@ -51,6 +51,29 @@ function renderInfraData(container_id, select = true, clear_notifications = true
                                 edit_button = $(document.createElement('div')).
                                 attr("class", "l-3 right")
                             }
+                            var text = $(document.createElement('div')).attr({
+                                id: "text_container_" + infra.id,
+                                class: "collapsed"
+                            }).append(
+                                $(document.createElement('textarea')).attr({
+                                    id: "input_" + infra.id,
+                                    name: infra.id,
+                                    placeholder: 'Definition',
+                                    rows: 25,
+                                    cols: 50
+                                }).text(infra.definition))
+                            var label = $(document.createElement('label')).attr({
+                                for: "input_" + infra.id,
+                                title: 'Definition',
+                                class: "toogle computing_label"
+                            }).html('Definition &darr;').on('click',
+                                function (e) {
+                                    e.preventDefault();
+                                    this.expand = !this.expand;
+                                    $(this).html(this.expand ? 'Definition &uarr;' : name + 'Definition &darr;');
+                                    text.toggleClass(
+                                        'collapsed expanded');
+                                })
                             infra_container.append(
                                 $(document.createElement('div')).attr("id", "infra_block_" +
                                     infra.id).attr("class",
@@ -81,18 +104,13 @@ function renderInfraData(container_id, select = true, clear_notifications = true
                                                 $(document.createElement('span')).text(
                                                     infra.manager),
                                             ),
-                                            $(document.createElement('div')).append(
-                                                $(document.createElement('span')).attr(
-                                                    "class", "computing_label").text(
-                                                    'Definition: '),
-                                                $(document.createElement('span')).text(
-                                                    infra.definition),
-                                            ),
+                                            label,
+                                            text
                                         ),
-                                        edit_button,
-                                    )
+                                    ),
+                                    edit_button,
                                 )
-                            );
+                            )
                             if (infra.owned) {
                                 setInfraEditButtonsHandler(
                                     '/experimentstool/_delete_infra',
@@ -183,13 +201,6 @@ function renderComputingData(container_id, select = true, clear_notifications = 
                                                     'Infrastructure: '),
                                                 $(document.createElement('span')).text(
                                                     computing.infrastructure),
-                                            ),
-                                            $(document.createElement('div')).append(
-                                                $(document.createElement('span')).attr(
-                                                    "class", "computing_label").text(
-                                                    'Definition: '),
-                                                $(document.createElement('span')).text(
-                                                    computing.definition),
                                             ),
                                         ),
                                         $(document.createElement('div')).attr("class",
