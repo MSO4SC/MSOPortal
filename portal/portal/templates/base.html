@@ -60,8 +60,11 @@
                             <li><a href="{% url 'marketplace_noLogIn' %}">Marketplace</a></li>
                             <li><a href="{% url 'datacatalogue_noLogIn' %}">Data Catalogue</a></li>
                     {% endif %}
+                            <li><a href="https://www.globus.org/app" target="_blank" style="color:rgb(106, 248, 118)">Data <-></a></li>
+                            <li><a href="https://gitlab.srv.cesga.es" target="_blank" style="color:rgb(106, 248, 118)">Source</a></li>
+                            <li><a href="https://sregistry.srv.cesga.es" target="_blank" style="color:rgb(106, 248, 118)">Containers</a></li>
                             <li><a href="https://askbot.srv.cesga.es" target="_blank" style="color:rgb(106, 248, 118)">Q&amp;A</a></li> 
-                            <li><a href="http://book.mso4sc.cemosis.fr/docs/stable/" target="_blank" style="color:rgb(94, 118, 252)">Docs</a></li>
+                            <li><a href="http://doc.mso4sc.eu" target="_blank" style="color:rgb(94, 118, 252)">Docs</a></li>
                             <li><a href="https://goo.gl/forms/wGJTEVdEZPZrkqlU2" target="_blank" style="color:yellow">Feedback</a></li>
                     {% if user.is_authenticated %}
                             <li><a href="{% url 'logout' %}">Logout</a></li>
