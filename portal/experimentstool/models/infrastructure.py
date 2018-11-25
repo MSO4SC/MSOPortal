@@ -26,9 +26,11 @@ class ComputingInfrastructure(models.Model):
 
     HPC = 'HPC'
     OPENSTACK = 'OPENSTACK'
+    EOSC = 'EOSC'
     TYPE_CHOICES = (
         (HPC, 'HPC'),
-        (OPENSTACK, 'OpenStack')
+        (OPENSTACK, 'OpenStack'),
+        (EOSC, 'EOSC-Hub')
     )
     infra_type = models.CharField(
         max_length=10,
@@ -179,6 +181,31 @@ class ComputingInfrastructure(models.Model):
                 elif not isinstance(dict_def['openstack_volumes'], List) \
                         and dict_def['openstack_volumes'] != 'None':
                     error = '"openstack_volumes" key does not define a list or "None" value'
+            elif infra_type == cls.EOSC:
+                if 'eosc_config' not in dict_def:
+                    error = '"eosc_config" key not found in definition file'
+                elif not isinstance(dict_def['eosc_config'], Dict):
+                    error = '"eosc_config" key does not define a dictionary'
+                elif 'eosc_flavors' not in dict_def:
+                    error = '"eosc_flavors" key not found in definition file'
+                elif not isinstance(dict_def['eosc_flavors'], List) \
+                        and dict_def['eosc_flavors'] != 'None':
+                    error = '"eosc_flavors" key does not define a list or "None" value'
+                elif 'eosc_images' not in dict_def:
+                    error = '"eosc_images" key not found in definition file'
+                elif not isinstance(dict_def['eosc_images'], List) \
+                        and dict_def['eosc_images'] != 'None':
+                    error = '"eosc_images" key does not define a list or "None" value'
+                elif 'eosc_networks' not in dict_def:
+                    error = '"eosc_networks" key not found in definition file'
+                elif not isinstance(dict_def['eosc_networks'], List) \
+                        and dict_def['eosc_networks'] != 'None':
+                    error = '"eosc_networks" key does not define a list or "None" value'
+                elif 'eosc_volumes' not in dict_def:
+                    error = '"eosc_volumes" key not found in definition file'
+                elif not isinstance(dict_def['eosc_volumes'], List) \
+                        and dict_def['eosc_volumes'] != 'None':
+                    error = '"eosc_volumes" key does not define a list or "None" value'
             else:
                 error = 'unsopported type: "'+infra_type+'"'
 
