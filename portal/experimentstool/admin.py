@@ -7,11 +7,13 @@ from .models.infrastructure import (
 from .models.application import (
     Application,
     AppInstance,
+    ApplicationInstanceLog,
     WorkflowExecution
 )
 
 admin.site.register(Application)
 admin.site.register(AppInstance)
+admin.site.register(ApplicationInstanceLog)
 admin.site.register(WorkflowExecution)
 admin.site.register(ComputingInfrastructure)
 admin.site.register(ComputingInstance)

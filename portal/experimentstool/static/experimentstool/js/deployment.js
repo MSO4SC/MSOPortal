@@ -28,6 +28,8 @@ function renderDeploymentData(selector_id, log_id, app_log_id) {
                             .text(deployment.name)
                         )
                     });
+                    renderStatusData(deployment_selector.val(), "#deployment_log");
+                    renderProgressData(deployment_selector.val(), "#instance_progress");
                     active_id = getActiveLogId();
                     if (active_id == "") {
                         //show exec logs by default exec log
@@ -60,7 +62,9 @@ function renderDeploymentData(selector_id, log_id, app_log_id) {
 
 function runDeployment(selector_id, log_id, force = false) {
     var deployment_id = $(selector_id).find("select").val();
+    $("#instance_progress").text('')
     resetLogBox(log_id);
+    stop_logs();
     cleanNotifications();
 
     $.ajax({
@@ -89,6 +93,8 @@ function runDeployment(selector_id, log_id, force = false) {
             appendNotification(message, error = true);
         },
         complete: function () {
+            renderStatusData(deployment_id, "#deployment_log")
+            renderProgressData(deployment_id, "#instance_progress")
             renderLogData(getActiveLogId(),
                 "#deployment_selector",
                 "#deployment_log",
@@ -216,6 +222,8 @@ $("#deploy_form").find("button").on('click', function (event) {
 });
 
 $("#deployment_selector").find("select").on('change', function () {
+    renderStatusData($(this).val(), "#deployment_log")
+    renderProgressData($(this).val(), "#instance_progress")
     renderLogData(getActiveLogId(),
         "#deployment_selector",
         "#deployment_log",

@@ -800,28 +800,53 @@ def execute_deployment(request):
         "error": error
     })
 
-
 @login_required
-def get_executions_events(request):
+def get_status(request):
     instance_pk = int(request.GET.get('instance_id', -1))
-    reset = request.GET.get("reset", "False") in ["True", "true", "TRUE"]
     offset = 0
 
     if instance_pk < 0:
         return JsonResponse({'error': 'Bad instance provided'})
 
-    if not reset and 'log_offset' in request.session:
-        offset = request.session['log_offset']
+    status, finished, error = \
+        AppInstance.get_status(instance_pk, request.user)
+
+    return JsonResponse({
+        'finished': finished,
+        'status': status,
+        'error': error})
+
+@login_required
+def get_progress(request):
+    instance_pk = int(request.GET.get('instance_id', -1))
+    reset = request.GET.get("reset", "False") in ["True", "true", "TRUE"]
+
+    if instance_pk < 0:
+        return JsonResponse({'error': 'Bad instance provided'})
+
+    workflow_status, progress, running_jobs, finished_jobs, finished, status, error = \
+        AppInstance.get_progress(instance_pk, request.user)
+
+    return JsonResponse({
+        'workflow_status': workflow_status,
+        'progress': progress,
+        'running_jobs': running_jobs,
+        'finished_jobs': finished_jobs,
+        'finished': finished,
+        'status': status,
+        'error': error})
+
+
+@login_required
+def get_executions_events(request):
+    instance_pk = int(request.GET.get('instance_id', -1))
+    reset = request.GET.get("reset", "False") in ["True", "true", "TRUE"]
+
+    if instance_pk < 0:
+        return JsonResponse({'error': 'Bad instance provided'})
 
     events, error = AppInstance.get_instance_events(instance_pk,
-                                                    offset,
                                                     request.user)
-    if error is None:
-        if offset != events['last'] or \
-                ('log_offset' in request.session and
-                 offset != request.session['log_offset']):
-            request.session['log_offset'] = events.pop('last')
-            request.session.modified = True
 
     return JsonResponse({'events': events, 'error': error})
 

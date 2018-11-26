@@ -8,12 +8,15 @@ import yaml
 
 from django.conf import settings
 
-from django.db import models, connection
+from django.db import models, connection, IntegrityError
 from django.utils import timezone
 
 from cloudify_rest_client import CloudifyClient
 from cloudify_rest_client.executions import Execution
-from cloudify_rest_client.exceptions import CloudifyClientError
+from cloudify_rest_client.exceptions import (
+    DeploymentEnvironmentCreationPendingError,
+    DeploymentEnvironmentCreationInProgressError,
+    CloudifyClientError)
 
 from .common import backend, _to_dict, get_inputs_list, delete_secrets, NAME_TAG, ORDER_TAG
 
@@ -21,6 +24,7 @@ from .common import backend, _to_dict, get_inputs_list, delete_secrets, NAME_TAG
 LOGGER = logging.getLogger(__name__)
 
 WAIT_FOR_EXECUTION_SLEEP_INTERVAL = 5
+
 
 def _get_client():
     client = CloudifyClient(host=settings.ORCHESTRATOR_HOST,
@@ -40,6 +44,9 @@ class Application(models.Model):
         settings.AUTH_USER_MODEL,
         on_delete=models.CASCADE,
     )
+
+    job_nodes = models.PositiveIntegerField(default=0)
+    job_instances = models.PositiveIntegerField(default=0)
 
     @classmethod
     def _get(cls, pk):
@@ -113,12 +120,26 @@ class Application(models.Model):
         blueprint, error = cls._upload_blueprint(path, blueprint_id)
 
         if not error:
+
+            # get progress information
+            job_nodes = 0
+            job_instances = 0
+            for node in blueprint['plan']['nodes']:
+                if 'hpc.nodes.job' in node['type_hierarchy']:
+                    job_nodes += 1
+                if 'scale' in node['properties']:
+                    job_instances += node['properties']['scale']
+                else:
+                    job_instances += 1
+
             try:
                 app = cls.objects.create(
                     name=blueprint['id'],
                     description=blueprint['description'],
                     marketplace_id=marketplace_id,
-                    owner=owner)
+                    owner=owner,
+                    job_nodes=job_nodes,
+                    job_instances=job_instances)
             except Exception as err:
                 LOGGER.exception(err)
                 error = str(err)
@@ -232,6 +253,10 @@ class Application(models.Model):
         try:
             blueprint_dict = client.blueprints.get(self.name)
             inputs = blueprint_dict['plan']['inputs']
+            # file = open("testfile.txt", "w")
+            # import yaml
+            # file.write(yaml.dump(blueprint_dict))
+            # file.close()
             data = [{'name': name,
                      'type': input.get('type', '-'),
                      'default': input.get('default', '-'),
@@ -305,6 +330,13 @@ class AppInstance(models.Model):
         settings.AUTH_USER_MODEL,
         on_delete=models.CASCADE,
     )
+
+    workflow_status = models.CharField(max_length=30, default="Not running")
+    progress = models.CharField(max_length=30, default="-")
+
+    queued_jobs = models.PositiveIntegerField(default=0)
+    running_jobs = models.PositiveIntegerField(default=0)
+    finished_jobs = models.PositiveIntegerField(default=0)
 
     @classmethod
     def get(cls, pk, owner, return_dict=False):
@@ -385,6 +417,8 @@ class AppInstance(models.Model):
                 json.loads(self.inputs))
 
             if error is None:
+                self.workflow_status = "Initializing"
+                self.progress = "..."
                 self._run_workflows()
         
         return error
@@ -393,11 +427,17 @@ class AppInstance(models.Model):
     def reset_execution(self):
         self._update_status(AppInstance.READY)
 
+        self.workflow_status = "Not running"
+        self.progress = "-"
+        self.queued_jobs = 0
+        self.running_jobs = 0
+        self.finished_jobs = 0
+        self.save()
+
         # logs
         logs_list, error = ApplicationInstanceLog.list(
             self,
-            self.owner,
-            offset=0
+            self.owner
         )
         if error is None:
             for log in logs_list:
@@ -428,6 +468,12 @@ class AppInstance(models.Model):
         if not WorkflowExecution.is_execution_finished(status):
             # TODO: cancel execution
             pass
+        
+        if WorkflowExecution.is_execution_wrong(status):
+            self.workflow_status = 'Failed'
+        else:
+            self.workflow_status = 'Finished'
+        self.progress = '-'
 
         self._update_status(status)
 
@@ -442,6 +488,19 @@ class AppInstance(models.Model):
     def _run_workflow(self, workflow):
         error = None
         execution = None
+
+        if workflow == 'install':
+            self.workflow_status = 'Bootstraping'
+        elif workflow == 'uninstall':
+            self.workflow_status = 'Cleaning Up'
+        elif workflow == 'run_jobs':
+            self.workflow_status = 'Running'
+        ApplicationInstanceLog.create(
+            self,
+            timezone.now(),
+            "-------"+self.workflow_status.upper()+"-------")
+        self.progress = '...'
+        self.save()
 
         execution, error = WorkflowExecution.create(
             self,
@@ -472,16 +531,10 @@ class AppInstance(models.Model):
                 message)
             return status
 
-        ApplicationInstanceLog.create(
-            self,
-            timezone.now(),
-            "-------"+workflow.upper()+"-------")
-
-        retries = 5
         offset = 0
         finished = False
         status = Execution.PENDING
-        while not finished and (retries > 0 or error is None):
+        while not finished and error is None:
             events, error = execution.get_execution_events(offset)
             if error is None:
                 retries = 0
@@ -489,9 +542,7 @@ class AppInstance(models.Model):
                 status = events['status']
                 finished = WorkflowExecution.is_execution_finished(status)
                 self.append_logs(events['logs'])
-            else:
-                retries -= 1
-            time.sleep(10)
+            time.sleep(5)
 
         return status
 
@@ -510,16 +561,22 @@ class AppInstance(models.Model):
             and self.status != AppInstance.READY
 
     def append_logs(self, events_list):
+        workflow_status = self.workflow_status
+        progress = self.progress
+        queued_jobs = self.queued_jobs
+        running_jobs = self.running_jobs
+        finished_jobs = self.finished_jobs
         for event in events_list:
             if not "reported_timestamp" in event:
                 # this event cannot be logged
                 LOGGER.warning(
                     "The event has not a timestamp, will not be registered")
                 continue
-            timestamp = event["reported_timestamp"]
+
             message = ""
             if "message" in event:
                 message = event["message"]
+            timestamp = event["reported_timestamp"]
 
             event_type = event["type"]
             if event_type == "cloudify_event":
@@ -527,6 +584,27 @@ class AppInstance(models.Model):
                 if cloudify_event_type == "workflow_node_event":
                     message += " " + event["node_instance_id"] + \
                         " (" + event["node_name"] + ")"
+                    
+                    if (len(event["message"]) > 17 \
+                            and workflow_status == 'Running' \
+                            and event["message"][:17] == 'State changed to '):
+                        state = event["message"][17:]
+                        progress = ''
+                        if state == 'PENDING':
+                            queued_jobs +=1
+                        elif state == 'RUNNING':
+                            if queued_jobs > 0:
+                                queued_jobs -= 1
+                            running_jobs +=1
+                        elif state == 'COMPLETED':
+                            if running_jobs > 0:
+                                running_jobs -= 1
+                            elif queued_jobs > 0:
+                                queued_jobs -= 1
+                            finished_jobs += 1
+                        else:
+                            progress = state
+                        progress += str(queued_jobs)+" | "+str(running_jobs)+" | "+str(finished_jobs)
                 elif cloudify_event_type == "sending_task" \
                         or cloudify_event_type == "task_started" \
                         or cloudify_event_type == "task_succeeded" \
@@ -542,7 +620,6 @@ class AppInstance(models.Model):
                         or cloudify_event_type == "workflow_cancelled":
                     pass
                 else:
-                    event.pop("reported_timestamp")
                     message = json.dumps(event)
                 if event["error_causes"]:
                     for cause in event["error_causes"]:
@@ -550,35 +627,91 @@ class AppInstance(models.Model):
                             cause['type'] + ": " + cause["message"]
                         message += "\n\t" + cause["traceback"]
             else:
-                event.pop("reported_timestamp")
                 message = json.dumps(event)
 
             ApplicationInstanceLog.create(self, timestamp, message)
+        
+        self.workflow_status = workflow_status
+        self.progress = progress
+        self.queued_jobs = queued_jobs
+        self.running_jobs = running_jobs
+        self.finished_jobs = finished_jobs
+        self.save()
 
     @classmethod
-    def get_instance_events(cls, pk, offset, owner):
+    def get_instance_events(cls, pk, owner):
         logs_list = []
         status = None
+        finished = None
         instance, error = cls.get(pk, owner)
 
         if error is None:
             if instance is not None:
                 status = instance.status
+                finished = instance.is_finished()
                 logs_list, error = ApplicationInstanceLog.list(
                     instance,
-                    owner,
-                    offset=offset
+                    owner
                 )
-        else:
-            error = "Can't get instance events because it doesn't exist"
+            else:
+                error = "Can't get instance events because it doesn't exist"
 
         return (
             {
                 'logs': [_to_dict(log) for log in logs_list],
-                'last': offset + len(logs_list),
-                'status': instance.status,
-                'finished': instance.is_finished()
+                'status': status,
+                'finished': finished
             },
+            error)
+
+
+    @classmethod
+    def get_status(cls, pk, owner):
+        workflow_status = None
+        progress = None
+        running_jobs = 0
+        finished_jobs = 0
+        finished = True
+        status = None
+        instance, error = cls.get(pk, owner)
+
+        if error is None:
+            if instance is not None:
+                finished = instance.is_finished()
+                status = instance.status
+            else:
+                error = "Can't get instance events because it doesn't exist"
+
+        return (status, finished,error)
+
+    @classmethod
+    def get_progress(cls, pk, owner):
+        workflow_status = None
+        progress = None
+        running_jobs = 0
+        finished_jobs = 0
+        finished = True
+        status = None
+        instance, error = cls.get(pk, owner)
+
+        if error is None:
+            if instance is not None:
+                workflow_status = instance.workflow_status
+                progress = instance.progress
+                running_jobs = instance.running_jobs
+                finished_jobs = instance.finished_jobs
+                finished = instance.is_finished()
+                status = instance.status
+            else:
+                error = "Can't get instance events because it doesn't exist"
+
+        return (
+            workflow_status,
+            progress,
+            running_jobs,
+            finished_jobs,
+            finished,
+            status,
             error)
 
     @classmethod
@@ -597,8 +730,8 @@ class AppInstance(models.Model):
                             break
                 else:
                     LOGGER.warning("Couldn't get workflow list: "+error)
-        else:
-            error = "Can't get instance workflowid because instance doesn't exist"
+            else:
+                error = "Can't get instance workflowid because instance doesn't exist"
 
         if not return_dict:
             return (workflowid, error)
@@ -666,21 +799,22 @@ class AppInstance(models.Model):
 
 
 class ApplicationInstanceLog(models.Model):
+    generated = models.DateTimeField(primary_key=True)
+
     instance = models.ForeignKey(
         AppInstance,
         on_delete=models.CASCADE,
     )
 
-    generated = models.DateTimeField()
     message = models.TextField()
 
     @classmethod
-    def list(cls, instance, owner, offset=0, return_dict=False):
+    def list(cls, instance, owner, return_dict=False):
         error = None
         logs_list = []
         try:
             logs_list = \
-                cls.objects.filter(instance=instance)[offset:]
+                cls.objects.filter(instance=instance).order_by('-generated')
         except cls.DoesNotExist:
             pass
 
@@ -703,6 +837,9 @@ class ApplicationInstanceLog(models.Model):
                     instance=instance,
                     generated=generated,
                     message=message)
+            except IntegrityError as err:
+                LOGGER.warning(err)
+                error = str(err)
             except Exception as err:
                 LOGGER.exception(err)
                 error = str(err)
@@ -796,6 +933,7 @@ class WorkflowExecution(models.Model):
                     created_on=timezone.now(),
                     owner=owner)
             except Exception as err:
+                print("error! "+err)
                 LOGGER.exception(err)
                 error = str(err)
                 # TODO: cancel execution
@@ -817,23 +955,24 @@ class WorkflowExecution(models.Model):
         error = None
         execution = None
 
-        retries = 9
         client = _get_client()
-        while retries >= 0:
+        while True:
             try:
                 execution = client.executions.start(deployment_id,
                                                     workflow,
                                                     parameters=params,
                                                     force=force)
                 break
+            except (
+                DeploymentEnvironmentCreationPendingError,
+                DeploymentEnvironmentCreationInProgressError) as err:
+                LOGGER.warning(err)
+                time.sleep(WAIT_FOR_EXECUTION_SLEEP_INTERVAL)
+                continue
             except CloudifyClientError as err:
-                if (retries > 0):
-                    LOGGER.warning(err)
-                    time.sleep(WAIT_FOR_EXECUTION_SLEEP_INTERVAL)
-                else:
-                    error = str(err)
-                    LOGGER.exception(err)
-                retries -= 1
+                error = str(err)
+                LOGGER.exception(err)
+            break
 
         return (execution, error)
 
