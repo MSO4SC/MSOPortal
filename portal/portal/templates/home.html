@@ -2,15 +2,6 @@
 <h2 style="text-align: center;">Welcome to the frontend of the MSO4SC platform!</h2>
 <p style="font-size: 1.2em; text-align:center;">From this site you can access all the services provided by us.</p>
 <br>
-{% if DEBUG %}
-<div>
-    <p>Hello {{ user.username }}!</p>
-    <p>E-Mail: {{ user.email }}</p>
-    <p>Groups: {{ groups }}</p>
-    <p>Token: {{ access_token }}</p>
-    <p>Extra Data: {{ extra_data }}</p>
-</div>
-{% endif %}
 <div class="logged-home-grid">
     <div class="homebox"><a href="https://github.com/MSO4SC/MSOPortal/blob/master/portal/README.adoc" target="_blank">How to use it</a></div>
     <div class="homebox"><a href="http://book.mso4sc.cemosis.fr/" target="_blank">Technical documentation</a></div>
