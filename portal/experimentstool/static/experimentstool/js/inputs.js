@@ -43,6 +43,27 @@ function _renderInputsData(container_id, inputs, infra_config, user_config) {
     dependencies = {}
     onchange = {}
 
+    advanced_input = $(document.createElement('input')).attr({
+        id: "click_advanced_inputs",
+        checked: false,
+        type: 'checkbox'
+    })
+    advanced_label = $(document.createElement('label')).attr({
+        for: "click_advanced_inputs",
+        title: "Advanced properties"
+    }).text("Advanced")
+    inputs_container.append(
+        $(document.createElement('div')).append(
+            advanced_input,
+            advanced_label
+        )
+    )
+
+    advanced_input.click(function () {
+        // Instead, you should rely on implicit iteration:
+        $("div.advanced").toggle();
+    })
+
     $(inputs).each(function (index, tuple) {
         var input_id = tuple[0]
         var input = tuple[1]
@@ -53,6 +74,13 @@ function _renderInputsData(container_id, inputs, infra_config, user_config) {
         var can_be_null = (('null' in input) ? input.null : false);
 
         var register_onchange = false;
+
+        var input_div = $(document.createElement('div')).attr({
+            id: "input_container_" + input_id
+        })
+        if (advanced) {
+            input_div.addClass("advanced").hide();
+        }
 
         switch (type) {
             case "list":
@@ -81,9 +109,7 @@ function _renderInputsData(container_id, inputs, infra_config, user_config) {
                     });
 
                 inputs_container.append( //list select box
-                    $(document.createElement('div')).attr({
-                        id: "input_container_" + input_id
-                    }).append(
+                    input_div.append(
                         $(document.createElement('label'))
                         .attr({
                             for: "input_" + input_id,
@@ -156,9 +182,7 @@ function _renderInputsData(container_id, inputs, infra_config, user_config) {
                 var choices = $(document.createElement('div'));
 
                 inputs_container.append( //datasets resources
-                    $(document.createElement('div')).attr({
-                        id: "input_container_" + input_id
-                    }).append(
+                    input_div.append(
                         $(document.createElement('label')).attr({
                             for: "input_" + input_id,
                             title: description
@@ -213,9 +237,7 @@ function _renderInputsData(container_id, inputs, infra_config, user_config) {
                 })
 
                 inputs_container.append( //datasets
-                    $(document.createElement('div')).attr({
-                        id: "input_container_" + input_id
-                    }).append(
+                    input_div.append(
                         $(document.createElement('label')).attr({
                             for: "input_" + input_id,
                             title: description
@@ -264,9 +286,7 @@ function _renderInputsData(container_id, inputs, infra_config, user_config) {
                     })
 
                 inputs_container.append(
-                    $(document.createElement('div')).attr({
-                        id: "input_container_" + input_id
-                    }).append(
+                    input_div.append(
                         label,
                         text
                     )
@@ -310,9 +330,7 @@ function _renderInputsData(container_id, inputs, infra_config, user_config) {
                 }
 
                 inputs_container.append(
-                    $(document.createElement('div')).attr({
-                        id: "input_container_" + input_id
-                    }).append([
+                    input_div.append([
                         $(document.createElement('label')).attr({
                             for: "boolean_input_" + input.name,
                             title: input.description
@@ -336,10 +354,9 @@ function _renderInputsData(container_id, inputs, infra_config, user_config) {
                 break;
             default: //string, int, float
                 var default_value = (('default' in input) ? input.default : '');
+                console.log(default_value);
                 inputs_container.append(
-                    $(document.createElement('div')).attr({
-                        id: "input_container_" + input_id
-                    }).append([
+                    input_div.append([
                         $(document.createElement('label')).attr({
                             for: type + "_input_" + input_id,
                             title: description
