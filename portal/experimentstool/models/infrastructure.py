@@ -380,8 +380,8 @@ class ComputingInstance(models.Model):
             self.user)
 
     def to_dict(self, secrets=False):
-        computing_dict: Dict = {}
-        dict_def: Dict = {}
+        computing_dict = {}
+        dict_def = {}
 
         computing_dict = _to_dict(self)
         if not secrets:
