@@ -30,7 +30,7 @@ def _to_dict(model_instance):
 
 
 def get_inputs_list(definition, parent_key=''):
-    inputs: List = []
+    inputs = []
     if isinstance(definition, Dict):
         # For each key, process if it is an input, or call recursively if not
         for key, value in definition.items():
