@@ -62,7 +62,7 @@ def delete_secrets(definition, instance):
     if instance is not None:
         if isinstance(definition, Dict):
             # For each key, process if it is an input, or call recursively if not
-            no_secrets_instance: Dict = {}
+            no_secrets_instance = {}
             for key, value in definition.items():
                 if _is_input(value):
                     # if it is not secret put instance value, else dont't put anything
@@ -78,7 +78,7 @@ def delete_secrets(definition, instance):
             return no_secrets_instance
         if isinstance(definition, List):
             # Call recursively for each item in the list
-            no_secrets_instance: List = []
+            no_secrets_instance = []
             for defn, inst in zip(definition, instance):
                 no_secrets_instance.append(delete_secrets(defn, inst))
             return no_secrets_instance
