@@ -238,7 +238,7 @@ def _get_infra_config(owner, secrets=False):
 def _get_user_config(owner):
     ckan_entrypoint = settings.DATACATALOGUE_URL
     ckan_key = DataCatalogueKey.get(owner)
-    return {
+    user_config = {
         'storage_list': [{
             'type': 'ckan',
             'config': {
@@ -247,6 +247,8 @@ def _get_user_config(owner):
             }
         }]
     }
+    if ckan_key is not None:
+        user_config['storage_list'][0]['config']['key'] = ckan_key.code
 
 
 @token_required
