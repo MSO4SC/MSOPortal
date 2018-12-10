@@ -455,7 +455,9 @@ def _get_ckan_datasets(storage):
     url = storage['config']['entrypoint'] + \
         "/api/3/action/package_search"
 
-    key = storage['config']['key']
+    key = None
+    if 'key' in storage['config']:
+        key = storage['config']['key']
 
     datasets = []
     left = True
