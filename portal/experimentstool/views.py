@@ -242,8 +242,7 @@ def _get_user_config(owner):
         'storage_list': [{
             'type': 'ckan',
             'config': {
-                'entrypoint': ckan_entrypoint,
-                'key': ckan_key.code
+                'entrypoint': ckan_entrypoint
             }
         }]
     }
