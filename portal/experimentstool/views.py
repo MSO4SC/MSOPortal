@@ -249,6 +249,7 @@ def _get_user_config(owner):
     }
     if ckan_key is not None:
         user_config['storage_list'][0]['config']['key'] = ckan_key.code
+    return user_config
 
 
 @token_required
