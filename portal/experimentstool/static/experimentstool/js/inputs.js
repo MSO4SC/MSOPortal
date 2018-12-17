@@ -354,7 +354,6 @@ function _renderInputsData(container_id, inputs, infra_config, user_config) {
                 break;
             default: //string, int, float
                 var default_value = (('default' in input) ? input.default : '');
-                console.log(default_value);
                 inputs_container.append(
                     input_div.append([
                         $(document.createElement('label')).attr({
@@ -376,6 +375,7 @@ function _renderInputsData(container_id, inputs, infra_config, user_config) {
     for (var key in onchange) {
         if (key in dependencies) {
             dependencies[key].dom.on('change', buildOnChangeCall(key));
+            dependencies[key].dom.change();
         } else {
             // The dependency is not available
             for (let onchange_index = 0; onchange_index < onchange[key].length; onchange_index++) {
@@ -386,7 +386,6 @@ function _renderInputsData(container_id, inputs, infra_config, user_config) {
                     .text("No data available"));
             }
         }
-
     }
 }
 
