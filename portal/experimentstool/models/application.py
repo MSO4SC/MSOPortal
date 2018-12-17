@@ -991,7 +991,8 @@ class WorkflowExecution(models.Model):
         cfy_execution = client.executions.get(self.id_code)
         events = client.events.list(execution_id=self.id_code,
                                     _offset=offset,
-                                    _size=100)
+                                    _size=100,
+                                    include_logs=True)
         last_message = events.metadata.pagination.total
 
         return {
