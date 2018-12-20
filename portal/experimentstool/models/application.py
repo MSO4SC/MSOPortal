@@ -626,6 +626,11 @@ class AppInstance(models.Model):
                         message += "\n" + \
                             cause['type'] + ": " + cause["message"]
                         message += "\n\t" + cause["traceback"]
+            elif event_type == "cloudify_log":
+                instance_message = ''
+                if 'node_instance_id' in event:
+                    instance_message = '(' + event['node_instance_id'] + ') '
+                message = '['+event['level'].upper()+'] ' + instance_message + message
             else:
                 message = json.dumps(event)
 
