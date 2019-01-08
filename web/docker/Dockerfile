@@ -14,11 +14,11 @@ RUN apk add postgresql-dev && pip install psycopg2
 
 # copy application
 RUN git clone https://github.com/MSO4SC/MSOPortal.git
-RUN mv /MSOPortal/web/portal / && \
-    mv /MSOPortal/web/docker/entrypoint.sh /entrypoint.sh
+RUN mv MSOPortal/web/portal / && \
+    mv MSOPortal/web/docker/entrypoint.sh /entrypoint.sh
 RUN chmod -R +x /portal/*.sh && \
     chmod +x /entrypoint.sh
-RUN rm -r /MSOPortal
+RUN rm -r MSOPortal
 
 # set work directory
 WORKDIR /portal
