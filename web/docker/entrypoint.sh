@@ -12,6 +12,8 @@ then
     echo "PostgreSQL started"
 fi
 
+cd /portal
+
 # python manage.py flush --no-input
 
 python manage.py makemigrations
