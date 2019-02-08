@@ -10,9 +10,11 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/1.11/ref/settings/
 """
 
+import csv
 import os
+
+from decouple import Csv, config
 from django.contrib.messages import constants as message_constants
-from decouple import config, Csv
 
 # Build paths inside the project like this: os.path.join(BASE_DIR, ...)
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -21,13 +23,21 @@ BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/1.11/howto/deployment/checklist/
 
-# SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = config('SECRET_KEY')
+SECRET_KEY = os.getenv('SECRET_KEY', config('SECRET_KEY'))
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = config('DEBUG', default=False, cast=bool)
+DEBUG = os.getenv('DEBUG')
+if DEBUG is None:
+    DEBUG = config('DEBUG', default=False, cast=bool)
+else:
+    DEBUG = DEBUG.lower() in ('true', 'True')
 
-ALLOWED_HOSTS = config('ALLOWED_HOSTS', cast=Csv())
+ALLOWED_HOSTS = os.getenv('ALLOWED_HOSTS')
+if ALLOWED_HOSTS is None:
+    ALLOWED_HOSTS = config('ALLOWED_HOSTS', cast=Csv())
+else:
+    # one line csv cast
+    ALLOWED_HOSTS = list(csv.reader([ALLOWED_HOSTS]))[0]
 INTERNAL_IPS = (
     '127.0.0.1', 'localhost'
 )
@@ -109,12 +119,16 @@ SOCIAL_AUTH_PIPELINE = (
 
 
 # Database
-# https://docs.djangoproject.com/en/1.11/ref/settings/#databases
-
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': os.path.join(BASE_DIR, 'db.sqlite3'),
+        'ENGINE': os.getenv('SQL_ENGINE', 'django.db.backends.sqlite3'),
+        'NAME': os.getenv(
+            'SQL_DATABASE',
+            os.path.join(BASE_DIR, 'db.sqlite3')),
+        'USER': os.getenv('SQL_USER', 'user'),
+        'PASSWORD': os.getenv('SQL_PASSWORD', 'password'),
+        'HOST': os.getenv('SQL_HOST', 'localhost'),
+        'PORT': os.getenv('SQL_PORT', '5432'),
     }
 }
 
@@ -145,7 +159,7 @@ AUTH_PASSWORD_VALIDATORS = [
 # Internationalization
 # https://docs.djangoproject.com/en/1.11/topics/i18n/
 
-LANGUAGE_CODE = 'en-us'
+LANGUAGE_CODE = 'en-uk'
 
 TIME_ZONE = 'UTC'
 
@@ -171,20 +185,21 @@ LOGIN_URL = 'login'
 LOGOUT_URL = 'logout'
 LOGIN_REDIRECT_URL = 'home'
 
-# X_FRAME_OPTIONS = 'ALLOW-FROM ' + config('FIWARE_IDM_ENDPOINT')
-# X_FRAME_OPTIONS = 'DENY'
+MARKETPLACE_URL = os.getenv('MARKETPLACE_URL', config('MARKETPLACE_URL'))
+DATACATALOGUE_URL = os.getenv('DATACATALOGUE_URL', config('DATACATALOGUE_URL'))
 
-MARKETPLACE_URL = config('MARKETPLACE_URL')
-DATACATALOGUE_URL = config('DATACATALOGUE_URL')
+ORCHESTRATOR_HOST = os.getenv('ORCHESTRATOR_HOST', config('ORCHESTRATOR_HOST'))
+ORCHESTRATOR_USER = os.getenv('ORCHESTRATOR_USER', config('ORCHESTRATOR_USER'))
+ORCHESTRATOR_PASS = os.getenv('ORCHESTRATOR_PASS', config('ORCHESTRATOR_PASS'))
+ORCHESTRATOR_TENANT = os.getenv(
+    'ORCHESTRATOR_TENANT', config('ORCHESTRATOR_TENANT'))
 
-ORCHESTRATOR_HOST = config('ORCHESTRATOR_HOST')
-ORCHESTRATOR_USER = config('ORCHESTRATOR_USER')
-ORCHESTRATOR_PASS = config('ORCHESTRATOR_PASS')
-ORCHESTRATOR_TENANT = config('ORCHESTRATOR_TENANT')
-
-FIWARE_IDM_ENDPOINT = config('FIWARE_IDM_ENDPOINT')
-SOCIAL_AUTH_FIWARE_KEY = config('SOCIAL_AUTH_FIWARE_KEY')
-SOCIAL_AUTH_FIWARE_SECRET = config('SOCIAL_AUTH_FIWARE_SECRET')
+FIWARE_IDM_ENDPOINT = os.getenv(
+    'FIWARE_IDM_ENDPOINT', config('FIWARE_IDM_ENDPOINT'))
+SOCIAL_AUTH_FIWARE_KEY = os.getenv(
+    'SOCIAL_AUTH_FIWARE_KEY', config('SOCIAL_AUTH_FIWARE_KEY'))
+SOCIAL_AUTH_FIWARE_SECRET = os.getenv(
+    'SOCIAL_AUTH_FIWARE_SECRET', config('SOCIAL_AUTH_FIWARE_SECRET'))
 
 # MESSAGE_LEVEL = message_constants.DEBUG
 SOCIAL_AUTH_LOGIN_ERROR_URL = '/login_error/'
