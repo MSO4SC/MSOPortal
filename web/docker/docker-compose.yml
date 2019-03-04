@@ -6,6 +6,9 @@ services:
     command: gunicorn portal.wsgi:application --bind 0.0.0.0:8000
     volumes:
       - static_volume:/portal/static
+      - exptools_migrations:/portal/experimentstool/migrations
+      - remdeskt_migrations:/portal/remotedesktops/migrations
+      - sso_migrations:/portal/sso/migrations
     expose:
       - 8000
     environment:
@@ -51,3 +54,6 @@ services:
 volumes:
   postgres_data:
   static_volume:
+  exptools_migrations:
+  remdeskt_migrations:
+  sso_migrations:
