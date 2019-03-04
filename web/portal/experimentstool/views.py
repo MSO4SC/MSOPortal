@@ -479,7 +479,7 @@ def _get_ckan_datasets_offset(url, key, offset):
     url += "?start="+str(offset)
 
     headers = {}
-    if key is not None:
+    if key:
         headers = {'Authorization': key}
         url += "&include_private=True"
 

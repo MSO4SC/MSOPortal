@@ -299,7 +299,7 @@ class AppInstance(models.Model):
     )
 
     description = models.CharField(max_length=256, null=True)
-    inputs = models.CharField(max_length=256, null=True)
+    inputs = models.TextField(null=True)
 
     READY = 'ready'
     TERMINATED = 'terminated'

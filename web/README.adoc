@@ -107,7 +107,7 @@ Create command: /opt/cesga/vis/bin/getdesktop
 
 ==== Setup
 The frontend uses *Python3 >= 3.5* to execute, and *pip* to install dependencies. Additionally *virtualenv* can be used to isolate the installation. The script `setup.sh` automates the setup, taking as argument your `dist-packages` folder (native or _virtualenv_ directory). +
-`./setup.sh /usr/local/lib/python3.5/dist-packages`
+`./setup.sh /usr/local/lib/python3.5/site-packages`
 
 WARNING: Some python2 libraries have been manually adapted to work with Python3 in this project. Therefore installing the requirements with pip is not enough and all steps in `setup.sh` script are required.
 

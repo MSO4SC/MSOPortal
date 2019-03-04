@@ -3,11 +3,11 @@ set -e
 
 if [ "$#" -ne 1 ]; then
     echo "Usage: "$0" [python-packages-dir]"
-    echo "   "$0" /usr/local/lib/python3.5/dist-packages"
+    echo "   "$0" /usr/local/lib/python3.5/site-packages"
     exit
 fi
 
-pip3 install -r requirements.txt
+pip install -r requirements.txt
 
 # Hack to be python3 compatible
 PYPKG=$1
