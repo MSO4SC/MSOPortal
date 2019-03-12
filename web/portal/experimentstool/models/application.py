@@ -320,7 +320,7 @@ class AppInstance(models.Model):
         (FORCE_CANCELLING, 'force_cancelling')
     )
     status = models.CharField(
-        max_length=5,
+        max_length=20,
         choices=STATUS_CHOICES,
         default=READY,
         blank=True
@@ -628,7 +628,7 @@ class AppInstance(models.Model):
                         message += "\n\t" + cause["traceback"]
             elif event_type == "cloudify_log":
                 instance_message = ''
-                if 'node_instance_id' in event:
+                if 'node_instance_id' in event and event['node_instance_id']:
                     instance_message = '(' + event['node_instance_id'] + ') '
                 message = '['+event['level'].upper()+'] ' + instance_message + message
             else:
